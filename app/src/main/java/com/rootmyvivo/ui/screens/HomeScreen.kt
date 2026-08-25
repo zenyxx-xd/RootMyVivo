@@ -15,7 +15,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.rootmyvivo.UiState
 import com.rootmyvivo.MainViewModel
 import com.rootmyvivo.RootStatus
 import com.rootmyvivo.UiState
@@ -29,6 +28,7 @@ import com.rootmyvivo.ui.components.RootButton
  * Главный экран: устройство, статус рута, кнопка ROOT.
  * Лог показывается на отдельном экране джейлбрейка.
  */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(state: UiState, vm: MainViewModel, onRootStarted: () -> Unit = {}) {
     Column(
