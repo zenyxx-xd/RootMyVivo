@@ -10,6 +10,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Modifier
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.rootmyvivo.ui.screens.*
@@ -33,6 +34,7 @@ enum class Tab(val label: String) {
     SETTINGS("Настройки"),
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun RootMyVivoApp(vm: MainViewModel = viewModel()) {
     val state by vm.state.collectAsState()

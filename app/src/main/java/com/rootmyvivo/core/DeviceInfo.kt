@@ -114,3 +114,10 @@ fun checkSupport(info: DeviceInfo): SupportCheck {
 
     return SupportCheck(supported, alreadyRoot, issues)
 }
+
+/** Проверка доступности su */
+suspend fun isSuAvailable(): Boolean = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+    try {
+        Runtime.getRuntime().exec(arrayOf("su", "-c", "true")).waitFor() == 0
+    } catch (_: Exception) { false }
+}
