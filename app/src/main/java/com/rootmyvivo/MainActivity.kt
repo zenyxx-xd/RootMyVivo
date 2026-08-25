@@ -13,6 +13,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.rootmyvivo.core.Tab
 import com.rootmyvivo.ui.screens.*
 import com.rootmyvivo.ui.theme.RootMyVivoTheme
 
@@ -27,11 +28,6 @@ class MainActivity : ComponentActivity() {
             }
         }
     }
-}
-
-enum class Tab(val label: String) {
-    HOME("Главная"),
-    SETTINGS("Настройки"),
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
