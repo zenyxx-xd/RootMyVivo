@@ -16,11 +16,14 @@ import androidx.compose.ui.draw.scale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.rootmyvivo.UiState
+import com.rootmyvivo.MainViewModel
+import com.rootmyvivo.RootStatus
+import com.rootmyvivo.UiState
 import com.rootmyvivo.core.DeviceInfo
 import com.rootmyvivo.core.KsuVariant
 import com.rootmyvivo.core.PayloadEntry
-import com.rootmyvivo.core.RootStatus
 import com.rootmyvivo.core.SupportCheck
+import com.rootmyvivo.ui.components.RootButton
 
 /**
  * Главный экран: устройство, статус рута, кнопка ROOT.
