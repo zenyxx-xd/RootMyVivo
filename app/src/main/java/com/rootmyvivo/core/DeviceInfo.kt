@@ -1,13 +1,11 @@
 package com.rootmyvivo.core
 
 import android.os.Build
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
 import java.io.File
 
 /**
- * Информация об устройстве — определяет модель, ядро, KMI,
- * проверяет поддержку эксплойта.
+ * Информация об устройстве.
+ * Ядро читается из /proc/version (работает без root из app контекста).
  */
 data class DeviceInfo(
     val model: String,
@@ -23,34 +21,49 @@ data class DeviceInfo(
     val arch: String,
 ) {
     val configId: String get() = "$model-${kernel.hashCode().toString(16).take(8)}"
-    
+
     companion object {
         fun detect(): DeviceInfo {
-            val kernel = System.getProperty("os.arch")?.let { _ ->
-                Runtime.getRuntime().exec("uname -r").inputStream.bufferedReader().readText().trim()
-            } ?: ""
-            
-            val short = kernel.split("-").take(3).joinToString(".").substringBeforeLast(".")
-                .let { v -> 
-                    // "6.6.89-android15" → "6.6.89"
-                    Regex("""(\d+\.\d+\.\d+)""").find(kernel)?.groupValues?.get(1) ?: v
-                }
-            
+            // Ядро: /proc/version содержит полную строку Linux version
+            val procVersion = try {
+                File("/proc/version").readText().trim()
+            } catch (_: Exception) { "" }
+
+            // Извлекаем uname -r: "Linux version 6.6.89-android15-8-g... (builder@host)"
+            val kernel = Regex("""Linux version (\S+)""").find(procVersion)
+                ?.groupValues?.get(1) ?: ""
+
+            // Трёхчастная версия: 6.6.89
+            val kernelShort = Regex("""(\d+\.\d+\.\d+)""").find(kernel)?.groupValues?.get(1) ?: ""
+
+            // KMI: android15-6.6
             val kmi = Regex("""android\d+-\d+\.\d+""").find(kernel)?.value ?: ""
-            
+
             return DeviceInfo(
                 model = Build.DEVICE,
                 marketName = Build.MODEL,
                 brand = Build.BRAND.lowercase(),
                 rom = Build.DISPLAY,
                 kernel = kernel,
-                kernelShort = short,
+                kernelShort = kernelShort,
                 kmi = kmi,
                 securityPatch = Build.VERSION.SECURITY_PATCH,
                 fingerprint = Build.FINGERPRINT,
-                soc = Build.HARDWARE,
+                soc = getSoC(),
                 arch = Build.SUPPORTED_ABIS.firstOrNull() ?: "",
             )
+        }
+
+        private fun getSoC(): String {
+            val board = Build.HARDWARE.lowercase()
+            return when {
+                board.contains("kera") || board.contains("canary") -> "SM8750"
+                board.contains("sun") || board.contains("pineapple") -> "SM8650"
+                board.contains("kalama") -> "SM8550"
+                board.contains("taro") -> "SM8475"
+                board.contains("mt6899") || board.contains("mt6991") -> "Dimensity 9400"
+                else -> Build.HARDWARE
+            }
         }
     }
 }
@@ -65,51 +78,39 @@ data class SupportCheck(
 fun checkSupport(info: DeviceInfo): SupportCheck {
     val issues = mutableListOf<String>()
     var supported = true
-    
+
     val alreadyRoot = try {
-        ProcessBuilder("su", "-c", "true").start().waitFor() == 0
+        Runtime.getRuntime().exec(arrayOf("su", "-c", "true")).waitFor() == 0
     } catch (_: Exception) { false }
-    
-    // Проверка версии ядра против фикса CVE-2026-43499
-    val minor = info.kernelShort.split(".").getOrNull(2)?.toIntOrNull() ?: 0
+
+    if (info.kernel.isEmpty()) {
+        issues += "Не удалось прочитать версию ядра"
+        supported = false
+    }
+
+    if (info.kmi.isEmpty() && info.kernel.isNotEmpty()) {
+        issues += "Не GKI ядро (KMI не определён)"
+    }
+
+    // CVE-2026-43499 фикс в 6.6.140+
     when {
-        info.kernelShort.startsWith("6.6.") && minor >= 140 -> {
-            issues += "Ядро ≥6.6.140: CVE-2026-43499 закрыт"
-            supported = false
+        info.kernelShort.startsWith("6.6.") -> {
+            val minor = info.kernelShort.split(".").getOrNull(2)?.toIntOrNull() ?: 0
+            if (minor >= 140) {
+                issues += "Ядро ≥6.6.140: CVE-2026-43499 закрыт. Эксплойт неприменим."
+                supported = false
+            }
+        }
+        info.kernelShort.startsWith("6.1.") -> {
+            val minor = info.kernelShort.split(".").getOrNull(2)?.toIntOrNull() ?: 0
+            if (minor >= 145) {
+                issues += "6.1.145+: возможен бэкпорт фикса"
+            }
         }
         info.kernelShort.startsWith("5.15.") -> {
-            issues += "5.15: GhostLock ограничен, нужен Adreno-вектор (в разработке)"
-        }
-        info.kernelShort.startsWith("6.1.") && minor >= 145 -> {
-            issues += "6.1.145+: возможен бэкпорт фикса, проверь вручную"
+            issues += "5.15: нужен Adreno KGSL вектор (в разработке)"
         }
     }
-    
-    if (!info.kernel.contains("android")) {
-        issues += "Не GKI ядро — поддержка ограничена"
-    }
-    
+
     return SupportCheck(supported, alreadyRoot, issues)
-}
-
-/** Выполнить команду через su или напрямую */
-suspend fun execCommand(vararg cmd: String): Pair<Int, String> = 
-    withContext(Dispatchers.IO) {
-        try {
-            val proc = ProcessBuilder(*cmd)
-                .redirectErrorStream(true)
-                .start()
-            val output = proc.inputStream.bufferedReader().readText()
-            Pair(proc.waitFor(), output)
-        } catch (e: Exception) {
-            Pair(-1, e.message ?: "error")
-        }
-    }
-
-suspend fun isSuAvailable(): Boolean = withContext(Dispatchers.IO) {
-    try {
-        ProcessBuilder("su", "-c", "true")
-            .start()
-            .waitFor() == 0
-    } catch (_: Exception) { false }
 }
