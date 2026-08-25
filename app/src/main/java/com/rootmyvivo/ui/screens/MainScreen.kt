@@ -54,7 +54,7 @@ fun MainScreen(
 
         if (rootStatus != null || supportCheck?.rootAlready == true) {
             Surface(shape = MaterialTheme.shapes.extraLarge, color = MaterialTheme.colorScheme.primaryContainer) {
-                Row(Modifier.padding(16.dp), horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                Row(modifier = Modifier.padding(16.dp), horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
                     Icon(Icons.Rounded.CheckCircle, null, tint = MaterialTheme.colorScheme.onPrimaryContainer)
                     Text(rootStatus ?: "Рут активен!", color = MaterialTheme.colorScheme.onPrimaryContainer)
                 }
