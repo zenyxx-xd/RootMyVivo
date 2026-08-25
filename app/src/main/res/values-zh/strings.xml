@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">RootMyVivo</string>
+    <string name="root_button">获取 ROOT</string>
+    <string name="root_active">Root 已激活！</string>
+    <string name="running">正在运行…</string>
+    <string name="device_info">设备信息</string>
+    <string name="select_ksu">KernelSU 变体</string>
+    <string name="warning_title">⚠ 注意</string>
+    <string name="warning_body">
+        此应用使用内核漏洞在锁定引导加载程序的设备上获取 root 权限。
+        执行过程中可能出现内核崩溃（设备将重启——这是正常的，不是变砖）。
+        仅在你拥有的设备上使用。
+    </string>
+    <string name="ksu_variant">KernelSU 变体：%s</string>
+    <string name="stage_prepare">准备中…</string>
+    <string name="stage_exploit">运行漏洞利用…</string>
+    <string name="stage_ksu">安装 KernelSU…</string>
+    <string name="stage_done">完成！</string>
+</resources>

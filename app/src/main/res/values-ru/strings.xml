@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">RootMyVivo</string>
+    <string name="root_button">ПОЛУЧИТЬ ROOT</string>
+    <string name="root_active">Рут активен!</string>
+    <string name="running">Выполняется…</string>
+    <string name="device_info">Устройство</string>
+    <string name="select_ksu">Вариант KernelSU</string>
+    <string name="warning_title">⚠ Важно</string>
+    <string name="warning_body">
+        Приложение использует уязвимости ядра для получения рута на устройствах 
+        с залоченным загрузчиком. Возможны kernel panic (устройство перезагрузится — 
+        это нормально, не брик). Используй только на своём устройстве.
+    </string>
+    <string name="ksu_variant">Вариант KernelSU: %s</string>
+    <string name="stage_prepare">Подготовка…</string>
+    <string name="stage_exploit">Запуск эксплойта…</string>
+    <string name="stage_ksu">Установка KernelSU…</string>
+    <string name="stage_done">Готово!</string>
+</resources>

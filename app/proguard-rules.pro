@@ -1,0 +1,2 @@
+-keep class com.rootmyvivo.core.native.** { *; }
+-keepclassmembers class com.rootmyvivo.core.KsuInstaller { nativePatchVermagic(...); }
