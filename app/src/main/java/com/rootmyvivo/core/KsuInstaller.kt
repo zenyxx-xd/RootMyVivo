@@ -3,216 +3,355 @@ package com.rootmyvivo.core
 import com.rootmyvivo.core.native.NativeLibs
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import java.io.File
+import java.net.HttpURLConnection
+import java.net.URL
 
 /** Варианты KernelSU */
 enum class KsuVariant(
     val id: String,
     val displayName: String,
     val packageName: String,
-    val repoUrl: String,
+    val repo: String,
     val description: String,
+    val koUrlTemplate: String,      // {tag} и {kmi} подставляются
+    val ksudAssetName: String?,     // null если нет в релизах
 ) {
     KERNELSU(
         "kernelsu", "KernelSU",
         "me.weishu.kernelsu",
-        "https://github.com/tiann/KernelSU",
-        "Оригинал. Самый стабильный, GKI LKM"
+        "tiann/KernelSU",
+        "Оригинал. Самый стабильный.",
+        "https://github.com/tiann/KernelSU/releases/download/{tag}/{kmi}_kernelsu.ko",
+        null  // ksud внутри APK менеджера
     ),
     KSU_NEXT(
         "ksunext", "KernelSU Next",
         "com.rifsxd.ksunext",
-        "https://github.com/rifsxd/KernelSU-Next",
-        "Форк с дополнительными функциями и susfs"
+        "rifsxd/KernelSU-Next",
+        "Форк с susfs и доп. функциями.",
+        "https://github.com/rifsxd/KernelSU-Next/releases/download/{tag}/{kmi}_kernelsu_next.ko",
+        null
     ),
     SUKISU(
         "sukisu", "SukiSU Ultra",
         "com.suksukernel.sukisu",
-        "https://github.com/SukiSU-Ultra/SukiSU-Ultra",
-        "Активный форк, частые обновления, susfs встроен"
+        "SukiSU-Ultra/SukiSU-Ultra",
+        "Активный форк, частые обновления.",
+        "https://github.com/SukiSU-Ultra/SukiSU-Ultra/releases/download/{tag}/{kmi}_kernelsu_sukisu.ko",
+        null
     ),
     RESUKISU(
         "resukisu", "ReSukiSU",
         "com.resukisu.resukisu",
-        "https://github.com/ReSukiSU/ReSukiSU",
-        "Форк с улучшенной совместимостью, используется GhostLock"
+        "ReSukiSU/ReSukiSU",
+        "Форк GhostLock-совместимый, улучшенный late-load.",
+        "",  // используется CI через lkm-all.zip
+        null
     );
     
     companion object {
-        fun byId(id: String): KsuVariant = 
+        fun byId(id: String): KsuVariant =
             entries.find { it.id == id } ?: RESUKISU
     }
 }
 
 class KsuInstaller(private val deviceInfo: DeviceInfo) {
-    
+
+    private val workDir = "/data/local/tmp/rmv"
+    private val ghApi = "https://api.github.com"
+
     /**
      * Полная установка выбранного KSU:
-     * 1. Скачать kernelsu.ko для нужного KMI
-     * 2. Патч vermagic под точный uname
-     * 3. ksud late-load --allow-shell
-     * 4. Установка service.d персистентности
+     * 1. Скачать последний kernelsu.ko для нашего KMI
+     * 2. Скачать последний ksud
+     * 3. Патч vermagic под точный uname
+     * 4. ksud late-load --allow-shell
+     * 5. service.d персистентность
      */
     suspend fun install(
         variant: KsuVariant,
         onProgress: suspend (String) -> Unit,
     ): Boolean = withContext(Dispatchers.IO) {
+
+        onProgress("[*] Подготовка ${variant.displayName}...")
+
+        File("$workDir").mkdirs()
+
+        // ── Шаг 1: скачиваем последний kernelsu.ko ──
+        onProgress("[1/5] Скачиваю последний kernelsu.ko (${deviceInfo.kmi})...")
+        val koPath = "$workDir/kernelsu_${variant.id}.ko"
         
-        onProgress("Подготовка ${variant.displayName}...")
+        // Удаляем старый чтобы скачать свежий
+        File(koPath).delete()
         
-        val koPath = "/data/local/tmp/rmv/kernelsu_${variant.id}.ko"
-        val ksudPath = NativeLibs.getPath("ksud")
-        
-        // 1. Скачиваем или используем локальный kernelsu.ko
-        onProgress("Получение модуля ядра...")
-        if (!File(koPath).exists()) {
-            val downloaded = downloadKsuModule(variant, koPath)
-            if (!downloaded) {
-                onProgress("Ошибка скачивания модуля")
+        if (!downloadLatestKo(variant, deviceInfo.kmi, koPath)) {
+            onProgress("[✗] Не удалось скачать kernelsu.ko")
+            return@withContext false
+        }
+        onProgress("[✓] Модуль скачан (${File(koPath).length() / 1024}KB)")
+
+        // ── Шаг 2: скачиваем последний ksud ──
+        onProgress("[2/5] Скачиваю ksud...")
+        val ksudPath = "$workDir/ksud_${variant.id}"
+        if (!downloadLatestKsud(variant, ksudPath)) {
+            // Fallback: используем наш встроенный ksud
+            val embedded = NativeLibs.getPath("ksud")
+            if (File(embedded).exists()) {
+                execCommand("cp", embedded, ksudPath)
+                onProgress("[!] Использую встроенный ksud")
+            } else {
+                onProgress("[✗] ksud недоступен")
                 return@withContext false
             }
         }
-        
-        // 2. Патчим vermagic под наш uname
-        onProgress("Адаптация модуля под ядро...")
-        val patched = patchVermagicNative(koPath, deviceInfo.kernel)
-        if (!patched) {
-            onProgress("Ошибка патча vermagic — возможно ядро несовместимо")
+        execCommand("chmod", "755", ksudPath)
+
+        // ── Шаг 3: патч vermagic ──
+        onProgress("[3/5] Адаптация модуля под ядро ${deviceInfo.kernel.take(30)}...")
+        if (!patchVermagic(koPath, deviceInfo.kernel)) {
+            onProgress("[✗] Не удалось пропатчить vermagic")
             return@withContext false
         }
-        
-        // 3. Загружаем через late-load
-        onProgress("Загрузка KernelSU в ядро...")
-        val result = execCommand(
+        onProgress("[✓] Vermagic пропатчен")
+
+        // ── Шаг 4: загрузка через ksud ──
+        onProgress("[4/5] Загрузка KernelSU в ядро...")
+        val (_, loadOutput) = execCommand(
             "su", "-c",
             "$ksudPath late-load --allow-shell --package-name ${variant.packageName} $koPath"
         )
         
-        delay(2000) // даём модулю инициализироваться
+        delay(3000)
+
+        // ── Шаг 5: верификация + персистентность ──
+        onProgress("[5/5] Проверка результата...")
         
-        // 4. Верификация
-        onProgress("Проверка результата...")
         if (isSuAvailable()) {
-            val (_, idOutput) = execCommand("su", "-c", "id")
+            val (_, idOut) = execCommand("su", "-c", "id")
             
-            // 5. Персистентность
-            onProgress("Настройка автозагрузки...")
-            setupPersistence(variant, koPath)
+            onProgress("[✓✓✓] ROOT АКТИВЕН!")
+            onProgress("[✓] $idOut.trim()")
             
-            onProgress("✓ Root установлен: $idOutput.trim()")
+            // Устанавливаем персистентность
+            setupPersistence(variant, koPath, ksudPath)
+            onProgress("[✓] Персистентность настроена")
+            
             true
         } else {
-            onProgress("Модуль загружен но su недоступен. Попробуй soft reboot.")
+            onProgress("[!] Модуль загружен но su недоступен.")
+            onProgress("[i] Попробуй SOFT REBOOT — KSU останется в ядре.")
             false
         }
     }
-    
-    /** Скачивание kernelsu.ko из релизов соответствующего репо */
-    private suspend fun downloadKsuModule(variant: KsuVariant, outPath: String): Boolean =
+
+    /**
+     * Скачивает ПОСЛЕДНИЙ kernelsu.ko с GitHub Releases
+     * Для каждого варианта — своя логика.
+     */
+    private suspend fun downloadLatestKo(variant: KsuVariant, kmi: String, outPath: String): Boolean =
         withContext(Dispatchers.IO) {
             try {
-                val kmi = deviceInfo.kmi // android15-6.6
-                
                 when (variant.id) {
                     "kernelsu" -> {
-                        val latest = fetchLatestTag("tiann/KernelSU")
-                        val url = "https://github.com/tiann/KernelSU/releases/download/$latest/${kmi}_kernelsu.ko"
+                        val tag = fetchLatestTag("${variant.repo}")
+                        if (tag.isEmpty()) return@withContext false
+                        val url = variant.koUrlTemplate
+                            .replace("{tag}", tag).replace("{kmi}", kmi)
                         downloadFile(url, outPath)
                     }
+                    
+                    "ksunext" -> {
+                        val tag = fetchLatestTag(variant.repo)
+                        if (tag.isEmpty()) return@withContext false
+                        // KSU-Next может иметь разные названия ассетов — пробуем варианты
+                        val patterns = listOf(
+                            "${kmi}_kernelsu_next.ko",
+                            "${kmi}_kernelsu.ko", 
+                            "${kmi}_kernel_su_next.ko"
+                        )
+                        for (pattern in patterns) {
+                            val url = "https://github.com/${variant.repo}/releases/download/$tag/$pattern"
+                            if (tryDownload(url, outPath)) return@withContext true
+                        }
+                        false
+                    }
+                    
+                    "sukisu" -> {
+                        val tag = fetchLatestTag(variant.repo)
+                        if (tag.isEmpty()) return@withContext false
+                        val patterns = listOf(
+                            "${kmi}_kernelsu_sukisu.ko",
+                            "${kmi}_kernelsu.ko",
+                            "${kmi}_susfs_kernelsu.ko"
+                        )
+                        for (pattern in patterns) {
+                            val url = "https://github.com/${variant.repo}/releases/download/$tag/$pattern"
+                            if (tryDownload(url, outPath)) return@withContext true
+                        }
+                        false
+                    }
+                    
                     "resukisu" -> {
-                        // ReSukiSU CI: lkm-all.zip содержит все KMI
-                        val ciTag = fetchLatestTag("cctv18/ReSukiSU_CI")
-                        val zipPath = "/data/local/tmp/rmv/lkm-all.zip"
+                        // ReSukiSU использует CI репо с lkm-all.zip
+                        val ciRepo = "cctv18/ReSukiSU_CI"
+                        val tag = fetchLatestTag(ciRepo)
+                        if (tag.isEmpty()) return@withContext false
+                        
+                        val zipPath = "$workDir/lkm-all.zip"
                         downloadFile(
-                            "https://github.com/cctv18/ReSukiSU_CI/releases/download/$ciTag/lkm-all.zip",
+                            "https://github.com/$ciRepo/releases/download/$tag/lkm-all.zip",
                             zipPath
                         )
-                        // Распаковка нужного .ko
-                        execCommand("sh", "-c", 
-                            "cd /data/local/tmp/rmv && unzip -o lkm-all.zip '${kmi}_kernelsu.ko' && mv '${kmi}_kernelsu.ko' '$outPath'")
+                        
+                        // Распаковываем нужный .ko
+                        val (_, unzipOut) = execCommand(
+                            "sh", "-c",
+                            "cd $workDir && unzip -o lkm-all.zip '${kmi}_kernelsu.ko' && mv '${kmi}_kernelsu.ko' '$outPath' && rm lkm-all.zip"
+                        )
+                        File(outPath).exists()
                     }
-                    else -> {
-                        // Для остальных — используем официальный GKI ko как базу
-                        downloadKsuModule(KsuVariant.KERNELSU, outPath)
-                    }
+                    
+                    else -> false
                 }
-                
-                File(outPath).exists() && File(outPath).length() > 10000
             } catch (e: Exception) {
                 false
             }
         }
-    
-    /** Нативный патч vermagic (JNI вызов) */
-    private fun patchVermagicNative(koPath: String, release: String): Boolean {
-        return try {
-            nativePatchVermagic(koPath, release)
-        } catch (_: UnsatisfiedLinkError) {
-            // Fallback на shell+python если JNI недоступен
-            patchVermagicShell(koPath, release)
+
+    /**
+     * Скачивает последний ksud бинарь для варианта.
+     * Приоритет: собственный ksud варианта > встроенный fallback.
+     */
+    private suspend fun downloadLatestKsud(variant: KsuVariant, outPath: String): Boolean =
+        withContext(Dispatchers.IO) {
+            try {
+                when (variant.id) {
+                    "resukisu" -> {
+                        // ReSukiSU CI имеет готовый ksud
+                        val tag = fetchLatestTag("cctv18/ReSukiSU_CI")
+                        val url = "https://github.com/cctv18/ReSukiSU_CI/releases/download/$tag/ksud-aarch64-linux-android.zip"
+                        val zipPath = "$workDir/ksud_dl.zip"
+                        downloadFile(url, zipPath)
+                        execCommand("sh", "-c",
+                            "cd $workDir && unzip -o ksud_dl.zip 'aarch64-linux-android/release/ksud' && mv aarch64-linux-android/release/ksud '$outPath' && rm -rf aarch64-linux-android ksud_dl.zip")
+                    }
+                    "kernelsu" -> {
+                        // Официальный KernelSU: ksud внутри APK как libksud.so
+                        val tag = fetchLatestTag(variant.repo)
+                        // Пробуем скачать напрямую или извлекаем из APK
+                        val apkUrl = "https://github.com/${variant.repo}/releases/download/$tag/KernelSU_v${tag.removePrefix("v")}_${deviceInfo.arch}-release.apk"
+                        // Сложный путь — пока используем fallback
+                        false
+                    }
+                    else -> false
+                }
+            } catch (_: Exception) { false }
         }
-    }
-    
+
+    /** Верmagic-патч через нативный код или shell fallback */
+    private suspend fun patchVermagic(koPath: String, release: String): Boolean =
+        withContext(Dispatchers.IO) {
+            try {
+                nativePatchVermagic(koPath, release)
+            } catch (_: Throwable) {
+                patchVermagicPython(koPath, release)
+            }
+        }
+
+    @JvmStatic
     private external fun nativePatchVermagic(path: String, release: String): Boolean
-    
-    private fun patchVermagicShell(koPath: String, release: String): Boolean {
-        val script = """
-import sys
-data = open('$koPath','rb').read()
-i = data.find(b'vermagic=')
-if i < 0: sys.exit(1)
-end = data.find(b'\x00', i)
-old = data[i+9:end].decode()
-suffixes = [w for w in old.split() if not w[0].isdigit()]
-new_vm = f"$release {' '.join(suffixes)}".encode()
-space = end - (i + 9)
-if len(new_vm) > space: sys.exit(1)
-b = bytearray(data)
-b[i+9:i+9+len(new_vm)] = new_vm
-b[i+9+len(new_vm):end] = b'\x00' * (end - i - 9 - len(new_vm))
-open('$koPath','wb').write(bytes(b))
+
+    private suspend fun patchVermagicPython(path: String, release: String): Boolean =
+        withContext(Dispatchers.IO) {
+            try {
+                val script = """
+import sys,os
+data=open('$path','rb').read()
+i=data.find(b'vermagic=')
+if i<0:sys.exit(1)
+end=data.find(b'\x00',i)
+old=data[i+9:end].decode()
+suffix=[w for w in old.split()if not w[0].isdigit()]
+new=f"$release {' '.join(suffix)}".encode()
+space=end-(i+9)
+if len(new)>space:sys.exit(1)
+b=bytearray(data)
+b[i+9:i+9+len(new)]=new
+b[i+9+len(new):end]=b'\x00'*(end-i-9-len(new))
+open('$path','wb').write(bytes(b))
 print("OK")
 """
-        val (_, output) = execCommand("python3", "-c", script.replace("\n", "; "))
-        return output.contains("OK") || execCommand("true").first == 0
-    }
-    
-    private fun setupPersistence(variant: KsuVariant, koPath: String) {
-        val script = """
+                val proc = ProcessBuilder("python3", "-c", script.trim().replace("\n", "; "))
+                    .redirectErrorStream(true).start()
+                val out = proc.inputStream.bufferedReader().readText()
+                proc.waitFor() == 0 && out.contains("OK")
+            } catch (_: Exception) { false }
+        }
+
+    /** Настройка автозагрузки через /data/adb/service.d */
+    private suspend fun setupPersistence(variant: KsuVariant, koPath: String, ksudPath: String) =
+        withContext(Dispatchers.IO) {
+            execCommand("su", "-c", "mkdir -p /data/adb/service.d")
+            val script = """
 #!/system/bin/sh
-# RootMyVivo persistence (${variant.displayName})
+# RootMyVivo persistence — ${variant.displayName}
 KO=$koPath
-KSUD=${NativeLibs.getPath("ksud")}
+KSUD=$ksudPath
 if ! grep -qi kernelsu /proc/modules 2>/dev/null; then
   insmod "\$KO" allow_shell=1 2>/dev/null
 fi
-if [ -x "\$KSUD" ]; then
-  "\$KSUD" post-fs-data 2>/dev/null
-  "\$KSUD" services 2>/dev/null
-fi
+[ -x "\$KSUD" ] && { "\$KSUD" post-fs-data 2>/dev/null; "\$KSUD" services 2>/dev/null; }
 """.trimIndent()
-        
-        execCommand("su", "-c", 
-            "mkdir -p /data/adb/service.d && cat > /data/adb/service.d/rmv-persist.sh << 'EOF'\n$script\nEOF\nchmod 755 /data/adb/service.d/rmv-persist.sh")
-    }
-    
+            execCommand("su", "-c",
+                "cat > /data/adb/service.d/rmv-persist.sh << 'RMVEOF'\n$script\nRMVEOF\nchmod 755 /data/adb/service.d/rmv-persist.sh")
+        }
+
+    // ═══ Helpers ═══
+
+    private suspend fun fetchLatestTag(repo: String): String =
+        withContext(Dispatchers.IO) {
+            try {
+                val url = URL("$ghApi/repos/$repo/releases/latest")
+                val conn = url.openConnection() as HttpURLConnection
+                conn.setRequestProperty("Accept", "application/vnd.github+json")
+                conn.connectTimeout = 15000
+                val body = conn.inputStream.bufferedReader().readText()
+                Regex("\"tag_name\"\\s*:\\s*\"([^\"]+)\"").find(body)?.groupValues?.get(1) ?: ""
+            } catch (_: Exception) { "" }
+        }
+
+    private suspend fun downloadFile(url: String, path: String): Boolean =
+        withContext(Dispatchers.IO) {
+            try {
+                File(path).parentFile?.mkdirs()
+                val conn = URL(url).openConnection() as HttpURLConnection
+                conn.connectTimeout = 30000
+                conn.instanceFollowRedirects = true
+                conn.inputStream.use { input ->
+                    File(path).outputStream().use { output ->
+                        input.copyTo(output, bufferSize = 65536)
+                    }
+                }
+                File(path).exists() && File(path).length() > 0
+            } catch (_: Exception) { false }
+        }
+
+    private suspend fun tryDownload(url: String, path: String): Boolean =
+        withContext(Dispatchers.IO) {
+            try {
+                val conn = URL(url).openConnection() as HttpURLConnection
+                conn.requestMethod = "HEAD"
+                conn.connectTimeout = 10000
+                if (conn.responseCode == 200) {
+                    downloadFile(url, path)
+                } else false
+            } catch (_: Exception) { false }
+        }
+
     companion object {
         init {
-            // Загружаем нативную библиотеку для vermagic патча
             try { System.loadLibrary("rmv_native") } catch (_: Throwable) {}
-        }
-        
-        private suspend fun fetchLatestTag(repo: String): String = 
-            withContext(Dispatchers.IO) {
-                val (_, output) = execCommand(
-                    "sh", "-c",
-                    "curl -s 'https://api.github.com/repos/$repo/releases/latest' | grep -o '\"tag_name\": *\"[^\"]*\"' | cut -d'\"' -f4"
-                )
-                output.trim().ifEmpty { "v3.2.5" }
-            }
-        
-        private suspend fun downloadFile(url: String, path: String) = withContext(Dispatchers.IO) {
-            File(path).parentFile?.mkdirs()
-            execCommand("curl", "-sL", "-o", path, url)
         }
     }
 }
