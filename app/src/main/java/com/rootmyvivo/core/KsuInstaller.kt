@@ -31,13 +31,16 @@ class KsuInstaller(private val deviceInfo: DeviceInfo) {
         withContext(Dispatchers.IO) {
             onProgress("[*] ${variant.displayName}...")
 
-            File(WORK_DIR).mkdirs()
-            val koPath = "$WORK_DIR/kernelsu_${variant.id}.ko"
+            // Рабочая директория в filesDir — доступна приложению без root
+            val workDir = File(
+                com.rootmyvivo.RmvApp.instance.filesDir, "payloads"
+            ).apply { mkdirs() }
+            val koPath = "$workDir/kernelsu_${variant.id}.ko"
             val ksudPath = NativeLibs.getPath("ksud")
 
             onProgress("[1/4] Скачиваю kernelsu.ko (${deviceInfo.kmi})...")
             File(koPath).delete()
-            if (!downloadKo(variant, deviceInfo.kmi, koPath)) {
+            if (!downloadKo(variant, deviceInfo.kmi, koPath, workDir)) {
                 onProgress("[✗] Не удалось скачать модуль")
                 return@withContext false
             }
@@ -65,7 +68,9 @@ class KsuInstaller(private val deviceInfo: DeviceInfo) {
             true
         }
 
-    private suspend fun downloadKo(variant: KsuVariant, kmi: String, outPath: String): Boolean =
+    private suspend fun downloadKo(
+        variant: KsuVariant, kmi: String, outPath: String, workDir: File
+    ): Boolean =
         withContext(Dispatchers.IO) {
             try {
                 when (variant.id) {
@@ -91,10 +96,10 @@ class KsuInstaller(private val deviceInfo: DeviceInfo) {
                     }
                     "resukisu" -> {
                         val tag = fetchTag(CI_REPO)
-                        val zip = "$WORK_DIR/lkm.zip"
+                        val zip = "$workDir/lkm.zip"
                         downloadFile("https://github.com/$CI_REPO/releases/download/$tag/lkm-all.zip", zip)
                         execCommand("sh", "-c",
-                            "cd $WORK_DIR && unzip -o lkm.zip '${kmi}_kernelsu.ko' && mv '${kmi}_kernelsu.ko' '$outPath'")
+                            "cd $workDir && unzip -o lkm.zip '${kmi}_kernelsu.ko' && mv '${kmi}_kernelsu.ko' '$outPath'")
                         File(outPath).exists() && File(outPath).length() > 0L
                     }
                     else -> false
@@ -188,7 +193,6 @@ class KsuInstaller(private val deviceInfo: DeviceInfo) {
         }
 
     companion object {
-        private const val WORK_DIR = "/data/local/tmp/rmv"
         private const val GH_API = "https://api.github.com"
         private const val CI_REPO = "cctv18/ReSukiSU_CI"
 

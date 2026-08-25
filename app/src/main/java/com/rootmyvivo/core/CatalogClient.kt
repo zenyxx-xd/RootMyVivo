@@ -103,12 +103,27 @@ class CatalogClient(var catalogUrl: String = DEFAULT_URL) {
 
             val conn = URL(fileEntry.url).openConnection() as HttpURLConnection
             conn.connectTimeout = 30000
-            conn.readTimeout = 60000
+            conn.readTimeout = 120000
             conn.instanceFollowRedirects = true
+            // GitHub releases отдают 302 на objects.githubusercontent.com — HttpURLConn
+            // следует сам, но только если не переключали протоколы. Проверяем вручную:
+            var code = conn.responseCode
+            var cur = conn
+            var hops = 0
+            while (hops < 5 && (code == 301 || code == 302 || code == 303 || code == 307 || code == 308)) {
+                val loc = cur.getHeaderField("Location") ?: break
+                cur = URL(loc).openConnection() as HttpURLConnection
+                cur.connectTimeout = 30000
+                cur.readTimeout = 120000
+                cur.instanceFollowRedirects = true
+                code = cur.responseCode
+                hops++
+            }
+            if (code !in 200..299) return@withContext false
 
-            val totalSize = conn.contentLengthLong.takeIf { it > 0 } ?: fileEntry.size
+            val totalSize = cur.contentLengthLong.takeIf { it > 0 } ?: fileEntry.size
 
-            conn.inputStream.use { input ->
+            cur.inputStream.use { input ->
                 f.outputStream().use { output ->
                     val buf = ByteArray(65536)
                     var read_total = 0L
@@ -132,7 +147,10 @@ class CatalogClient(var catalogUrl: String = DEFAULT_URL) {
             }
 
             f.exists() && f.length() > 0L
-        } catch (_: Exception) { false }
+        } catch (e: Exception) {
+            android.util.Log.e("RootMyVivo", "download $destPath failed", e)
+            false
+        }
     }
 
     // ── JSON парсинг (org.json — без внешних зависимостей) ──
