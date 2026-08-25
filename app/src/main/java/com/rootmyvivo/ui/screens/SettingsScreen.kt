@@ -262,19 +262,27 @@ private fun RowScope.LanguageChip(code: String, label: String, selected: Boolean
 private fun RowScope.ThemeChip(mode: ThemeMode, label: String, icon: ImageVector,
                       selected: Boolean, onClick: () -> Unit) {
     val bg by animateColorAsState(
-        if (selected) MaterialTheme.colorScheme.secondaryContainer
+        if (selected) MaterialTheme.colorScheme.primary
         else MaterialTheme.colorScheme.surfaceContainerHighest,
         label = "themeBg"
     )
-    FilterChip(
-        selected = selected,
-        onClick = onClick,
-        modifier = Modifier.weight(1f),
-        label = { Text(label, maxLines = 1, softWrap = false) },
-        leadingIcon = { Icon(icon, null, Modifier.size(16.dp)) },
-        shape = MaterialTheme.shapes.medium,
-        colors = FilterChipDefaults.filterChipColors(containerColor = bg),
+    val fg by animateColorAsState(
+        if (selected) MaterialTheme.colorScheme.onPrimary
+        else MaterialTheme.colorScheme.onSurface,
+        label = "themeFg"
     )
+    Row(
+        Modifier.weight(1f).clip(MaterialTheme.shapes.medium)
+            .background(bg).clickable(onClick = onClick)
+            .padding(vertical = 12.dp, horizontal = 4.dp),
+        horizontalArrangement = Arrangement.Center,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(icon, null, Modifier.size(15.dp), tint = fg)
+        Spacer(Modifier.width(5.dp))
+        Text(label, color = fg, style = MaterialTheme.typography.labelMedium,
+            maxLines = 1, softWrap = false)
+    }
 }@Composable
 private fun AboutRow(label: String, value: String) {
     Row(Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
