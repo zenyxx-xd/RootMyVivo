@@ -5,6 +5,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 import java.io.File
+import java.net.HttpURLConnection
+import java.net.URL
 
 enum class KsuVariant(
     val id: String,
@@ -25,18 +27,14 @@ enum class KsuVariant(
 
 class KsuInstaller(private val deviceInfo: DeviceInfo) {
 
-    private val workDir = "/data/local/tmp/rmv"
-    private val ghApi = "https://api.github.com"
-
     suspend fun install(variant: KsuVariant, onProgress: suspend (String) -> Unit): Boolean =
         withContext(Dispatchers.IO) {
             onProgress("[*] ${variant.displayName}...")
 
-            File(workDir).mkdirs()
-            val koPath = "$workDir/kernelsu_${variant.id}.ko"
+            File(WORK_DIR).mkdirs()
+            val koPath = "$WORK_DIR/kernelsu_${variant.id}.ko"
             val ksudPath = NativeLibs.getPath("ksud")
 
-            // 1: kernelsu.ko
             onProgress("[1/4] Скачиваю kernelsu.ko (${deviceInfo.kmi})...")
             File(koPath).delete()
             if (!downloadKo(variant, deviceInfo.kmi, koPath)) {
@@ -44,21 +42,18 @@ class KsuInstaller(private val deviceInfo: DeviceInfo) {
                 return@withContext false
             }
 
-            // 2: vermagic
             onProgress("[2/4] Адаптация под ядро...")
             if (!patchVermagic(koPath, deviceInfo.kernel)) {
                 onProgress("[✗] Vermagic патч не удался")
                 return@withContext false
             }
 
-            // 3: late-load
             onProgress("[3/4] Загрузка в ядро...")
             execCommand("chmod", "755", ksudPath)
             execCommand("su", "-c",
                 "$ksudPath late-load --allow-shell --package-name ${variant.packageName} $koPath")
             delay(3000)
 
-            // 4: verify + persist
             onProgress("[4/4] Проверка...")
             if (!isSuAvailable()) {
                 onProgress("[!] Модуль загружен но su недоступен. Попробуй soft reboot.")
@@ -95,11 +90,11 @@ class KsuInstaller(private val deviceInfo: DeviceInfo) {
                         false
                     }
                     "resukisu" -> {
-                        val tag = fetchTag("cctv18/ReSukiSU_CI")
-                        val zip = "$workDir/lkm.zip"
-                        downloadFile("https://github.com/cctv18/ReSukiSU_CI/releases/download/$tag/lkm-all.zip", zip)
+                        val tag = fetchTag(CI_REPO)
+                        val zip = "$WORK_DIR/lkm.zip"
+                        downloadFile("https://github.com/$CI_REPO/releases/download/$tag/lkm-all.zip", zip)
                         execCommand("sh", "-c",
-                            "cd $workDir && unzip -o lkm.zip '${kmi}_kernelsu.ko' && mv '${kmi}_kernelsu.ko' '$outPath'")
+                            "cd $WORK_DIR && unzip -o lkm.zip '${kmi}_kernelsu.ko' && mv '${kmi}_kernelsu.ko' '$outPath'")
                         File(outPath).exists() && File(outPath).length() > 0L
                     }
                     else -> false
@@ -116,19 +111,26 @@ class KsuInstaller(private val deviceInfo: DeviceInfo) {
 
     private fun patchPy(path: String, release: String): Boolean {
         return try {
-            val code = "import sys\n" +
-                "d=open('$path','rb').read()\n" +
-                "i=d.find(b'vermagic=')\n" +
-                "if i<0:sys.exit(1)\n" +
-                "e=d.find(b'\\x00',i)\n" +
-                "old=d[i+9:e].decode()\n" +
-                "suf=[w for w in old.split() if not w[0].isdigit()]\n" +
-                "new=f\"$release {' '.join(suf)}\".encode()\n" +
-                "sp=e-(i+9)\n" +
-                "if len(new)>sp:sys.exit(1)\n" +
-                "b=bytearray(d);b[i+9:i+9+len(new)]=new;b[i+9+len(new):e]=b'\\x00'*(e-i-9-len(new))\n" +
-                "open('$path','wb').write(bytes(b));print('OK')"
-            val proc = ProcessBuilder("python3", "-c", code).redirectErrorStream(true).start()
+            val code = listOf(
+                "d=open('$path','rb').read()",
+                "i=d.find(b'vermagic=')",
+                "if i<0:sys.exit(1)",
+                "e=d.find(b'\\x00',i)",
+                "old=d[i+9:e].decode()",
+                "suf=[w for w in old.split() if not w[0].isdigit()]",
+                "new=f\"$release {' '.join(suf)}\".encode()",
+                "sp=e-(i+9)",
+                "if len(new)>sp:sys.exit(1)",
+                "b=bytearray(d)",
+                "b[i+9:i+9+len(new)]=new",
+                "b[i+9+len(new):e]=b'\\x00'*(e-i-9-len(new))",
+                "open('$path','wb').write(bytes(b))",
+                "print('OK')"
+            ).joinToString("\n")
+            // Add import at top
+            val fullCode = "import sys\n$code"
+            val proc = ProcessBuilder("python3", "-c", fullCode)
+                .redirectErrorStream(true).start()
             proc.waitFor() == 0
         } catch (_: Exception) { false }
     }
@@ -136,29 +138,37 @@ class KsuInstaller(private val deviceInfo: DeviceInfo) {
     private suspend fun setupPersistence(variant: KsuVariant, koPath: String, ksudPath: String) =
         withContext(Dispatchers.IO) {
             execCommand("su", "-c", "mkdir -p /data/adb/service.d")
-            // Экранируем $ чтобы Kotlin их не интерполировал
-            val scriptBody = "#!/system/bin/sh\n" +
-                "# RootMyVivo — " + variant.displayName + "\n" +
-                "KO=" + koPath + "\n" +
-                "KSUD=" + ksudPath + "\n" +
-                "if ! grep -qi kernelsu /proc/modules 2>/dev/null; then\n" +
-                "  insmod \"\$KO\" allow_shell=1 2>/dev/null\n" +
-                "fi\n" +
-                "[ -x \"\$KSUD\" ] && \"\$KSUD\" post-fs-data 2>/dev/null\n"
+            val scriptBody = buildString {
+                appendLine("#!/system/bin/sh")
+                appendLine("# RootMyVivo persistence — ${variant.displayName}")
+                appendLine("KO=$koPath")
+                appendLine("KSUD=$ksudPath")
+                appendLine("""if ! grep -qi kernelsu /proc/modules 2>/dev/null; then""")
+                appendLine("""  insmod "\${'$'}KO" allow_shell=1 2>/dev/null""")
+                appendLine("fi")
+                appendLine("""[ -x "\${'$'}KSUD" ] && "\${'$'}KSUD" post-fs-data 2>/dev/null""")
+            }
             execCommand("su", "-c",
                 "cat > /data/adb/service.d/rmv-persist.sh << 'RMVEOF'\n$scriptBody\nRMVEOF\nchmod 755 /data/adb/service.d/rmv-persist.sh")
         }
 
     companion object {
-        init { try { System.loadLibrary("rmv_native") } catch (_: Throwable) {} }
+        private const val WORK_DIR = "/data/local/tmp/rmv"
+        private const val GH_API = "https://api.github.com"
+        private const val CI_REPO = "cctv18/ReSukiSU_CI"
+
+        init {
+            try { System.loadLibrary("rmv_native") } catch (_: Throwable) {}
+        }
 
         private suspend fun fetchTag(repo: String): String =
             withContext(Dispatchers.IO) {
                 try {
-                    val conn = URL("$ghApi/repos/$repo/releases/latest").openConnection() as HttpURLConnection
+                    val conn = URL("$GH_API/repos/$repo/releases/latest").openConnection() as HttpURLConnection
                     conn.setRequestProperty("Accept", "application/vnd.github+json")
                     conn.connectTimeout = 15000
-                    Regex("\"tag_name\"\\s*:\\s*\"([^\"]+)\"").find(conn.inputStream.bufferedReader().readText())?.groupValues?.get(1) ?: ""
+                    val body = conn.inputStream.bufferedReader().readText()
+                    Regex("\"tag_name\"\\s*:\\s*\"([^\"]+)\"").find(body)?.groupValues?.get(1) ?: ""
                 } catch (_: Exception) { "" }
             }
 
@@ -181,7 +191,8 @@ class KsuInstaller(private val deviceInfo: DeviceInfo) {
             withContext(Dispatchers.IO) {
                 try {
                     val c = URL(url).openConnection() as HttpURLConnection
-                    c.requestMethod = "HEAD"; c.connectTimeout = 10000
+                    c.requestMethod = "HEAD"
+                    c.connectTimeout = 10000
                     if (c.responseCode == 200) downloadFile(url, path) else false
                 } catch (_: Exception) { false }
             }
