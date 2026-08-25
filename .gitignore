@@ -10,3 +10,4 @@ captures/
 *.aab
 *.jks
 *.keystore
+local.properties
