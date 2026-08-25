@@ -10,20 +10,27 @@ import kotlinx.coroutines.launch
 data class UiState(
     val deviceInfo: DeviceInfo? = null,
     val supportCheck: SupportCheck? = null,
+    val payload: PayloadEntry? = null,
     val isRunning: Boolean = false,
     val logLines: List<String> = emptyList(),
-    val rootStatus: String? = null,
+    val rootStatus: RootStatus = RootStatus.Unknown,
     val selectedKsu: KsuVariant = KsuVariant.RESUKISU,
     val ksuSheetOpen: Boolean = false,
     val installStage: String = "",
+    val currentStep: Int = 0,
+    val totalSteps: Int = 5,
+    val downloadProgress: Float? = null,  // 0..1 или null если не идёт скачивание
 )
+
+enum class RootStatus { Unknown, Checking, Active, NotRooted, Failed }
 
 class MainViewModel : ViewModel() {
 
     private val _state = MutableStateFlow(UiState())
     val state: StateFlow<UiState> = _state
 
-    private var executor: ExploitExecutor? = null
+    private var engine: ExploitEngine? = null
+    private var catalogClient = CatalogClient()
 
     init {
         detectDevice()
@@ -31,12 +38,22 @@ class MainViewModel : ViewModel() {
 
     fun detectDevice() {
         viewModelScope.launch {
+            _state.value = _state.value.copy(rootStatus = RootStatus.Checking)
             val info = DeviceInfo.detect()
             val check = checkSupport(info)
+
+            // Загружаем каталог в фоне и ищем пейлоад
+            val catalog = catalogClient.fetch().getOrNull()
+            val payload = catalog?.let { catalogClient.findPayload(it, info) }
+
             _state.value = _state.value.copy(
                 deviceInfo = info,
                 supportCheck = check,
-                rootStatus = if (check.rootAlready) "Рут активен!" else null,
+                payload = payload,
+                rootStatus = when {
+                    check.rootAlready -> RootStatus.Active
+                    else -> RootStatus.NotRooted
+                },
             )
         }
     }
@@ -44,41 +61,44 @@ class MainViewModel : ViewModel() {
     fun startRoot() {
         val info = _state.value.deviceInfo ?: return
 
-        executor = ExploitExecutor(info)
-        _state.value = _state.value.copy(isRunning = true, logLines = emptyList())
+        engine = ExploitEngine(info, catalogClient)
+        _state.value = _state.value.copy(isRunning = true, logLines = emptyList(), rootStatus = RootStatus.Checking)
 
         viewModelScope.launch {
-            executor!!.execute { progress ->
+            engine!!.runFullFlow(_state.value.selectedKsu) { progress ->
                 when (progress) {
-                    is ExploitExecutor.Progress.Stage -> {
+                    is ExploitEngine.Progress.Stage -> {
                         addLog("[*] ${progress.name}")
-                        _state.value = _state.value.copy(installStage = progress.name)
+                        _state.value = _state.value.copy(
+                            installStage = progress.name,
+                            currentStep = progress.step,
+                            totalSteps = progress.totalSteps,
+                        )
                     }
-                    is ExploitExecutor.Progress.Log ->
+                    is ExploitEngine.Progress.Log ->
                         addLog(progress.line)
-                    is ExploitExecutor.Progress.Success -> {
+                    is ExploitEngine.Progress.Download -> {
+                        val fraction = if (progress.totalBytes > 0)
+                            progress.bytesRead.toFloat() / progress.totalBytes else 0f
+                        _state.value = _state.value.copy(downloadProgress = fraction)
+                    }
+                    is ExploitEngine.Progress.Success -> {
                         addLog("[✓✓✓] ROOT ПОЛУЧЕН И ЗАКРЕПЛЁН!")
                         _state.value = _state.value.copy(
                             isRunning = false,
-                            rootStatus = "Root активен! (u:r:ksu:s0)"
+                            rootStatus = RootStatus.Active,
                         )
                     }
-                    is ExploitExecutor.Progress.Failure -> {
+                    is ExploitEngine.Progress.Failure -> {
                         addLog("[✗] ${progress.reason}")
-                        _state.value = _state.value.copy(isRunning = false)
+                        progress.hint?.let { addLog("[i] $it") }
+                        _state.value = _state.value.copy(
+                            isRunning = false,
+                            rootStatus = RootStatus.Failed,
+                        )
                     }
                 }
             }
-        }
-    }
-
-    fun installKsu() {
-        val info = _state.value.deviceInfo ?: return
-        val variant = _state.value.selectedKsu
-
-        viewModelScope.launch {
-            val installer = KsuInstaller(info)
-            installer.install(variant) { msg -> addLog(msg) }
         }
     }
 
@@ -91,13 +111,13 @@ class MainViewModel : ViewModel() {
     }
 
     fun stopExploit() {
-        executor?.stop()
+        engine?.stop()
         _state.value = _state.value.copy(isRunning = false)
     }
 
     private fun addLog(line: String) {
-        val ts = java.text.SimpleDateFormat("HH:mm:ss",
-            java.util.Locale.getDefault()).format(java.util.Date())
+        val ts = java.text.SimpleDateFormat("HH:mm:ss", java.util.Locale.getDefault())
+            .format(java.util.Date())
         _state.value = _state.value.copy(
             logLines = _state.value.logLines + "[$ts] $line"
         )

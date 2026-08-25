@@ -16,7 +16,9 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-            RootMyVivoTheme { MainApp() }
+            RootMyVivoTheme {
+                MainApp()
+            }
         }
     }
 }
@@ -24,16 +26,11 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun MainApp(vm: MainViewModel = viewModel()) {
     val state by vm.state.collectAsState()
-    
+
     MainScreen(
-        deviceInfo = state.deviceInfo,
-        supportCheck = state.supportCheck,
-        isRunning = state.isRunning,
-        logLines = state.logLines,
-        rootStatus = state.rootStatus,
-        selectedKsu = state.selectedKsu.displayName,
-        ksuSheetOpen = state.ksuSheetOpen,
+        state = state,
         onRootClick = { vm.startRoot() },
+        onStopClick = { vm.stopExploit() },
         onSelectKsu = { vm.selectKsu(it) },
         onDismissKsu = { vm.toggleKsuSheet() },
     )
