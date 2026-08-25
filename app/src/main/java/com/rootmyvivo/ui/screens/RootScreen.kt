@@ -19,7 +19,7 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.rootmyvivo.core.KsuVariant
-import com.rootmyvivo.core.RootStatus
+import com.rootmyvivo.RootStatus
 
 /**
  * Экран джейлбрейка — полноэкранный лог процесса.
@@ -54,7 +54,7 @@ fun RootScreen(
                 color = MaterialTheme.colorScheme.secondaryContainer) {
                 Column(Modifier.padding(14.dp)) {
                     Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween) {
-                        Text(installStage.ifEmpty("Выполнение..."),
+                        Text(installStage.ifEmpty { "Выполнение..." },
                             style = MaterialTheme.typography.bodyMedium)
                         Text("$currentStep/$totalSteps",
                             style = MaterialTheme.typography.labelSmall,

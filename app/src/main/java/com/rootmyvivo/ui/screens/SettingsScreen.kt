@@ -16,6 +16,7 @@ import androidx.compose.ui.unit.dp
 /**
  * Экран настроек: язык, тема, о приложении.
  */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
     selectedLanguage: String,
