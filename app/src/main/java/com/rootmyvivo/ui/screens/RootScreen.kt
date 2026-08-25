@@ -104,7 +104,7 @@ fun RootScreen(
         // Failure banner
         AnimatedVisibility(visible = rootStatus == RootStatus.Failed && !isRunning) {
             Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer)) {
-                Row(Modifier.padding(14.dp), spacedBy(10.dp)) {
+                Row(Modifier.padding(14.dp), Arrangement.spacedBy(10.dp)) {
                     Icon(Icons.Rounded.Error, null, tint = MaterialTheme.colorScheme.onErrorContainer)
                     Text("Не удалось получить рут.\nПопробуй ещё раз.",
                         color = MaterialTheme.colorScheme.onErrorContainer)
@@ -171,4 +171,3 @@ fun TerminalLog(lines: List<String>, modifier: Modifier = Modifier) {
     }
 }
 
-private fun <T> spacedBy(dp: androidx.compose.ui.unit.Dp) = Arrangement.spacedBy(dp)
