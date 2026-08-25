@@ -7,7 +7,7 @@ class RmvApp : Application() {
     override fun onCreate() {
         super.onCreate()
         instance = this
-        NativeLibs.load()
+        NativeLibs.init()
     }
 
     companion object {
