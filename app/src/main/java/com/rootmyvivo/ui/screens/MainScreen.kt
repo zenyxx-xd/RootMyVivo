@@ -23,7 +23,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.rootmyvivo.core.*
+import com.rootmyvivo.core.DeviceInfo
+import com.rootmyvivo.core.SupportCheck
 import com.rootmyvivo.core.KsuVariant
 import com.rootmyvivo.ui.components.RootButton
 
@@ -45,38 +46,33 @@ fun MainScreen(
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
         Spacer(Modifier.height(48.dp))
-        
-        // Header
+
         Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween, Alignment.CenterVertically) {
             Text("RootMyVivo", style = MaterialTheme.typography.headlineLarge)
             Icon(Icons.Rounded.Shield, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(36.dp))
         }
-        
-        // Root status banner
+
         if (rootStatus != null || supportCheck?.rootAlready == true) {
             Surface(shape = MaterialTheme.shapes.extraLarge, color = MaterialTheme.colorScheme.primaryContainer) {
-                Row(Modifier.padding(16.dp), spacedBy(12.dp), Alignment.CenterVertically) {
+                Row(Modifier.padding(16.dp), horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
                     Icon(Icons.Rounded.CheckCircle, null, tint = MaterialTheme.colorScheme.onPrimaryContainer)
                     Text(rootStatus ?: "Рут активен!", color = MaterialTheme.colorScheme.onPrimaryContainer)
                 }
             }
         }
-        
-        // Device card
+
         DeviceCard(deviceInfo)
-        
-        // Issues
+
         if (!supportCheck?.issues.isNullOrEmpty()) {
             Surface(shape = MaterialTheme.shapes.large, color = MaterialTheme.colorScheme.errorContainer) {
                 Column(Modifier.padding(14.dp)) {
-                    supportCheck!!.issues.forEach { 
+                    supportCheck!!.issues.forEach {
                         Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onErrorContainer)
                     }
                 }
             }
         }
-        
-        // ROOT button
+
         RootButton(
             text = if (supportCheck?.rootAlready == true) "Root активен" else "ПОЛУЧИТЬ ROOT",
             icon = Icons.Rounded.Bolt,
@@ -84,10 +80,9 @@ fun MainScreen(
             isRunning = isRunning,
             onClick = onRootClick,
         )
-        
-        // KSU selector trigger
+
         OutlinedButton(
-            onClick = { /* open sheet */ },
+            onClick = { /* opens sheet via state */ },
             modifier = Modifier.fillMaxWidth().height(48.dp),
             shape = MaterialTheme.shapes.large,
         ) {
@@ -95,31 +90,28 @@ fun MainScreen(
             Spacer(Modifier.width(8.dp))
             Text("KernelSU: $selectedKsu")
         }
-        
-        // Log
+
         if (logLines.isNotEmpty()) LogCard(logLines)
-        
+
         Spacer(Modifier.height(32.dp))
     }
-    
+
     if (ksuSheetOpen) KsuSelectorSheet(selectedKsu, onSelectKsu, onDismissKsu)
 }
 
 @Composable
 private fun DeviceCard(info: DeviceInfo?) {
     ElevatedCard(Modifier.fillMaxWidth(), shape = MaterialTheme.shapes.extraLarge) {
-        Column(Modifier.padding(18.dp), spacedBy(8.dp)) {
-            Row(Alignment.CenterVertically) {
-                Icon(Icons.Rounded.Smartphone, null, tint = MaterialTheme.colorScheme.primary, Modifier.size(20.dp))
+        Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Rounded.Smartphone, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp))
                 Spacer(Modifier.width(8.dp))
                 Text("Устройство", style = MaterialTheme.typography.titleMedium)
             }
-            
             if (info == null) {
                 LinearProgressIndicator(Modifier.fillMaxWidth())
                 return@Column
             }
-            
             InfoRow("Модель", "${info.marketName} (${info.model})")
             InfoRow("ROM", info.rom.take(28))
             InfoRow("Ядро", info.kernelShort)
@@ -131,7 +123,7 @@ private fun DeviceCard(info: DeviceInfo?) {
 
 @Composable
 private fun InfoRow(label: String, value: String) {
-    Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween) {
+    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
         Text(label, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
         Text(value, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium)
     }
@@ -141,7 +133,7 @@ private fun InfoRow(label: String, value: String) {
 private fun LogCard(lines: List<String>) {
     val listState = rememberLazyListState()
     LaunchedEffect(lines.size) { if (lines.isNotEmpty()) listState.animateScrollToItem(lines.size - 1) }
-    
+
     Surface(shape = MaterialTheme.shapes.large, color = MaterialTheme.colorScheme.surfaceVariant) {
         LazyColumn(state = listState, Modifier.fillMaxWidth().heightIn(max = 300.dp).padding(12.dp)) {
             items(lines) { line ->
@@ -175,5 +167,3 @@ private fun KsuSelectorSheet(selected: String, onSelect: (KsuVariant) -> Unit, o
         }
     }
 }
-
-private fun <T> spacedBy(dp: androidx.compose.ui.unit.Dp): Arrangement.HorizontalOrVertical = Arrangement.spacedBy(dp)

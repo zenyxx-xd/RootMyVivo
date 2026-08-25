@@ -2,6 +2,7 @@ package com.rootmyvivo.core
 
 import com.rootmyvivo.core.native.NativeLibs
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 import java.io.File
 import java.net.HttpURLConnection
@@ -259,7 +260,6 @@ class KsuInstaller(private val deviceInfo: DeviceInfo) {
             }
         }
 
-    @JvmStatic
     private external fun nativePatchVermagic(path: String, release: String): Boolean
 
     private suspend fun patchVermagicPython(path: String, release: String): Boolean =
@@ -293,16 +293,16 @@ print("OK")
     private suspend fun setupPersistence(variant: KsuVariant, koPath: String, ksudPath: String) =
         withContext(Dispatchers.IO) {
             execCommand("su", "-c", "mkdir -p /data/adb/service.d")
-            val script = """
-#!/system/bin/sh
-# RootMyVivo persistence — ${variant.displayName}
-KO=$koPath
-KSUD=$ksudPath
-if ! grep -qi kernelsu /proc/modules 2>/dev/null; then
-  insmod "\$KO" allow_shell=1 2>/dev/null
-fi
-[ -x "\$KSUD" ] && { "\$KSUD" post-fs-data 2>/dev/null; "\$KSUD" services 2>/dev/null; }
-""".trimIndent()
+            val ko = koPath
+            val ksud = ksudPath
+            val script = "#!/system/bin/sh\n" +
+                "# RootMyVivo persistence — ${variant.displayName}\n" +
+                "KO=$ko\n" +
+                "KSUD=$ksud\n" +
+                "if ! grep -qi kernelsu /proc/modules 2>/dev/null; then\n" +
+                "  insmod \"$KO\" allow_shell=1 2>/dev/null\n" +
+                "fi\n" +
+                "[ -x \"$KSUD\" ] && { \"$KSUD\" post-fs-data 2>/dev/null; \"$KSUD\" services 2>/dev/null; }\n"
             execCommand("su", "-c",
                 "cat > /data/adb/service.d/rmv-persist.sh << 'RMVEOF'\n$script\nRMVEOF\nchmod 755 /data/adb/service.d/rmv-persist.sh")
         }
@@ -324,17 +324,20 @@ fi
     private suspend fun downloadFile(url: String, path: String): Boolean =
         withContext(Dispatchers.IO) {
             try {
-                File(path).parentFile?.mkdirs()
+                val f = File(path)
+                f.parentFile?.mkdirs()
                 val conn = URL(url).openConnection() as HttpURLConnection
                 conn.connectTimeout = 30000
                 conn.instanceFollowRedirects = true
                 conn.inputStream.use { input ->
-                    File(path).outputStream().use { output ->
-                        input.copyTo(output, bufferSize = 65536)
+                    f.outputStream().use { output ->
+                        input.copyTo(output, 65536)
                     }
                 }
-                File(path).exists() && File(path).length() > 0
-            } catch (_: Exception) { false }
+                f.exists() && f.length() > 0L
+            } catch (e: Exception) {
+                false
+            }
         }
 
     private suspend fun tryDownload(url: String, path: String): Boolean =
