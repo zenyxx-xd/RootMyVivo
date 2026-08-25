@@ -20,9 +20,19 @@ data class UiState(
     val currentStep: Int = 0,
     val totalSteps: Int = 5,
     val downloadProgress: Float? = null,  // 0..1 или null если не идёт скачивание
+    val settings: AppSettings = AppSettings(),
 )
 
 enum class RootStatus { Unknown, Checking, Active, NotRooted, Failed }
+
+enum class ThemeMode { AUTO, LIGHT, DARK }
+
+data class AppSettings(
+    val language: String = "ru",          // ru / en / zh
+    val themeMode: ThemeMode = ThemeMode.AUTO,
+    val dynamicColors: Boolean = true,
+    val catalogUrl: String = CatalogClient.DEFAULT_URL,
+)
 
 class MainViewModel : ViewModel() {
 
@@ -43,6 +53,7 @@ class MainViewModel : ViewModel() {
             val check = checkSupport(info)
 
             // Загружаем каталог в фоне и ищем пейлоад
+            catalogClient.catalogUrl = _state.value.settings.catalogUrl
             val catalog = catalogClient.fetch().getOrNull()
             val payload = catalog?.let { catalogClient.findPayload(it, info) }
 
@@ -108,6 +119,12 @@ class MainViewModel : ViewModel() {
 
     fun toggleKsuSheet() {
         _state.value = _state.value.copy(ksuSheetOpen = !_state.value.ksuSheetOpen)
+    }
+
+    fun updateSettings(transform: (AppSettings) -> AppSettings) {
+        val newSettings = transform(_state.value.settings)
+        _state.value = _state.value.copy(settings = newSettings)
+        catalogClient.catalogUrl = newSettings.catalogUrl
     }
 
     fun stopExploit() {

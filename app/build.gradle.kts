@@ -14,7 +14,6 @@ android {
         targetSdk = 35
         versionCode = 2
         versionName = "0.1.0-alpha"
-        ndk { abiFilters += listOf("arm64-v8a") }
     }
     
     buildTypes {
@@ -35,13 +34,6 @@ android {
     }
     
     kotlinOptions { jvmTarget = "17" }
-    
-    externalNativeBuild {
-        cmake {
-            path = file("src/main/cpp/CMakeLists.txt")
-            version = "3.22.1"
-        }
-    }
 }
 
 dependencies {

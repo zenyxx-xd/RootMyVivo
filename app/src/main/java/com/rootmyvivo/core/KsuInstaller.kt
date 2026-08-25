@@ -104,10 +104,45 @@ class KsuInstaller(private val deviceInfo: DeviceInfo) {
 
     private suspend fun patchVermagic(path: String, release: String): Boolean =
         withContext(Dispatchers.IO) {
-            try { nativePatch(path, release) } catch (_: Throwable) { patchPy(path, release) }
+            try { patchKt(path, release) } catch (_: Throwable) { patchPy(path, release) }
         }
 
-    private external fun nativePatch(path: String, release: String): Boolean
+    /** Чистая Kotlin реализация — не требует NDK */
+    private fun patchKt(path: String, release: String): Boolean {
+        val f = File(path)
+        val data = f.readBytes()
+        val needle = "vermagic=".toByteArray(Charsets.US_ASCII)
+
+        var pos = -1
+        for (i in 0..data.size - needle.size) {
+            var match = true
+            for (j in needle.indices) {
+                if (data[i + j] != needle[j]) { match = false; break }
+            }
+            if (match) { pos = i; break }
+        }
+        if (pos < 0) return false
+
+        val valStart = pos + needle.size
+        var valEnd = valStart
+        while (valEnd < data.size && data[valEnd] != 0.toByte()) valEnd++
+
+        // Старая строка vermagic
+        val oldStr = String(data, valStart, valEnd - valStart, Charsets.US_ASCII)
+        // Суффикс без версии ядра (SMP preempt mod_unload ...)
+        val suffix = oldStr.split(' ').filter { it.isNotEmpty() && !it[0].isDigit() }.joinToString(" ")
+        val newVm = "$release $suffix".toByteArray(Charsets.US_ASCII)
+
+        val space = valEnd - valStart
+        if (newVm.size > space) return false
+
+        val out = data.copyOf()
+        System.arraycopy(newVm, 0, out, valStart, newVm.size)
+        java.util.Arrays.fill(out, valStart + newVm.size, valEnd, 0)
+
+        f.writeBytes(out)
+        return true
+    }
 
     private fun patchPy(path: String, release: String): Boolean {
         return try {
@@ -156,10 +191,6 @@ class KsuInstaller(private val deviceInfo: DeviceInfo) {
         private const val WORK_DIR = "/data/local/tmp/rmv"
         private const val GH_API = "https://api.github.com"
         private const val CI_REPO = "cctv18/ReSukiSU_CI"
-
-        init {
-            try { System.loadLibrary("rmv_native") } catch (_: Throwable) {}
-        }
 
         private suspend fun fetchTag(repo: String): String =
             withContext(Dispatchers.IO) {

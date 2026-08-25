@@ -43,10 +43,10 @@ data class FileEntry(
 /**
  * Клиент каталога — загружает список устройств с GitHub.
  */
-class CatalogClient {
+class CatalogClient(var catalogUrl: String = DEFAULT_URL) {
 
     companion object {
-        private const val CATALOG_URL =
+        const val DEFAULT_URL =
             "https://raw.githubusercontent.com/zenyxx-xd/RootMyVivo-Payloads/main/support/targets-vivo.json"
         private const val CACHE_FILE = "payload_catalog.json"
         private const val CACHE_MAX_AGE_MS = 3600_000L
@@ -54,7 +54,7 @@ class CatalogClient {
 
     suspend fun fetch(): Result<PayloadCatalog> = withContext(Dispatchers.IO) {
         try {
-            val conn = URL(CATALOG_URL).openConnection() as HttpURLConnection
+            val conn = URL(catalogUrl).openConnection() as HttpURLConnection
             conn.connectTimeout = 15000
             conn.readTimeout = 30000
             conn.setRequestProperty("Accept", "application/json")

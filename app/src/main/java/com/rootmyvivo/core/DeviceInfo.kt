@@ -24,20 +24,27 @@ data class DeviceInfo(
 
     companion object {
         fun detect(): DeviceInfo {
-            // Ядро: /proc/version содержит полную строку Linux version
-            val procVersion = try {
-                File("/proc/version").readText().trim()
-            } catch (_: Exception) { "" }
-
-            // Извлекаем uname -r: "Linux version 6.6.89-android15-8-g... (builder@host)"
-            val kernel = Regex("""Linux version (\S+)""").find(procVersion)
-                ?.groupValues?.get(1) ?: ""
+            // Полное имя ядра через uname() syscall — SELinux не блокирует,
+            // возвращает "6.6.89-android15-8-g...-4k"
+            val kernel = try {
+                android.system.Os.uname().release.trim()
+            } catch (_: Throwable) {
+                System.getProperty("os.version")?.trim().orEmpty()
+            }
 
             // Трёхчастная версия: 6.6.89
             val kernelShort = Regex("""(\d+\.\d+\.\d+)""").find(kernel)?.groupValues?.get(1) ?: ""
 
-            // KMI: android15-6.6
-            val kmi = Regex("""android\d+-\d+\.\d+""").find(kernel)?.value ?: ""
+            // KMI: android15-6.6. В uname строке "6.6.89-android15-8-g..." уровень
+            // ядра (android15) и версия (6.6.89) разделены — собираем из обеих.
+            val kmi = Regex("""android\d+""").find(kernel)?.value?.let { lvl ->
+                val mm = kernelShort.split(".")
+                "$lvl-${mm.getOrNull(0)}.${mm.getOrNull(1) ?: "0"}"
+            } ?: if (kernelShort.isNotEmpty()) {
+                val mm = kernelShort.split(".")
+                "android${Build.VERSION.SDK_INT - 20}-${mm.getOrNull(0)}.${
+                    mm.getOrNull(1) ?: "0"}"
+            } else ""
 
             return DeviceInfo(
                 model = Build.DEVICE,
@@ -55,7 +62,15 @@ data class DeviceInfo(
         }
 
         private fun getSoC(): String {
+            // API 31+: Build.SOC_MODEL возвращает точное имя (SM8750)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                val socModel = Build.SOC_MODEL
+                if (!socModel.isNullOrEmpty() && socModel != "unknown") {
+                    return socModel.uppercase()
+                }
+            }
             val board = Build.HARDWARE.lowercase()
+            val platform = Build.getRadioVersion()
             return when {
                 board.contains("kera") || board.contains("canary") -> "SM8750"
                 board.contains("sun") || board.contains("pineapple") -> "SM8650"

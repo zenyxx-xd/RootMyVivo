@@ -31,26 +31,31 @@ object NativeLibs {
             val workDir = File(WORK_DIR)
             workDir.mkdirs()
 
-            // Распаковываем preload.so
-            extractToWork(ctx, "binaries/preload_pd2520.so", "$WORK_DIR/preload.so")
-            // Распаковываем kernelsu.ko
-            extractToWork(ctx, "binaries/kernelsu_android15-6.6.ko", "$WORK_DIR/kernelsu.ko")
-            // Распаковываем ksud
-            extractToWork(ctx, "binaries/ksud", "$WORK_DIR/ksud")
+            // Ассеты опциональны: бинарники могут качаться из каталога.
+            // Распаковываем только то, что реально вшито.
+            val bundled = listOf(
+                "binaries/preload_pd2520.so" to "$WORK_DIR/preload.so",
+                "binaries/kernelsu_android15-6.6.ko" to "$WORK_DIR/kernelsu.ko",
+                "binaries/ksud" to "$WORK_DIR/ksud",
+            )
+            bundled.forEach { (asset, dest) ->
+                try {
+                    extractToWork(ctx, asset, dest)
+                    File(dest).setReadable(true, false)
+                    File(dest).setWritable(true, false)
+                } catch (_: Exception) { /* нет вшитого — скачаем из каталога */ }
+            }
 
-            // Делаем исполняемыми
-            File("$WORK_DIR/preload.so").setReadable(true, false)
-            File("$WORK_DIR/preload.so").setWritable(true, false)
-            File("$WORK_DIR/ksud").setExecutable(true, false)
-            File("$WORK_DIR/ksud").setReadable(true, false)
+            // ksud в filesDir для ProcessBuilder
+            try {
+                val binDir = File(ctx.filesDir, "bin")
+                binDir.mkdirs()
+                copyAsset(ctx, "binaries/ksud", File(binDir, "ksud"))
+                File(binDir, "ksud").setExecutable(true, false)
+            } catch (_: Exception) { }
 
-            Log.i(TAG, "Бинарники распакованы в $WORK_DIR")
-
-            // Также копируем ksud в filesDir для ProcessBuilder
-            val binDir = File(ctx.filesDir, "bin")
-            binDir.mkdirs()
-            copyAsset(ctx, "binaries/ksud", File(binDir, "ksud"))
-            File(binDir, "ksud").setExecutable(true, false)
+            Log.i(TAG, "Бинарники готовы в $WORK_DIR (вшитые: ${
+                bundled.count { File(it.second).exists() }}/${bundled.size})")
 
             initialised = true
             return true
