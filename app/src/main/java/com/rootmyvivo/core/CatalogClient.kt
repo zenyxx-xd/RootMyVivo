@@ -2,99 +2,78 @@ package com.rootmyvivo.core
 
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import kotlinx.serialization.Serializable
-import kotlinx.serialization.json.Json
+import org.json.JSONObject
+import java.io.File
 import java.net.HttpURLConnection
 import java.net.URL
 
 /**
  * Каталог пейлоадов с сервера.
- * Приложение НЕ содержит эксплойтов — оно их скачивает из каталога
- * под конкретное устройство.
+ * Приложение НЕ содержит эксплойтов — оно их скачивает из каталога.
  */
-@Serializable
 data class PayloadCatalog(
-    val schemaVersion: Int = 3,
-    val payloads: List<PayloadEntry> = emptyList(),
-    val exploits: Map<String, ExploitInfo> = emptyMap(),
+    val payloads: List<PayloadEntry>,
 )
 
-@Serializable
 data class ExploitInfo(
-    val description: String = "",
-    val maxFixedKernel: Map<String, String?> = emptyMap(),
+    val description: String,
+    val maxFixedKernel: Map<String, String?>,
 )
 
-@Serializable
 data class PayloadEntry(
     val payloadId: String,
     val displayName: String,
-    val models: List<String> = emptyList(),
-    val marketNames: List<String> = emptyList(),
-    val kernelVersions: List<String> = emptyList(),
-    val exploit: String = "",
-    val enabled: Boolean = true,
-    val structLayout: String = "6.6",
-    val verifiedBy: String? = null,
-    val offsets: Map<String, String> = emptyMap(),
-    val files: Map<String, FileEntry> = emptyMap(),
+    val models: List<String>,
+    val marketNames: List<String>,
+    val kernelVersions: List<String>,
+    val exploit: String,
+    val enabled: Boolean,
+    val structLayout: String,
+    val verifiedBy: String?,
+    val offsets: Map<String, String>,
+    val files: Map<String, FileEntry>,
 )
 
-@Serializable
 data class FileEntry(
     val url: String,
-    val sha256: String? = null,
-    val size: Long = 0,
+    val sha256: String?,
+    val size: Long,
 )
 
 /**
- * Клиент каталога — загружает и кеширует список устройств с GitHub.
- * Никаких захардкоженных данных — всё с сервера.
+ * Клиент каталога — загружает список устройств с GitHub.
  */
 class CatalogClient {
 
     companion object {
         private const val CATALOG_URL =
             "https://raw.githubusercontent.com/zenyxx-xd/RootMyVivo-Payloads/main/support/targets-vivo.json"
-        private const val CATALOG_CACHE_FILE = "payload_catalog.json"
-        private const val CACHE_MAX_AGE_MS = 3600_000L // 1 час
-
-        private val json = Json { ignoreUnknownKeys = true }
+        private const val CACHE_FILE = "payload_catalog.json"
+        private const val CACHE_MAX_AGE_MS = 3600_000L
     }
 
-    /**
-     * Загружает каталог (сеть или кеш).
-     */
-    suspend fun fetch(forceRefresh: Boolean = false): Result<PayloadCatalog> =
-        withContext(Dispatchers.IO) {
-            try {
-                // Пробуем сеть
-                val conn = URL(CATALOG_URL).openConnection() as HttpURLConnection
-                conn.connectTimeout = 15000
-                conn.readTimeout = 30000
-                conn.setRequestProperty("Accept", "application/json")
+    suspend fun fetch(): Result<PayloadCatalog> = withContext(Dispatchers.IO) {
+        try {
+            val conn = URL(CATALOG_URL).openConnection() as HttpURLConnection
+            conn.connectTimeout = 15000
+            conn.readTimeout = 30000
+            conn.setRequestProperty("Accept", "application/json")
 
-                if (conn.responseCode == 200) {
-                    val body = conn.inputStream.bufferedReader().readText()
-                    val catalog = json.decodeFromString<PayloadCatalog>(body)
-                    saveCache(body)
-                    Result.success(catalog)
-                } else {
-                    // Fallback на кеш
-                    loadCache()?.let { Result.success(it) }
-                        ?: Result.failure(Exception("HTTP ${conn.responseCode}"))
-                }
-            } catch (e: Exception) {
-                // Fallback на кеш
+            if (conn.responseCode == 200) {
+                val body = conn.inputStream.bufferedReader().readText()
+                val catalog = parseCatalog(body)
+                saveCache(body)
+                Result.success(catalog)
+            } else {
                 loadCache()?.let { Result.success(it) }
-                    ?: Result.failure(e)
+                    ?: Result.failure(Exception("HTTP ${conn.responseCode}"))
             }
+        } catch (e: Exception) {
+            loadCache()?.let { Result.success(it) }
+                ?: Result.failure(e)
         }
+    }
 
-    /**
-     * Находит подходящий пейлоад для устройства.
-     * Матчит: модель + версия ядра + enabled=true
-     */
     fun findPayload(catalog: PayloadCatalog, info: DeviceInfo): PayloadEntry? {
         return catalog.payloads.firstOrNull { p ->
             p.enabled &&
@@ -108,20 +87,15 @@ class CatalogClient {
     private fun matchesKernel(supported: List<String>, actual: String): Boolean {
         if (supported.isEmpty()) return true
         return supported.any { pattern ->
-            // Поддерживаем wildcard: "6.6.*" матчится на "6.6.89"
-            if (pattern.endsWith(".*")) {
-                actual.startsWith(pattern.removeSuffix("*"))
-            } else {
-                actual == pattern
-            }
+            if (pattern.endsWith(".*")) actual.startsWith(pattern.removeSuffix("*"))
+            else actual == pattern
         }
     }
 
-    /** Скачивает файл пейлоада (preload.so, ksud и т.д.) */
     suspend fun downloadPayloadFile(
         fileEntry: FileEntry,
         destPath: String,
-        onProgress: suspend (bytesRead: Long, totalBytes: Long) -> Unit = { _, _ -> },
+        onProgress: suspend (Long, Long) -> Unit = { _, _ -> },
     ): Boolean = withContext(Dispatchers.IO) {
         try {
             val f = File(destPath)
@@ -136,53 +110,106 @@ class CatalogClient {
 
             conn.inputStream.use { input ->
                 f.outputStream().use { output ->
-                    val buffer = ByteArray(65536)
-                    var bytesRead = 0L
+                    val buf = ByteArray(65536)
+                    var read_total = 0L
                     while (true) {
-                        val read = input.read(buffer)
-                        if (read < 0) break
-                        output.write(buffer, 0, read)
-                        bytesRead += read
-                        onProgress(bytesRead, totalSize)
+                        val n = input.read(buf)
+                        if (n < 0) break
+                        output.write(buf, 0, n)
+                        read_total += n
+                        onProgress(read_total, totalSize)
                     }
                 }
             }
 
-            // Проверка SHA256 если указана
             fileEntry.sha256?.let { expected ->
-                val actual = f.inputStream.use { inp ->
-                    java.security.MessageDigest.getInstance("SHA-256")
-                        .digest(inp.readBytes())
-                        .joinToString("") { "%02x".format(it) }
-                }
-                if (!actual.equals(expected, ignoreCase = true)) {
-                    f.delete()
-                    return@withContext false
+                val actual = java.security.MessageDigest.getInstance("SHA-256")
+                    .digest(f.readBytes())
+                    .joinToString("") { "%02x".format(it) }
+                if (!actual.equals(expected, true)) {
+                    f.delete(); return@withContext false
                 }
             }
 
-            f.exists() && f.length() > 0
-        } catch (_: Exception) {
-            false
-        }
+            f.exists() && f.length() > 0L
+        } catch (_: Exception) { false }
     }
 
-    // ── Кеш ──
-    private fun cacheFile() = File(
-        com.rootmyvivo.RmvApp.instance.filesDir,
-        CATALOG_CACHE_FILE
-    )
+    // ── JSON парсинг (org.json — без внешних зависимостей) ──
+
+    fun parseCatalog(body: String): PayloadCatalog {
+        val root = JSONObject(body)
+        val payloadsArr = root.optJSONArray("payloads") ?: return PayloadCatalog(emptyList())
+        
+        val entries = mutableListOf<PayloadEntry>()
+        for (i in 0 until payloadsArr.length()) {
+            val obj = payloadsArr.getJSONObject(i)
+            
+            val models = mutableListOf<String>()
+            obj.optJSONArray("models")?.let { arr ->
+                for (j in 0 until arr.length()) models.add(arr.getString(j))
+            }
+            
+            val marketNames = mutableListOf<String>()
+            obj.optJSONArray("marketNames")?.let { arr ->
+                for (j in 0 until arr.length()) marketNames.add(arr.getString(j))
+            }
+            
+            val kernelVersions = mutableListOf<String>()
+            obj.optJSONArray("kernelVersions")?.let { arr ->
+                for (j in 0 until arr.length()) kernelVersions.add(arr.getString(j))
+            }
+            
+            val offsets = mutableMapOf<String, String>()
+            obj.optJSONObject("offsets")?.let { offs ->
+                offs.keys().forEach { key -> offsets[key] = offs.getString(key) }
+            }
+            
+            val files = mutableMapOf<String, FileEntry>()
+            obj.optJSONObject("files")?.let { filesObj ->
+                filesObj.keys().forEach { key ->
+                    val fileObj = filesObj.optJSONObject(key) ?: return@forEach
+                    // Пропускаем не-http записи (например notes)
+                    val url = fileObj.optString("url", "")
+                    if (!url.startsWith("http")) return@forEach
+                    files[key] = FileEntry(
+                        url = url,
+                        sha256 = fileObj.optString("sha256", null),
+                        size = fileObj.optLong("size", 0),
+                    )
+                }
+            }
+            
+            entries.add(PayloadEntry(
+                payloadId = obj.getString("payloadId"),
+                displayName = obj.optString("displayName", obj.getString("payloadId")),
+                models = models,
+                marketNames = marketNames,
+                kernelVersions = kernelVersions,
+                exploit = obj.optString("exploit", ""),
+                enabled = obj.optBoolean("enabled", true),
+                structLayout = obj.optString("structLayout", "6.6"),
+                verifiedBy = obj.optString("verifiedBy", null),
+                offsets = offsets,
+                files = files,
+            ))
+        }
+        
+        return PayloadCatalog(entries)
+    }
 
     private fun saveCache(body: String) {
-        try { cacheFile().writeText(body) } catch (_: Exception) {}
+        try {
+            File(com.rootmyvivo.RmvApp.instance.filesDir, CACHE_FILE).writeText(body)
+        } catch (_: Exception) {}
     }
 
     private fun loadCache(): PayloadCatalog? {
         return try {
-            val f = cacheFile()
+            val f = File(com.rootmyvivo.RmvApp.instance.filesDir, CACHE_FILE)
             if (!f.exists()) return null
             if (System.currentTimeMillis() - f.lastModified() > CACHE_MAX_AGE_MS) return null
-            json.decodeFromString<PayloadCatalog>(f.readText())
+            parseCatalog(f.readText())
         } catch (_: Exception) { null }
     }
 }
