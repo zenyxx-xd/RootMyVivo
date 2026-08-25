@@ -15,6 +15,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Bolt
 import androidx.compose.material.icons.rounded.CheckCircle
+import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.Error
 import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material.icons.rounded.Settings
@@ -34,8 +35,8 @@ import androidx.compose.ui.unit.dp
 import com.rootmyvivo.core.DeviceInfo
 import com.rootmyvivo.core.KsuVariant
 import com.rootmyvivo.core.PayloadEntry
-import com.rootmyvivo.core.RootStatus
 import com.rootmyvivo.core.SupportCheck
+import com.rootmyvivo.RootStatus
 import com.rootmyvivo.ui.components.RootButton
 
 @Composable
