@@ -135,7 +135,7 @@ private fun LogCard(lines: List<String>) {
     LaunchedEffect(lines.size) { if (lines.isNotEmpty()) listState.animateScrollToItem(lines.size - 1) }
 
     Surface(shape = MaterialTheme.shapes.large, color = MaterialTheme.colorScheme.surfaceVariant) {
-        LazyColumn(state = listState, Modifier.fillMaxWidth().heightIn(max = 300.dp).padding(12.dp)) {
+        LazyColumn(state = listState, modifier = Modifier.fillMaxWidth().heightIn(max = 300.dp).padding(12.dp)) {
             items(lines) { line ->
                 Text(line, style = MaterialTheme.typography.bodySmall, fontFamily = FontFamily.Monospace,
                     color = when {
