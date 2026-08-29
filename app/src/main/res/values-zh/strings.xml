@@ -33,7 +33,7 @@
     <string name="transport_shizuku_perm_title">Shizuku：需要授权</string>
     <string name="transport_shizuku_perm_desc">点击按钮 — Shizuku 将显示授权对话框</string>
     <string name="transport_none_title">无可用传输方式</string>
-    <string name="transport_none_desc">漏洞利用需要 shell 域（同 adb）。选项：\n1. 启动 Shizuku 并授权\n2. 开启 adb tcp: adb tcpip 5555</string>
+    <string name="transport_none_desc">首次运行需要 Shizuku（shell 域）：\n启动 Shizuku 并授权本应用</string>
     <string name="allow_shizuku">在 Shizuku 中授权</string>
 
     <!-- Jailbreak screen -->
@@ -49,6 +49,10 @@
     <string name="ksu_select">选择 KernelSU</string>
     <string name="ksu_select_desc">所有变体均通过 late-load 在锁定 BL 上工作。</string>
     <string name="ksu_current">KernelSU：%s</string>
+    <string name="ksu_desc_kernelsu">原版。稳定。</string>
+    <string name="ksu_desc_ksunext">带 susfs 的分支。</string>
+    <string name="ksu_desc_sukisu">活跃的分支。</string>
+    <string name="ksu_desc_resukisu">兼容 GhostLock。</string>
 
     <!-- Settings -->
     <string name="language">语言</string>

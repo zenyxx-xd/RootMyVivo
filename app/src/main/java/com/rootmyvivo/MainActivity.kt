@@ -26,6 +26,11 @@ class MainActivity : ComponentActivity() {
         installSplashScreen()
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        // Диагностика adb-канала: am start … --ez adb_selftest true
+        if (intent?.getBooleanExtra("adb_selftest", false) == true) {
+            val vmHook = androidx.lifecycle.ViewModelProvider(this)[MainViewModel::class.java]
+            vmHook.adbSelfTest()
+        }
         setContent {
             val vm: MainViewModel = viewModel()
             val state by vm.state.collectAsState()

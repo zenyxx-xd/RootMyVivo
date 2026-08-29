@@ -92,6 +92,10 @@ class MainViewModel : ViewModel() {
             val info = DeviceInfo.detect()
             val check = checkSupport(info)
 
+            // Рут уже активен (su отвечает) — фиксируем первый root,
+            // с этого момента ADB-транспорт разрешён
+            if (check.rootAlready) ShellBridge.markFirstRootCompleted()
+
             // Загружаем каталог в фоне и ищем пейлоад
             catalogClient.catalogUrl = _state.value.settings.catalogUrl
             val catalog = catalogClient.fetch().getOrNull()
@@ -134,11 +138,14 @@ class MainViewModel : ViewModel() {
                         _state.value = _state.value.copy(downloadProgress = fraction)
                     }
                     is ExploitEngine.Progress.Success -> {
+                        // Первый root зафиксирован — разрешаем ADB-транспорт
+                        ShellBridge.markFirstRootCompleted()
                         addLog("[✓✓✓] ROOT ПОЛУЧЕН И ЗАКРЕПЛЁН!")
                         _state.value = _state.value.copy(
                             isRunning = false,
                             rootStatus = RootStatus.Active,
                         )
+                        refreshTransport()
                     }
                     is ExploitEngine.Progress.Failure -> {
                         addLog("[✗] ${progress.reason}")
@@ -150,6 +157,17 @@ class MainViewModel : ViewModel() {
                     }
                 }
             }
+        }
+    }
+
+    /** Диагностика adb-канала (не запускает эксплойт) */
+    fun adbSelfTest() {
+        viewModelScope.launch {
+            addLog("[*] adb self-test: подключение (может показать диалог авторизации)…")
+            kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                ShellBridge.adbSelfTest()
+            }.forEach { addLog(it) }
+            refreshTransport()
         }
     }
 

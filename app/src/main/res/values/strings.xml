@@ -33,7 +33,7 @@
     <string name="transport_shizuku_perm_title">Shizuku: нужно разрешение</string>
     <string name="transport_shizuku_perm_desc">Нажми кнопку — Shizuku покажет диалог разрешения</string>
     <string name="transport_none_title">Нет транспорта для эксплойта</string>
-    <string name="transport_none_desc">Эксплойту нужен shell-домен (как adb). Варианты:\n1. Запусти Shizuku и дай разрешение\n2. Подключи adb tcp: adb tcpip 5555</string>
+    <string name="transport_none_desc">Первый запуск требует Shizuku (shell-домен):\nзапусти Shizuku и дай разрешение приложению</string>
     <string name="allow_shizuku">Разрешить в Shizuku</string>
 
     <!-- Jailbreak screen -->
@@ -49,6 +49,10 @@
     <string name="ksu_select">Выбери KernelSU</string>
     <string name="ksu_select_desc">Все варианты работают через late-load на залоченном BL.</string>
     <string name="ksu_current">KernelSU: %s</string>
+    <string name="ksu_desc_kernelsu">Оригинал. Стабильный.</string>
+    <string name="ksu_desc_ksunext">Форк с susfs.</string>
+    <string name="ksu_desc_sukisu">Активный форк.</string>
+    <string name="ksu_desc_resukisu">GhostLock-совместимый.</string>
 
     <!-- Settings -->
     <string name="language">Язык</string>

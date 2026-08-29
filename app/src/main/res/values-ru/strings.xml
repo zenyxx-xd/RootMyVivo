@@ -13,6 +13,10 @@
         это нормально, не брик). Используй только на своём устройстве.
     </string>
     <string name="ksu_variant">Вариант KernelSU: %s</string>
+    <string name="ksu_desc_kernelsu">Оригинал. Стабильный.</string>
+    <string name="ksu_desc_ksunext">Форк с susfs.</string>
+    <string name="ksu_desc_sukisu">Активный форк.</string>
+    <string name="ksu_desc_resukisu">GhostLock-совместимый.</string>
     <string name="stage_prepare">Подготовка…</string>
     <string name="stage_exploit">Запуск эксплойта…</string>
     <string name="stage_ksu">Установка KernelSU…</string>

@@ -138,7 +138,12 @@ fun SettingsScreen(
                     Spacer(Modifier.width(8.dp))
                     Column {
                         Text(variant.displayName, style = MaterialTheme.typography.bodyLarge)
-                        Text("${variant.repo} · ${variant.description}",
+                        Text("${variant.repo} · ${stringResource(when (variant.id) {
+                            "kernelsu" -> R.string.ksu_desc_kernelsu
+                            "ksunext" -> R.string.ksu_desc_ksunext
+                            "sukisu" -> R.string.ksu_desc_sukisu
+                            else -> R.string.ksu_desc_resukisu
+                        })}",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }

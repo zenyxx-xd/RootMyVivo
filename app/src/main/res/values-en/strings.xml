@@ -33,7 +33,7 @@
     <string name="transport_shizuku_perm_title">Shizuku: permission needed</string>
     <string name="transport_shizuku_perm_desc">Tap the button — Shizuku will show permission dialog</string>
     <string name="transport_none_title">No transport for exploit</string>
-    <string name="transport_none_desc">The exploit needs shell domain (like adb). Options:\n1. Start Shizuku and grant permission\n2. Enable adb tcp: adb tcpip 5555</string>
+    <string name="transport_none_desc">First run requires Shizuku (shell domain):\nstart Shizuku and grant permission to the app</string>
     <string name="allow_shizuku">Allow in Shizuku</string>
 
     <!-- Jailbreak screen -->
@@ -49,6 +49,10 @@
     <string name="ksu_select">Choose KernelSU</string>
     <string name="ksu_select_desc">All variants work via late-load with locked BL.</string>
     <string name="ksu_current">KernelSU: %s</string>
+    <string name="ksu_desc_kernelsu">The original. Stable.</string>
+    <string name="ksu_desc_ksunext">Fork with susfs.</string>
+    <string name="ksu_desc_sukisu">Active fork.</string>
+    <string name="ksu_desc_resukisu">GhostLock-compatible.</string>
 
     <!-- Settings -->
     <string name="language">Language</string>

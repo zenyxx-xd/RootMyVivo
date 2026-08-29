@@ -147,7 +147,14 @@ fun HomeScreen(state: UiState, vm: MainViewModel, onRootStarted: () -> Unit = {}
                 KsuVariant.entries.forEach { v ->
                     ListItem(
                         headlineContent = { Text(v.displayName, fontWeight = FontWeight.Medium) },
-                        supportingContent = { Text(v.description) },
+                        supportingContent = {
+                            Text(stringResource(when (v.id) {
+                                "kernelsu" -> R.string.ksu_desc_kernelsu
+                                "ksunext" -> R.string.ksu_desc_ksunext
+                                "sukisu" -> R.string.ksu_desc_sukisu
+                                else -> R.string.ksu_desc_resukisu
+                            }))
+                        },
                         leadingContent = { RadioButton(selected = state.selectedKsu == v, onClick = { vm.selectKsu(v) }) },
                         modifier = Modifier.clickable { vm.selectKsu(v) },
                     )

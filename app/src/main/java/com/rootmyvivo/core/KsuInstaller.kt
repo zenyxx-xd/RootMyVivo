@@ -13,12 +13,11 @@ enum class KsuVariant(
     val displayName: String,
     val packageName: String,
     val repo: String,
-    val description: String,
 ) {
-    KERNELSU("kernelsu", "KernelSU", "me.weishu.kernelsu", "tiann/KernelSU", "Оригинал. Стабильный."),
-    KSU_NEXT("ksunext", "KernelSU Next", "com.rifsxd.ksunext", "rifsxd/KernelSU-Next", "Форк с susfs."),
-    SUKISU("sukisu", "SukiSU Ultra", "com.suksukernel.sukisu", "SukiSU-Ultra/SukiSU-Ultra", "Активный форк."),
-    RESUKISU("resukisu", "ReSukiSU", "com.resukisu.resukisu", "ReSukiSU/ReSukiSU", "GhostLock-совместимый.");
+    KERNELSU("kernelsu", "KernelSU", "me.weishu.kernelsu", "tiann/KernelSU"),
+    KSU_NEXT("ksunext", "KernelSU Next", "com.rifsxd.ksunext", "rifsxd/KernelSU-Next"),
+    SUKISU("sukisu", "SukiSU Ultra", "com.suksukernel.sukisu", "SukiSU-Ultra/SukiSU-Ultra"),
+    RESUKISU("resukisu", "ReSukiSU", "com.resukisu.resukisu", "ReSukiSU/ReSukiSU");
 
     companion object {
         fun byId(id: String): KsuVariant = entries.find { it.id == id } ?: RESUKISU
