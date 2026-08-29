@@ -21,6 +21,7 @@ data class UiState(
     val totalSteps: Int = 5,
     val downloadProgress: Float? = null,  // 0..1 или null если не идёт скачивание
     val settings: AppSettings = AppSettings(),
+    val transport: ShellBridge.Transport = ShellBridge.Transport.None,
 )
 
 enum class RootStatus { Unknown, Checking, Active, NotRooted, Failed }
@@ -46,6 +47,23 @@ class MainViewModel : ViewModel() {
         _state.value = _state.value.copy(settings = loadSettings())
         catalogClient.catalogUrl = _state.value.settings.catalogUrl
         detectDevice()
+        refreshTransport()
+    }
+
+    /** Проверить доступный транспорт (adb tcp / Shizuku / нет) */
+    fun refreshTransport() {
+        viewModelScope.launch {
+            val t = ShellBridge.availableTransport()
+            _state.value = _state.value.copy(transport = t)
+            if (t == ShellBridge.Transport.Shizuku) {
+                ShellBridge.bindShizukuService(RmvApp.instance)
+            }
+        }
+    }
+
+    /** Запросить разрешение Shizuku (показывает системный диалог Shizuku) */
+    fun requestShizuku() {
+        ShellBridge.requestShizukuPermission()
     }
 
     private fun loadSettings(): AppSettings {

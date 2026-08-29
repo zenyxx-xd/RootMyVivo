@@ -89,6 +89,11 @@ fun HomeScreen(state: UiState, vm: MainViewModel, onRootStarted: () -> Unit = {}
         // Device card
         DeviceCard(state.deviceInfo)
 
+        // Transport card (adb / Shizuku)
+        TransportCard(state.transport) {
+            vm.requestShizuku()
+        }
+
         // Issues
         IssuesCard(state.supportCheck)
 
@@ -194,6 +199,64 @@ private fun InfoRow(label: String, value: String) {
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
         Text(label, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
         Text(value.take(26), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium)
+    }
+}
+
+@Composable
+private fun TransportCard(transport: com.rootmyvivo.core.ShellBridge.Transport, onConnectShizuku: () -> Unit) {
+    when (transport) {
+        com.rootmyvivo.core.ShellBridge.Transport.Adb -> {
+            Surface(shape = MaterialTheme.shapes.large, color = MaterialTheme.colorScheme.secondaryContainer) {
+                Row(Modifier.padding(14.dp), horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Rounded.Usb, null, tint = MaterialTheme.colorScheme.onSecondaryContainer, modifier = Modifier.size(20.dp))
+                    Column {
+                        Text("Транспорт: adb tcp (5555)", style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.Medium, color = MaterialTheme.colorScheme.onSecondaryContainer)
+                        Text("Постоянное подключение — Shizuku не нужен",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.7f))
+                    }
+                }
+            }
+        }
+        com.rootmyvivo.core.ShellBridge.Transport.Shizuku -> {
+            Surface(shape = MaterialTheme.shapes.large, color = MaterialTheme.colorScheme.secondaryContainer) {
+                Row(Modifier.padding(14.dp), horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Rounded.Verified, null, tint = MaterialTheme.colorScheme.onSecondaryContainer, modifier = Modifier.size(20.dp))
+                    Column {
+                        Text("Транспорт: Shizuku (shell)", style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.Medium, color = MaterialTheme.colorScheme.onSecondaryContainer)
+                        Text("После первого рута переключимся на adb tcp",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.7f))
+                    }
+                }
+            }
+        }
+        com.rootmyvivo.core.ShellBridge.Transport.None -> {
+            Surface(shape = MaterialTheme.shapes.large, color = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.5f)) {
+                Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Rounded.LinkOff, null, tint = MaterialTheme.colorScheme.onErrorContainer, modifier = Modifier.size(20.dp))
+                        Text("Нет транспорта для эксплойта", style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.Medium, color = MaterialTheme.colorScheme.onErrorContainer)
+                    }
+                    Text("Эксплойту нужен shell-домен (как adb). Варианты:\n" +
+                        "1. Запусти Shizuku и дай разрешение\n" +
+                        "2. Подключи adb tcp: adb tcpip 5555",
+                        style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onErrorContainer)
+                    OutlinedButton(
+                        onClick = onConnectShizuku,
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = MaterialTheme.shapes.medium,
+                    ) {
+                        Icon(Icons.Rounded.Security, null, Modifier.size(16.dp))
+                        Spacer(Modifier.width(6.dp))
+                        Text("Разрешить в Shizuku")
+                    }
+                }
+            }
+        }
     }
 }
 

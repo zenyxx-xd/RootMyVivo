@@ -11,7 +11,7 @@
     <queries>
         <package android:name="moe.shizuku.privileged.api" />
     </queries>
-    
+
     <application
         android:name=".RmvApp"
         android:allowBackup="false"
@@ -21,6 +21,15 @@
         android:theme="@style/Theme.RootMyVivo"
         android:extractNativeLibs="true"
         android:hasFragileUserData="true">
+
+        <!-- Shizuku provider (официальная интеграция) -->
+        <provider
+            android:name="rikka.shizuku.ShizukuProvider"
+            android:authorities="${applicationId}.shizuku"
+            android:multiprocess="false"
+            android:enabled="true"
+            android:exported="true"
+            android:permission="android.permission.INTERACT_ACROSS_USERS_FULL" />
         
         <activity
             android:name=".MainActivity"
