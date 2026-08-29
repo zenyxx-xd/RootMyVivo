@@ -241,7 +241,12 @@ object ShellBridge {
 
     // ─────────── Общий API ───────────
 
-    fun availableTransport(): Transport {
+    /** Суспенд-версия для вызова из coroutine (сокеты — только IO-поток) */
+    suspend fun availableTransportSuspending(): Transport = withContext(Dispatchers.IO) {
+        availableTransportBlocking()
+    }
+
+    fun availableTransportBlocking(): Transport {
         // 1. ADB TCP: реальная команда надёжнее простого connect
         if (execAdb("echo RMV_OK", timeoutSec = 5).second.contains("RMV_OK")) {
             return Transport.Adb

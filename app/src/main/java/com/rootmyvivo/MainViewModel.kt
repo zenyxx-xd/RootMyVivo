@@ -53,7 +53,7 @@ class MainViewModel : ViewModel() {
     /** Проверить доступный транспорт (adb tcp / Shizuku / нет) */
     fun refreshTransport() {
         viewModelScope.launch {
-            val t = ShellBridge.availableTransport()
+            val t = ShellBridge.availableTransportSuspending()
             _state.value = _state.value.copy(transport = t)
             if (t == ShellBridge.Transport.Shizuku) {
                 ShellBridge.bindShizukuService(RmvApp.instance)
