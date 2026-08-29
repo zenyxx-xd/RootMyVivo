@@ -13,7 +13,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import com.rootmyvivo.R
 
 @Composable
 fun RootButton(
@@ -50,7 +52,7 @@ fun RootButton(
                 color = MaterialTheme.colorScheme.onPrimary,
                 trackColor = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.3f))
             Spacer(Modifier.width(12.dp))
-            Text("Выполняется...", style = MaterialTheme.typography.titleMedium)
+            Text(stringResource(R.string.running), style = MaterialTheme.typography.titleMedium)
         } else {
             icon?.let {
                 Icon(it, null, Modifier.size(24.dp))

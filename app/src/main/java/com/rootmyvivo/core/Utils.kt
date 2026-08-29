@@ -29,7 +29,7 @@ suspend fun isSuAvailable(): Boolean =
         } catch (_: Exception) { false }
     }
 
-/** Табы нижней навигации (label локализуется в UI через LocalStrings) */
+/** Табы нижней навигации (label локализуется в UI через stringResource) */
 enum class Tab(val icon: ImageVector) {
     HOME(Icons.Rounded.Home),
     SETTINGS(Icons.Rounded.Settings),
