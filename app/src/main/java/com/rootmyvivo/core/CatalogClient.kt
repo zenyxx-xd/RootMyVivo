@@ -96,35 +96,45 @@ class CatalogClient(var catalogUrl: String = DEFAULT_URL) {
         fileEntry: FileEntry,
         destPath: String,
         onProgress: suspend (Long, Long) -> Unit = { _, _ -> },
+        onError: suspend (String) -> Unit = { _ -> },
     ): Boolean = withContext(Dispatchers.IO) {
+        val destination = File(destPath)
+        val temporary = File("$destPath.part")
         try {
-            val f = File(destPath)
-            f.parentFile?.mkdirs()
+            destination.parentFile?.mkdirs()
+            temporary.delete()
 
-            val conn = URL(fileEntry.url).openConnection() as HttpURLConnection
-            conn.connectTimeout = 30000
-            conn.readTimeout = 120000
-            conn.instanceFollowRedirects = true
-            // GitHub releases отдают 302 на objects.githubusercontent.com — HttpURLConn
-            // следует сам, но только если не переключали протоколы. Проверяем вручную:
-            var code = conn.responseCode
-            var cur = conn
+            // GitHub release сначала отдаёт 302 на objects.githubusercontent.com.
+            // Вручную следуем redirect, чтобы одинаково работать на Android/OriginOS.
+            var cur = URL(fileEntry.url).openConnection() as HttpURLConnection
+            cur.instanceFollowRedirects = false
+            cur.connectTimeout = 30000
+            cur.readTimeout = 120000
+            cur.setRequestProperty("User-Agent", "RootMyVivo/0.1")
+            cur.setRequestProperty("Accept", "application/octet-stream")
+            var code = cur.responseCode
             var hops = 0
             while (hops < 5 && (code == 301 || code == 302 || code == 303 || code == 307 || code == 308)) {
-                val loc = cur.getHeaderField("Location") ?: break
-                cur = URL(loc).openConnection() as HttpURLConnection
+                val loc = cur.getHeaderField("Location")
+                    ?: throw java.io.IOException("HTTP $code без Location")
+                cur.disconnect()
+                cur = URL(URL(fileEntry.url), loc).openConnection() as HttpURLConnection
+                cur.instanceFollowRedirects = false
                 cur.connectTimeout = 30000
                 cur.readTimeout = 120000
-                cur.instanceFollowRedirects = true
+                cur.setRequestProperty("User-Agent", "RootMyVivo/0.1")
+                cur.setRequestProperty("Accept", "application/octet-stream")
                 code = cur.responseCode
                 hops++
             }
-            if (code !in 200..299) return@withContext false
+            if (code !in 200..299) {
+                throw java.io.IOException("HTTP $code для ${fileEntry.url}")
+            }
 
             val totalSize = cur.contentLengthLong.takeIf { it > 0 } ?: fileEntry.size
 
             cur.inputStream.use { input ->
-                f.outputStream().use { output ->
+                temporary.outputStream().use { output ->
                     val buf = ByteArray(65536)
                     var read_total = 0L
                     while (true) {
@@ -137,18 +147,34 @@ class CatalogClient(var catalogUrl: String = DEFAULT_URL) {
                 }
             }
 
+            if (!temporary.exists() || temporary.length() == 0L) {
+                throw java.io.IOException("пустой ответ (${temporary.length()} bytes)")
+            }
+            if (fileEntry.size > 0L && temporary.length() != fileEntry.size) {
+                throw java.io.IOException(
+                    "неполный файл: ${temporary.length()} из ${fileEntry.size} bytes"
+                )
+            }
+
             fileEntry.sha256?.let { expected ->
                 val actual = java.security.MessageDigest.getInstance("SHA-256")
-                    .digest(f.readBytes())
+                    .digest(temporary.readBytes())
                     .joinToString("") { "%02x".format(it) }
                 if (!actual.equals(expected, true)) {
-                    f.delete(); return@withContext false
+                    throw java.io.IOException("SHA-256 не совпал: $actual")
                 }
             }
 
-            f.exists() && f.length() > 0L
+            if (!temporary.renameTo(destination)) {
+                throw java.io.IOException("не удалось переместить файл в ${destination.path}")
+            }
+            true
         } catch (e: Exception) {
-            android.util.Log.e("RootMyVivo", "download $destPath failed", e)
+            val reason = e.message ?: e.javaClass.simpleName
+            android.util.Log.e("RootMyVivo", "download $destPath failed: $reason", e)
+            onError(reason)
+            temporary.delete()
+            destination.delete()
             false
         }
     }

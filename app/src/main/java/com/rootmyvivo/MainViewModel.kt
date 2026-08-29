@@ -43,7 +43,22 @@ class MainViewModel : ViewModel() {
     private var catalogClient = CatalogClient()
 
     init {
+        _state.value = _state.value.copy(settings = loadSettings())
+        catalogClient.catalogUrl = _state.value.settings.catalogUrl
         detectDevice()
+    }
+
+    private fun loadSettings(): AppSettings {
+        val prefs = RmvApp.instance.getSharedPreferences("rootmyvivo", 0)
+        return AppSettings(
+            language = prefs.getString("language", "ru") ?: "ru",
+            themeMode = runCatching {
+                ThemeMode.valueOf(prefs.getString("theme", ThemeMode.AUTO.name) ?: ThemeMode.AUTO.name)
+            }.getOrDefault(ThemeMode.AUTO),
+            dynamicColors = prefs.getBoolean("dynamicColors", true),
+            catalogUrl = prefs.getString("catalogUrl", CatalogClient.DEFAULT_URL)
+                ?.takeIf { it.startsWith("https://") } ?: CatalogClient.DEFAULT_URL,
+        )
     }
 
     fun detectDevice() {
@@ -125,6 +140,12 @@ class MainViewModel : ViewModel() {
         val newSettings = transform(_state.value.settings)
         _state.value = _state.value.copy(settings = newSettings)
         catalogClient.catalogUrl = newSettings.catalogUrl
+        RmvApp.instance.getSharedPreferences("rootmyvivo", 0).edit()
+            .putString("language", newSettings.language)
+            .putString("theme", newSettings.themeMode.name)
+            .putBoolean("dynamicColors", newSettings.dynamicColors)
+            .putString("catalogUrl", newSettings.catalogUrl)
+            .apply()
     }
 
     fun stopExploit() {
