@@ -1,20 +1,80 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">RootMyVivo</string>
-    <string name="root_button">GET ROOT</string>
-    <string name="root_active">Root is active!</string>
-    <string name="running">Running…</string>
-    <string name="device_info">Device</string>
-    <string name="select_ksu">KernelSU variant</string>
-    <string name="warning_title">⚠ Important</string>
-    <string name="warning_body">
-        This tool exploits kernel vulnerabilities to gain root on locked-bootloader devices.
-        Kernel panics may occur during execution (device will reboot — this is normal, not a brick).
-        Use only on devices you own.
-    </string>
-    <string name="ksu_variant">KernelSU variant: %s</string>
-    <string name="stage_prepare">Preparing…</string>
-    <string name="stage_exploit">Running exploit…</string>
-    <string name="stage_ksu">Installing KernelSU…</string>
-    <string name="stage_done">Done!</string>
+
+    <!-- Tabs -->
+    <string name="tab_home">Главная</string>
+    <string name="tab_settings">Настройки</string>
+
+    <!-- Home -->
+    <string name="root_active">Root активен!</string>
+    <string name="root_active_desc">KernelSU работает.</string>
+    <string name="get_root">ПОЛУЧИТЬ ROOT</string>
+    <string name="running">Выполняется…</string>
+    <string name="rooted">Рут активен ✓</string>
+    <string name="not_supported">Не поддерживается</string>
+    <string name="payload_not_found">Пейлоад для этого устройства не найден в каталоге</string>
+    <string name="verified">verified: %s</string>
+
+    <!-- Device card -->
+    <string name="device">Устройство</string>
+    <string name="model">Модель</string>
+    <string name="rom">ROM</string>
+    <string name="kernel">Ядро</string>
+    <string name="kmi">KMI</string>
+    <string name="patch">Патч</string>
+    <string name="soc">SoC</string>
+
+    <!-- Transport -->
+    <string name="transport_adb_title">Транспорт: adb tcp (5555)</string>
+    <string name="transport_adb_desc">Постоянное подключение — Shizuku не нужен</string>
+    <string name="transport_shizuku_title">Транспорт: Shizuku (shell)</string>
+    <string name="transport_shizuku_desc">После первого рута переключимся на adb tcp</string>
+    <string name="transport_shizuku_perm_title">Shizuku: нужно разрешение</string>
+    <string name="transport_shizuku_perm_desc">Нажми кнопку — Shizuku покажет диалог разрешения</string>
+    <string name="transport_none_title">Нет транспорта для эксплойта</string>
+    <string name="transport_none_desc">Эксплойту нужен shell-домен (как adb). Варианты:\n1. Запусти Shizuku и дай разрешение\n2. Подключи adb tcp: adb tcpip 5555</string>
+    <string name="allow_shizuku">Разрешить в Shizuku</string>
+
+    <!-- Jailbreak screen -->
+    <string name="jailbreak">Jailbreak</string>
+    <string name="back">Назад</string>
+    <string name="downloading">Скачивание…</string>
+    <string name="log_label">Лог:</string>
+    <string name="root_obtained">ROOT ПОЛУЧЕН!</string>
+    <string name="root_obtained_desc">KernelSU активен. Перезагрузи телефон для закрепления.</string>
+    <string name="root_failed">Не удалось получить рут.\nПопробуй ещё раз.</string>
+
+    <!-- KSU -->
+    <string name="ksu_select">Выбери KernelSU</string>
+    <string name="ksu_select_desc">Все варианты работают через late-load на залоченном BL.</string>
+    <string name="ksu_current">KernelSU: %s</string>
+
+    <!-- Settings -->
+    <string name="language">Язык</string>
+    <string name="appearance">Внешний вид</string>
+    <string name="theme">Тема</string>
+    <string name="theme_auto">Авто</string>
+    <string name="theme_light">Светлая</string>
+    <string name="theme_dark">Тёмная</string>
+    <string name="material_you">Material You</string>
+    <string name="material_you_desc">Цвета из системы (Android 12+)</string>
+    <string name="root_manager">Рут-менеджер</string>
+    <string name="root_manager_desc">Какой KSU устанавливать после эксплойта</string>
+    <string name="payload_catalog">Каталог пейлоадов</string>
+    <string name="catalog_url">URL каталога</string>
+    <string name="catalog_hint">JSON с описанием поддерживаемых устройств</string>
+    <string name="save">Сохранить</string>
+    <string name="about">О приложении</string>
+    <string name="version">Версия</string>
+    <string name="author">Автор</string>
+    <string name="source_code">Исходный код</string>
+    <string name="catalog">Каталог</string>
+    <string name="exploit">Эксплойт</string>
+    <string name="disclaimer">Дисклеймер</string>
+    <string name="disclaimer_text">Используй только на устройствах которыми владеешь. Возможны kernel panic — это нормально. Авторы не несут ответственности за последствия.</string>
+    <string name="settings_title">Настройки</string>
+    <string name="russian">Русский</string>
+    <string name="english">English</string>
+    <string name="chinese">中文</string>
 </resources>

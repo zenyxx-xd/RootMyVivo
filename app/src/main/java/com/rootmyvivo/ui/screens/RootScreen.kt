@@ -18,6 +18,8 @@ import androidx.compose.ui.draw.scale
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.res.stringResource
+import com.rootmyvivo.R
 import com.rootmyvivo.core.KsuVariant
 import com.rootmyvivo.RootStatus
 
@@ -43,7 +45,7 @@ fun RootScreen(
         Row(verticalAlignment = Alignment.CenterVertically) {
             Icon(Icons.Rounded.Terminal, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(28.dp))
             Spacer(Modifier.width(10.dp))
-            Text("Jailbreak", style = MaterialTheme.typography.headlineMedium)
+            Text(stringResource(R.string.jailbreak), style = MaterialTheme.typography.headlineMedium)
         }
         
         Spacer(Modifier.height(20.dp))
@@ -54,7 +56,7 @@ fun RootScreen(
                 color = MaterialTheme.colorScheme.secondaryContainer) {
                 Column(Modifier.padding(14.dp)) {
                     Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween) {
-                        Text(installStage.ifEmpty { "Выполнение..." },
+                        Text(installStage.ifEmpty { stringResource(R.string.running) },
                             style = MaterialTheme.typography.bodyMedium)
                         Text("$currentStep/$totalSteps",
                             style = MaterialTheme.typography.labelSmall,
@@ -74,7 +76,7 @@ fun RootScreen(
         // Download progress
         downloadProgress?.let { progress ->
             Column {
-                Text("Скачивание...", style = MaterialTheme.typography.labelSmall)
+                Text(stringResource(R.string.downloading), style = MaterialTheme.typography.labelSmall)
                 LinearProgressIndicator(
                     progress = { progress },
                     modifier = Modifier.fillMaxWidth(),
@@ -92,9 +94,9 @@ fun RootScreen(
                     Icon(Icons.Rounded.CheckCircle, null, Modifier.size(48.dp),
                         tint = MaterialTheme.colorScheme.onPrimaryContainer)
                     Spacer(Modifier.height(8.dp))
-                    Text("ROOT ПОЛУЧЕН!", style = MaterialTheme.typography.titleLarge,
+                    Text(stringResource(R.string.root_obtained), style = MaterialTheme.typography.titleLarge,
                         color = MaterialTheme.colorScheme.onPrimaryContainer)
-                    Text("KernelSU активен. Перезагрузи телефон для закрепления.",
+                    Text(stringResource(R.string.root_obtained_desc),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha=0.7f))
                 }
@@ -106,7 +108,7 @@ fun RootScreen(
             Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer)) {
                 Row(Modifier.padding(14.dp), Arrangement.spacedBy(10.dp)) {
                     Icon(Icons.Rounded.Error, null, tint = MaterialTheme.colorScheme.onErrorContainer)
-                    Text("Не удалось получить рут.\nПопробуй ещё раз.",
+                    Text(stringResource(R.string.root_failed),
                         color = MaterialTheme.colorScheme.onErrorContainer)
                 }
             }
@@ -114,7 +116,7 @@ fun RootScreen(
 
         // Log terminal
         if (logLines.isNotEmpty()) {
-            Text("Лог:", style = MaterialTheme.typography.labelSmall,
+            Text(stringResource(R.string.log_label), style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant)
             Spacer(Modifier.height(4.dp))
             TerminalLog(logLines, Modifier.weight(1f))
@@ -129,7 +131,7 @@ fun RootScreen(
             Row(Modifier.fillMaxWidth(), Arrangement.Center, Alignment.CenterVertically) {
                 CircularProgressIndicator(Modifier.size(16.dp), strokeWidth = 2.dp)
                 Spacer(Modifier.width(8.dp))
-                Text("Выполняется...", style = MaterialTheme.typography.bodySmall,
+                Text(stringResource(R.string.running), style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }

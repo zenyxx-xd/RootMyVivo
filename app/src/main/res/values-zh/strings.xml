@@ -1,20 +1,80 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">RootMyVivo</string>
-    <string name="root_button">获取 ROOT</string>
+
+    <!-- Tabs -->
+    <string name="tab_home">主页</string>
+    <string name="tab_settings">设置</string>
+
+    <!-- Home -->
     <string name="root_active">Root 已激活！</string>
-    <string name="running">正在运行…</string>
-    <string name="device_info">设备信息</string>
-    <string name="select_ksu">KernelSU 变体</string>
-    <string name="warning_title">⚠ 注意</string>
-    <string name="warning_body">
-        此应用使用内核漏洞在锁定引导加载程序的设备上获取 root 权限。
-        执行过程中可能出现内核崩溃（设备将重启——这是正常的，不是变砖）。
-        仅在你拥有的设备上使用。
-    </string>
-    <string name="ksu_variant">KernelSU 变体：%s</string>
-    <string name="stage_prepare">准备中…</string>
-    <string name="stage_exploit">运行漏洞利用…</string>
-    <string name="stage_ksu">安装 KernelSU…</string>
-    <string name="stage_done">完成！</string>
+    <string name="root_active_desc">KernelSU 运行中。</string>
+    <string name="get_root">获取 ROOT</string>
+    <string name="running">运行中…</string>
+    <string name="rooted">已 Root ✓</string>
+    <string name="not_supported">不支持</string>
+    <string name="payload_not_found">目录中未找到此设备的载荷</string>
+    <string name="verified">已验证：%s</string>
+
+    <!-- Device card -->
+    <string name="device">设备</string>
+    <string name="model">型号</string>
+    <string name="rom">ROM</string>
+    <string name="kernel">内核</string>
+    <string name="kmi">KMI</string>
+    <string name="patch">补丁</string>
+    <string name="soc">SoC</string>
+
+    <!-- Transport -->
+    <string name="transport_adb_title">传输：adb tcp (5555)</string>
+    <string name="transport_adb_desc">持久连接 — 无需 Shizuku</string>
+    <string name="transport_shizuku_title">传输：Shizuku (shell)</string>
+    <string name="transport_shizuku_desc">首次 root 后将切换到 adb tcp</string>
+    <string name="transport_shizuku_perm_title">Shizuku：需要授权</string>
+    <string name="transport_shizuku_perm_desc">点击按钮 — Shizuku 将显示授权对话框</string>
+    <string name="transport_none_title">无可用传输方式</string>
+    <string name="transport_none_desc">漏洞利用需要 shell 域（同 adb）。选项：\n1. 启动 Shizuku 并授权\n2. 开启 adb tcp: adb tcpip 5555</string>
+    <string name="allow_shizuku">在 Shizuku 中授权</string>
+
+    <!-- Jailbreak screen -->
+    <string name="jailbreak">越狱</string>
+    <string name="back">返回</string>
+    <string name="downloading">下载中…</string>
+    <string name="log_label">日志：</string>
+    <string name="root_obtained">ROOT 已获取！</string>
+    <string name="root_obtained_desc">KernelSU 已激活。重启手机以巩固。</string>
+    <string name="root_failed">获取 root 失败。\n请重试。</string>
+
+    <!-- KSU -->
+    <string name="ksu_select">选择 KernelSU</string>
+    <string name="ksu_select_desc">所有变体均通过 late-load 在锁定 BL 上工作。</string>
+    <string name="ksu_current">KernelSU：%s</string>
+
+    <!-- Settings -->
+    <string name="language">语言</string>
+    <string name="appearance">外观</string>
+    <string name="theme">主题</string>
+    <string name="theme_auto">自动</string>
+    <string name="theme_light">浅色</string>
+    <string name="theme_dark">深色</string>
+    <string name="material_you">Material You</string>
+    <string name="material_you_desc">系统取色（Android 12+）</string>
+    <string name="root_manager">Root 管理器</string>
+    <string name="root_manager_desc">漏洞利用后安装哪个 KSU</string>
+    <string name="payload_catalog">载荷目录</string>
+    <string name="catalog_url">目录 URL</string>
+    <string name="catalog_hint">描述支持设备的 JSON</string>
+    <string name="save">保存</string>
+    <string name="about">关于</string>
+    <string name="version">版本</string>
+    <string name="author">作者</string>
+    <string name="source_code">源代码</string>
+    <string name="catalog">目录</string>
+    <string name="exploit">漏洞</string>
+    <string name="disclaimer">免责声明</string>
+    <string name="disclaimer_text">仅在你拥有的设备上使用。可能出现内核 panic — 这很正常。作者不承担任何后果责任。</string>
+    <string name="settings_title">设置</string>
+    <string name="russian">Русский</string>
+    <string name="english">English</string>
+    <string name="chinese">中文</string>
 </resources>

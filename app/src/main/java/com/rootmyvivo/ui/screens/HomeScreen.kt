@@ -15,6 +15,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.res.stringResource
+import com.rootmyvivo.R
 import com.rootmyvivo.MainViewModel
 import com.rootmyvivo.RootStatus
 import com.rootmyvivo.UiState
@@ -52,7 +54,7 @@ fun HomeScreen(state: UiState, vm: MainViewModel, onRootStarted: () -> Unit = {}
             Surface(shape = MaterialTheme.shapes.extraLarge, color = MaterialTheme.colorScheme.primaryContainer) {
                 Row(Modifier.padding(16.dp), horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
                     Icon(Icons.Rounded.CheckCircle, null, tint = MaterialTheme.colorScheme.onPrimaryContainer, modifier = Modifier.size(24.dp))
-                    Text("Root активен! KernelSU работает.", color = MaterialTheme.colorScheme.onPrimaryContainer)
+                    Text(stringResource(R.string.root_active) + " " + stringResource(R.string.root_active_desc), color = MaterialTheme.colorScheme.onPrimaryContainer)
                 }
             }
         }
@@ -67,7 +69,7 @@ fun HomeScreen(state: UiState, vm: MainViewModel, onRootStarted: () -> Unit = {}
                             Text(p.displayName, style = MaterialTheme.typography.bodyMedium,
                                 fontWeight = FontWeight.Medium, color = MaterialTheme.colorScheme.onSecondaryContainer)
                             if (p.verifiedBy != null)
-                                Text("verified: ${p.verifiedBy}", style = MaterialTheme.typography.labelSmall,
+                                Text(stringResource(R.string.verified, p.verifiedBy ?: ""), style = MaterialTheme.typography.labelSmall,
                                     color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.7f))
                         }
                     }
@@ -80,7 +82,7 @@ fun HomeScreen(state: UiState, vm: MainViewModel, onRootStarted: () -> Unit = {}
             Surface(shape = MaterialTheme.shapes.large, color = MaterialTheme.colorScheme.errorContainer.copy(alpha=0.5f)) {
                 Row(Modifier.padding(14.dp), horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
                     Icon(Icons.Rounded.Warning, null, tint = MaterialTheme.colorScheme.onErrorContainer, modifier = Modifier.size(20.dp))
-                    Text("Пейлоад для этого устройства не найден в каталоге",
+                    Text(stringResource(R.string.payload_not_found),
                         style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onErrorContainer)
                 }
             }
@@ -105,10 +107,10 @@ fun HomeScreen(state: UiState, vm: MainViewModel, onRootStarted: () -> Unit = {}
         
         RootButton(
             text = when {
-                state.isRunning -> "Выполняется..."
-                state.rootStatus == RootStatus.Active -> "Рут активен ✓"
-                state.payload == null -> "Не поддерживается"
-                else -> "ПОЛУЧИТЬ ROOT"
+                state.isRunning -> stringResource(R.string.running)
+                state.rootStatus == RootStatus.Active -> stringResource(R.string.rooted)
+                state.payload == null -> stringResource(R.string.not_supported)
+                else -> stringResource(R.string.get_root)
             },
             icon = Icons.Rounded.Bolt,
             enabled = enabled,
@@ -127,7 +129,7 @@ fun HomeScreen(state: UiState, vm: MainViewModel, onRootStarted: () -> Unit = {}
         ) {
             Icon(Icons.Rounded.Settings, null, Modifier.size(18.dp))
             Spacer(Modifier.width(8.dp))
-            Text("KernelSU: ${state.selectedKsu.displayName}")
+            Text(stringResource(R.string.ksu_current, state.selectedKsu.displayName))
         }
 
         Spacer(Modifier.height(32.dp))
@@ -137,9 +139,9 @@ fun HomeScreen(state: UiState, vm: MainViewModel, onRootStarted: () -> Unit = {}
     if (state.ksuSheetOpen) {
         ModalBottomSheet(onDismissRequest = { vm.toggleKsuSheet() }) {
             Column(Modifier.padding(20.dp)) {
-                Text("Выбери KernelSU", style = MaterialTheme.typography.titleLarge)
+                Text(stringResource(R.string.ksu_select), style = MaterialTheme.typography.titleLarge)
                 Spacer(Modifier.height(4.dp))
-                Text("Все варианты работают через late-load на залоченном BL.",
+                Text(stringResource(R.string.ksu_select_desc),
                     style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 Spacer(Modifier.height(16.dp))
                 KsuVariant.entries.forEach { v ->
@@ -178,18 +180,18 @@ private fun DeviceCard(info: DeviceInfo?) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(Icons.Rounded.Smartphone, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp))
                 Spacer(Modifier.width(8.dp))
-                Text("Устройство", style = MaterialTheme.typography.titleMedium)
+                Text(stringResource(R.string.device), style = MaterialTheme.typography.titleMedium)
             }
             if (info == null) {
                 LinearProgressIndicator(Modifier.fillMaxWidth())
                 return@Column
             }
-            InfoRow("Модель", "${info.marketName} (${info.model})")
-            InfoRow("ROM", info.rom.take(30))
-            InfoRow("Ядро", info.kernelShort)
-            InfoRow("KMI", info.kmi.ifEmpty { "—" })
-            InfoRow("Патч", info.securityPatch)
-            InfoRow("SoC", info.soc)
+            InfoRow(stringResource(R.string.model), "${info.marketName} (${info.model})")
+            InfoRow(stringResource(R.string.rom), info.rom.take(30))
+            InfoRow(stringResource(R.string.kernel), info.kernelShort)
+            InfoRow(stringResource(R.string.kmi), info.kmi.ifEmpty { "—" })
+            InfoRow(stringResource(R.string.patch), info.securityPatch)
+            InfoRow(stringResource(R.string.soc), info.soc)
         }
     }
 }
@@ -210,9 +212,9 @@ private fun TransportCard(transport: com.rootmyvivo.core.ShellBridge.Transport, 
                 Row(Modifier.padding(14.dp), horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
                     Icon(Icons.Rounded.Usb, null, tint = MaterialTheme.colorScheme.onSecondaryContainer, modifier = Modifier.size(20.dp))
                     Column {
-                        Text("Транспорт: adb tcp (5555)", style = MaterialTheme.typography.bodyMedium,
+                        Text(stringResource(R.string.transport_adb_title), style = MaterialTheme.typography.bodyMedium,
                             fontWeight = FontWeight.Medium, color = MaterialTheme.colorScheme.onSecondaryContainer)
-                        Text("Постоянное подключение — Shizuku не нужен",
+                        Text(stringResource(R.string.transport_adb_desc),
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.7f))
                     }
@@ -224,11 +226,36 @@ private fun TransportCard(transport: com.rootmyvivo.core.ShellBridge.Transport, 
                 Row(Modifier.padding(14.dp), horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
                     Icon(Icons.Rounded.Verified, null, tint = MaterialTheme.colorScheme.onSecondaryContainer, modifier = Modifier.size(20.dp))
                     Column {
-                        Text("Транспорт: Shizuku (shell)", style = MaterialTheme.typography.bodyMedium,
+                        Text(stringResource(R.string.transport_shizuku_title), style = MaterialTheme.typography.bodyMedium,
                             fontWeight = FontWeight.Medium, color = MaterialTheme.colorScheme.onSecondaryContainer)
-                        Text("После первого рута переключимся на adb tcp",
+                        Text(stringResource(R.string.transport_shizuku_desc),
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.7f))
+                    }
+                }
+            }
+        }
+        com.rootmyvivo.core.ShellBridge.Transport.ShizukuNeedsPermission -> {
+            Surface(shape = MaterialTheme.shapes.large, color = MaterialTheme.colorScheme.tertiaryContainer) {
+                Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Rounded.Security, null, tint = MaterialTheme.colorScheme.onTertiaryContainer, modifier = Modifier.size(20.dp))
+                        Column {
+                            Text(stringResource(R.string.transport_shizuku_perm_title), style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = FontWeight.Medium, color = MaterialTheme.colorScheme.onTertiaryContainer)
+                            Text(stringResource(R.string.transport_shizuku_perm_desc),
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onTertiaryContainer.copy(alpha = 0.7f))
+                        }
+                    }
+                    OutlinedButton(
+                        onClick = onConnectShizuku,
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = MaterialTheme.shapes.medium,
+                    ) {
+                        Icon(Icons.Rounded.Security, null, Modifier.size(16.dp))
+                        Spacer(Modifier.width(6.dp))
+                        Text(stringResource(R.string.allow_shizuku))
                     }
                 }
             }
@@ -238,12 +265,10 @@ private fun TransportCard(transport: com.rootmyvivo.core.ShellBridge.Transport, 
                 Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
                         Icon(Icons.Rounded.LinkOff, null, tint = MaterialTheme.colorScheme.onErrorContainer, modifier = Modifier.size(20.dp))
-                        Text("Нет транспорта для эксплойта", style = MaterialTheme.typography.bodyMedium,
+                        Text(stringResource(R.string.transport_none_title), style = MaterialTheme.typography.bodyMedium,
                             fontWeight = FontWeight.Medium, color = MaterialTheme.colorScheme.onErrorContainer)
                     }
-                    Text("Эксплойту нужен shell-домен (как adb). Варианты:\n" +
-                        "1. Запусти Shizuku и дай разрешение\n" +
-                        "2. Подключи adb tcp: adb tcpip 5555",
+                    Text(stringResource(R.string.transport_none_desc),
                         style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onErrorContainer)
                     OutlinedButton(
                         onClick = onConnectShizuku,
@@ -252,7 +277,7 @@ private fun TransportCard(transport: com.rootmyvivo.core.ShellBridge.Transport, 
                     ) {
                         Icon(Icons.Rounded.Security, null, Modifier.size(16.dp))
                         Spacer(Modifier.width(6.dp))
-                        Text("Разрешить в Shizuku")
+                        Text(stringResource(R.string.allow_shizuku))
                     }
                 }
             }

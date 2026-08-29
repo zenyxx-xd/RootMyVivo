@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">RootMyVivo</string>
+
+    <!-- Tabs -->
+    <string name="tab_home">Home</string>
+    <string name="tab_settings">Settings</string>
+
+    <!-- Home -->
+    <string name="root_active">Root is active!</string>
+    <string name="root_active_desc">KernelSU is running.</string>
+    <string name="get_root">GET ROOT</string>
+    <string name="running">Running…</string>
+    <string name="rooted">Rooted ✓</string>
+    <string name="not_supported">Not supported</string>
+    <string name="payload_not_found">No payload found for this device in catalog</string>
+    <string name="verified">verified: %s</string>
+
+    <!-- Device card -->
+    <string name="device">Device</string>
+    <string name="model">Model</string>
+    <string name="rom">ROM</string>
+    <string name="kernel">Kernel</string>
+    <string name="kmi">KMI</string>
+    <string name="patch">Patch</string>
+    <string name="soc">SoC</string>
+
+    <!-- Transport -->
+    <string name="transport_adb_title">Transport: adb tcp (5555)</string>
+    <string name="transport_adb_desc">Persistent connection — no Shizuku needed</string>
+    <string name="transport_shizuku_title">Transport: Shizuku (shell)</string>
+    <string name="transport_shizuku_desc">Will switch to adb tcp after first root</string>
+    <string name="transport_shizuku_perm_title">Shizuku: permission needed</string>
+    <string name="transport_shizuku_perm_desc">Tap the button — Shizuku will show permission dialog</string>
+    <string name="transport_none_title">No transport for exploit</string>
+    <string name="transport_none_desc">The exploit needs shell domain (like adb). Options:\n1. Start Shizuku and grant permission\n2. Enable adb tcp: adb tcpip 5555</string>
+    <string name="allow_shizuku">Allow in Shizuku</string>
+
+    <!-- Jailbreak screen -->
+    <string name="jailbreak">Jailbreak</string>
+    <string name="back">Back</string>
+    <string name="downloading">Downloading…</string>
+    <string name="log_label">Log:</string>
+    <string name="root_obtained">ROOT OBTAINED!</string>
+    <string name="root_obtained_desc">KernelSU active. Reboot phone to persist.</string>
+    <string name="root_failed">Failed to get root.\nTry again.</string>
+
+    <!-- KSU -->
+    <string name="ksu_select">Choose KernelSU</string>
+    <string name="ksu_select_desc">All variants work via late-load with locked BL.</string>
+    <string name="ksu_current">KernelSU: %s</string>
+
+    <!-- Settings -->
+    <string name="language">Language</string>
+    <string name="appearance">Appearance</string>
+    <string name="theme">Theme</string>
+    <string name="theme_auto">Auto</string>
+    <string name="theme_light">Light</string>
+    <string name="theme_dark">Dark</string>
+    <string name="material_you">Material You</string>
+    <string name="material_you_desc">System colors (Android 12+)</string>
+    <string name="root_manager">Root manager</string>
+    <string name="root_manager_desc">Which KSU to install after exploit</string>
+    <string name="payload_catalog">Payload catalog</string>
+    <string name="catalog_url">Catalog URL</string>
+    <string name="catalog_hint">JSON describing supported devices</string>
+    <string name="save">Save</string>
+    <string name="about">About</string>
+    <string name="version">Version</string>
+    <string name="author">Author</string>
+    <string name="source_code">Source code</string>
+    <string name="catalog">Catalog</string>
+    <string name="exploit">Exploit</string>
+    <string name="disclaimer">Disclaimer</string>
+    <string name="disclaimer_text">Use only on devices you own. Kernel panics possible — that\'s normal. Authors are not liable for any consequences.</string>
+    <string name="settings_title">Settings</string>
+    <string name="russian">Русский</string>
+    <string name="english">English</string>
+    <string name="chinese">中文</string>
+</resources>

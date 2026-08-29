@@ -1,6 +1,7 @@
 package com.rootmyvivo
 
 import android.app.Application
+import com.rootmyvivo.core.ShellBridge
 import com.rootmyvivo.core.native.NativeLibs
 
 class RmvApp : Application() {
@@ -8,6 +9,8 @@ class RmvApp : Application() {
         super.onCreate()
         instance = this
         NativeLibs.init()
+        // Shizuku binder-листенеры (sticky — сразу получим состояние)
+        ShellBridge.initShizukuListeners(this)
     }
 
     companion object {

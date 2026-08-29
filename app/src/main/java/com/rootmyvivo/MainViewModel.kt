@@ -63,7 +63,14 @@ class MainViewModel : ViewModel() {
 
     /** Запросить разрешение Shizuku (показывает системный диалог Shizuku) */
     fun requestShizuku() {
-        ShellBridge.requestShizukuPermission()
+        val requested = ShellBridge.requestShizukuPermission(requestCode = 100) {
+            // Пользователь выдал разрешение — обновляем транспорт
+            refreshTransport()
+        }
+        if (!requested) {
+            // Уже выдано или binder не готов — просто обновим состояние
+            refreshTransport()
+        }
     }
 
     private fun loadSettings(): AppSettings {

@@ -1,17 +1,35 @@
 package com.rootmyvivo.core
 
-import android.content.ComponentName
 import android.content.Context
-import android.content.Intent
-import android.content.ServiceConnection
-import android.os.IBinder
+import android.os.ParcelFileDescriptor
+import android.system.Os
+import androidx.annotation.Keep
 import java.io.File
+import java.io.FileOutputStream
+import java.io.RandomAccessFile
 
 /**
- * Сервис, выполняющийся внутри процесса Shizuku (shell-домен, uid=2000).
- * Shizuku инстанцирует его по UserServiceArgs и отдаёт binder приложению.
+ * UserService Shizuku: выполняется в shell-домене (uid=2000, u:r:shell:s0).
+ * Канонический паттерн: extends IShellService.Stub, конструктор с Context + @Keep.
  */
-class ShellServiceImpl : IShellService.Stub() {
+class ShellServiceImpl : IShellService.Stub {
+
+    constructor()
+
+    @Keep
+    constructor(context: Context) {
+        // Контекст доступен, но ContentResolver/registerReceiver тут не работают
+    }
+
+    override fun destroy() {
+        System.exit(0)
+    }
+
+    override fun exit() {
+        System.exit(0)
+    }
+
+    override fun ping(): String = "pong uid=${Os.getuid()}"
 
     override fun exec(command: String): String {
         return try {
@@ -23,6 +41,20 @@ class ShellServiceImpl : IShellService.Stub() {
             "EXIT=$exit\n$output"
         } catch (e: Exception) {
             "EXIT=-1\n${e.message ?: "error"}"
+        }
+    }
+
+    override fun writeFileChunk(path: String, offset: Long, data: ByteArray): Boolean {
+        return try {
+            val f = File(path)
+            f.parentFile?.mkdirs()
+            RandomAccessFile(f, "rw").use { raf ->
+                raf.seek(offset)
+                raf.write(data)
+            }
+            true
+        } catch (_: Exception) {
+            false
         }
     }
 }

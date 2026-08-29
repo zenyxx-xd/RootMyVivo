@@ -13,6 +13,8 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.res.stringResource
+import com.rootmyvivo.R
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.rootmyvivo.core.Tab
@@ -27,11 +29,28 @@ class MainActivity : ComponentActivity() {
         setContent {
             val vm: MainViewModel = viewModel()
             val state by vm.state.collectAsState()
-            RootMyVivoTheme(
-                themeMode = state.settings.themeMode,
-                dynamicColor = state.settings.dynamicColors,
+            // Локаль приложения = выбранный язык; по умолчанию — системная
+            val lang = state.settings.language
+            val localizedContext = androidx.compose.runtime.remember(lang) {
+                val locale = when (lang) {
+                    "en" -> java.util.Locale("en")
+                    "zh" -> java.util.Locale("zh")
+                    "ru" -> java.util.Locale("ru")
+                    else -> java.util.Locale.getDefault()
+                }
+                val config = android.content.res.Configuration(resources.configuration)
+                config.setLocale(locale)
+                createConfigurationContext(config)
+            }
+            androidx.compose.runtime.CompositionLocalProvider(
+                androidx.compose.ui.platform.LocalContext provides localizedContext
             ) {
-                RootMyVivoApp(vm, state)
+                RootMyVivoTheme(
+                    themeMode = state.settings.themeMode,
+                    dynamicColor = state.settings.dynamicColors,
+                ) {
+                    RootMyVivoApp(vm, state)
+                }
             }
         }
     }
@@ -72,12 +91,16 @@ fun RootMyVivoApp(vm: MainViewModel, state: UiState) {
             bottomBar = {
                 NavigationBar(tonalElevation = 3.dp) {
                     Tab.entries.forEach { tab ->
+                        val label = when (tab) {
+                            Tab.HOME -> androidx.compose.ui.res.stringResource(com.rootmyvivo.R.string.tab_home)
+                            Tab.SETTINGS -> androidx.compose.ui.res.stringResource(com.rootmyvivo.R.string.tab_settings)
+                        }
                         NavigationBarItem(
                             icon = {
                                 Icon(tab.icon, null,
                                     modifier = Modifier.size(if (currentTab == tab) 26.dp else 24.dp))
                             },
-                            label = { Text(tab.label) },
+                            label = { Text(label) },
                             selected = currentTab == tab,
                             onClick = { currentTab = tab },
                         )
@@ -119,10 +142,10 @@ fun JailbreakScreen(state: UiState, onBack: () -> Unit) {
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Jailbreak", style = MaterialTheme.typography.titleLarge) },
+                title = { Text(stringResource(R.string.jailbreak), style = MaterialTheme.typography.titleLarge) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.Rounded.ArrowBack, "Назад")
+                        Icon(Icons.Rounded.ArrowBack, stringResource(R.string.back))
                     }
                 },
             )

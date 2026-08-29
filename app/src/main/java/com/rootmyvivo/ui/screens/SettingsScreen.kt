@@ -21,6 +21,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.res.stringResource
+import com.rootmyvivo.R
 import com.rootmyvivo.AppSettings
 import com.rootmyvivo.MainViewModel
 import com.rootmyvivo.ThemeMode
@@ -52,41 +54,41 @@ fun SettingsScreen(
                 Icon(Icons.Rounded.Tune, null, tint = MaterialTheme.colorScheme.onPrimaryContainer)
             }
             Spacer(Modifier.width(12.dp))
-            Text("Настройки", style = MaterialTheme.typography.headlineMedium,
+            Text(stringResource(R.string.settings_title), style = MaterialTheme.typography.headlineMedium,
                 fontWeight = FontWeight.Bold)
         }
 
         // ── Язык ──
-        SettingsCard(title = "Язык", icon = Icons.Rounded.Language) {
+        SettingsCard(title = stringResource(R.string.language), icon = Icons.Rounded.Language) {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                LanguageChip("ru", "Русский", settings.language == "ru") {
+                LanguageChip("ru", stringResource(R.string.russian), settings.language == "ru") {
                     vm.updateSettings { it.copy(language = "ru") }
                 }
-                LanguageChip("en", "English", settings.language == "en") {
+                LanguageChip("en", stringResource(R.string.english), settings.language == "en") {
                     vm.updateSettings { it.copy(language = "en") }
                 }
-                LanguageChip("zh", "中文", settings.language == "zh") {
+                LanguageChip("zh", stringResource(R.string.chinese), settings.language == "zh") {
                     vm.updateSettings { it.copy(language = "zh") }
                 }
             }
         }
 
         // ── Внешний вид ──
-        SettingsCard(title = "Внешний вид", icon = Icons.Rounded.Palette) {
+        SettingsCard(title = stringResource(R.string.appearance), icon = Icons.Rounded.Palette) {
             // Тема: авто / светлая / тёмная
-            Text("Тема", style = MaterialTheme.typography.bodyMedium,
+            Text(stringResource(R.string.theme), style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant)
             Spacer(Modifier.height(6.dp))
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                ThemeChip(ThemeMode.AUTO, "Авто", Icons.Rounded.BrightnessAuto,
+                ThemeChip(ThemeMode.AUTO, stringResource(R.string.theme_auto), Icons.Rounded.BrightnessAuto,
                     settings.themeMode == ThemeMode.AUTO) {
                     vm.updateSettings { it.copy(themeMode = ThemeMode.AUTO) }
                 }
-                ThemeChip(ThemeMode.LIGHT, "Светлая", Icons.Rounded.LightMode,
+                ThemeChip(ThemeMode.LIGHT, stringResource(R.string.theme_light), Icons.Rounded.LightMode,
                     settings.themeMode == ThemeMode.LIGHT) {
                     vm.updateSettings { it.copy(themeMode = ThemeMode.LIGHT) }
                 }
-                ThemeChip(ThemeMode.DARK, "Тёмная", Icons.Rounded.DarkMode,
+                ThemeChip(ThemeMode.DARK, stringResource(R.string.theme_dark), Icons.Rounded.DarkMode,
                     settings.themeMode == ThemeMode.DARK) {
                     vm.updateSettings { it.copy(themeMode = ThemeMode.DARK) }
                 }
@@ -101,9 +103,9 @@ fun SettingsScreen(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
-                    Text("Material You",
+                    Text(stringResource(R.string.material_you),
                         style = MaterialTheme.typography.bodyLarge)
-                    Text("Цвета из системы (Android 12+)",
+                    Text(stringResource(R.string.material_you_desc),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
@@ -116,8 +118,8 @@ fun SettingsScreen(
 
         // ── Рут ──
         val selectedKsu by vm.state.collectAsState()
-        SettingsCard(title = "Рут-менеджер", icon = Icons.Rounded.Shield) {
-            Text("Какой KSU устанавливать после эксплойта",
+        SettingsCard(title = stringResource(R.string.root_manager), icon = Icons.Rounded.Shield) {
+            Text(stringResource(R.string.root_manager_desc),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant)
             Spacer(Modifier.height(8.dp))
@@ -145,16 +147,16 @@ fun SettingsScreen(
         }
 
         // ── Каталог пейлоадов ──
-        SettingsCard(title = "Каталог пейлоадов", icon = Icons.Rounded.CloudSync) {
+        SettingsCard(title = stringResource(R.string.payload_catalog), icon = Icons.Rounded.CloudSync) {
             var url by remember(settings.catalogUrl) { mutableStateOf(settings.catalogUrl) }
             OutlinedTextField(
                 value = url,
                 onValueChange = { url = it },
-                label = { Text("URL каталога") },
+                label = { Text(stringResource(R.string.catalog_url)) },
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth(),
                 shape = MaterialTheme.shapes.medium,
-                supportingText = { Text("JSON с описанием поддерживаемых устройств") },
+                supportingText = { Text(stringResource(R.string.catalog_hint)) },
                 trailingIcon = {
                     if (url != com.rootmyvivo.core.CatalogClient.DEFAULT_URL) {
                         IconButton(onClick = {
@@ -173,17 +175,17 @@ fun SettingsScreen(
             ) {
                 Icon(Icons.Rounded.Check, null, Modifier.size(18.dp))
                 Spacer(Modifier.width(6.dp))
-                Text("Сохранить")
+                Text(stringResource(R.string.save))
             }
         }
 
         // ── О приложении ──
-        SettingsCard(title = "О приложении", icon = Icons.Rounded.Info) {
-            AboutRow("Версия", "0.1.0-alpha")
-            AboutRow("Автор", "@zenyxx-xd")
-            AboutRow("Исходный код", "github.com/zenyxx-xd/RootMyVivo")
-            AboutRow("Каталог", "github.com/zenyxx-xd/RootMyVivo-Payloads")
-            AboutRow("Эксплойт", "CVE-2026-43499 (GhostLock)")
+        SettingsCard(title = stringResource(R.string.about), icon = Icons.Rounded.Info) {
+            AboutRow(stringResource(R.string.version), "0.1.0-alpha")
+            AboutRow(stringResource(R.string.author), "@zenyxx-xd")
+            AboutRow(stringResource(R.string.source_code), "github.com/zenyxx-xd/RootMyVivo")
+            AboutRow(stringResource(R.string.catalog), "github.com/zenyxx-xd/RootMyVivo-Payloads")
+            AboutRow(stringResource(R.string.exploit), "CVE-2026-43499 (GhostLock)")
         }
 
         // ── Дисклеймер ──
@@ -195,12 +197,12 @@ fun SettingsScreen(
                 Icon(Icons.Rounded.Warning, null,
                     tint = MaterialTheme.colorScheme.onErrorContainer)
                 Column {
-                    Text("Дисклеймер",
+                    Text(stringResource(R.string.disclaimer),
                         style = MaterialTheme.typography.titleSmall,
                         color = MaterialTheme.colorScheme.onErrorContainer)
                     Spacer(Modifier.height(4.dp))
                     Text(
-                        "Используй только на устройствах которыми владеешь. Возможны kernel panic — это нормально. Авторы не несут ответственности за последствия.",
+                        stringResource(R.string.disclaimer_text),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onErrorContainer.copy(alpha = 0.85f),
                     )
