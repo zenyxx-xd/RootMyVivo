@@ -207,6 +207,19 @@ object ShellBridge {
             out.write("shell,v2,$command\n".toByteArray(Charsets.UTF_8))
             out.flush()
 
+            // Smart-socket: сервер сначала отвечает 4 байта OKAY/FAIL (+ причина для FAIL)
+            val status = ByteArray(4)
+            var readSt = 0
+            while (readSt < 4) {
+                val r = inp.read(status, readSt, 4 - readSt)
+                if (r < 0) return@use Pair(-1, "adb: соединение закрыто до OKAY")
+                readSt += r
+            }
+            val statusStr = String(status, Charsets.US_ASCII)
+            if (statusStr != "OKAY") {
+                return@use Pair(-1, "adb: статус $statusStr")
+            }
+
             val buf = ByteArray(65536)
             val sb = StringBuilder()
             var exitCode = -1
