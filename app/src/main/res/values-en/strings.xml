@@ -6,7 +6,7 @@
     <string name="tab_settings">Settings</string>
 
     <string name="status_rooted">Root is active</string>
-    <string name="status_rooted_desc">KernelSU is running. Reboot the phone to persist.</string>
+    <string name="status_rooted_desc">KernelSU is running — root is active</string>
     <string name="status_not_rooted">Device is not rooted</string>
     <string name="status_not_rooted_desc">Get full control of your device in a couple of taps</string>
     <string name="status_checking">Checking state…</string>
@@ -58,9 +58,6 @@
     <string name="dev_payloads">Payloads</string>
     <string name="dev_payloads_empty">Nothing downloaded yet</string>
     <string name="dev_payload_selected">Selected in catalog: %1$s</string>
-    <string name="dev_lastlog">Last run log</string>
-    <string name="dev_lastlog_empty">No saved logs yet</string>
-    <string name="dev_lastlog_open">Open</string>
     <string name="ksu_selected">Selected: %s</string>
     <string name="ksu_select">Choose KernelSU</string>
     <string name="ksu_select_desc">All variants work via late-load with locked bootloader.</string>
@@ -72,7 +69,7 @@
     <string name="flow_title">Jailbreak</string>
     <string name="flow_running">Running…</string>
     <string name="flow_success">ROOT OBTAINED!</string>
-    <string name="flow_success_desc">Reboot the phone to persist the result.</string>
+    <string name="flow_success_desc">Root is active and restores itself after reboots</string>
     <string name="flow_failed">Failed to get root</string>
     <string name="phase_catalog">Loading catalog…</string>
     <string name="phase_payload">Finding payload…</string>
@@ -133,7 +130,12 @@
     <string name="confirm_softreboot_text">A userspace reboot will restart the system interface: apps will close, no data will be lost.</string>
     <string name="confirm_softreboot_title">Restart the interface?</string>
     <string name="home_softreboot">Userspace reboot</string>
-    <string name="home_lastlog">Last run log</string>
+    <string name="home_lastlog">Run history</string>
+    <string name="logs_title">Run history</string>
+    <string name="logs_empty">No runs yet</string>
+    <string name="logs_success">Root obtained</string>
+    <string name="logs_failed">Failed</string>
+    <string name="logs_duration">%1$d s</string>
     <string name="transport_short_adb">ADB tcp</string>
     <string name="transport_short_shizuku">Shizuku</string>
     <string name="transport_short_perm">Permission needed</string>

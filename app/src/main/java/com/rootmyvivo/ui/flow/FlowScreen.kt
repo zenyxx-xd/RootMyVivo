@@ -111,6 +111,8 @@ fun FlowScreen(
     onSoftReboot: () -> Unit,
     onDismissSoftReboot: () -> Unit,
     onFullReboot: () -> Unit = {},
+    /** Туман (размытие + непрозрачность) в потоке лога; просмотр лога — без него */
+    fog: Boolean = true,
 ) {
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
@@ -223,6 +225,7 @@ fun FlowScreen(
                     state.exploitLive,
                     Modifier.weight(1f),
                     onGeometry = { top, h -> logGeometry.value = top to h },
+                    fog = fog,
                 )
             } else if (state.flowRunning) {
                 Box(Modifier.weight(1f), contentAlignment = Alignment.Center) {
@@ -696,6 +699,7 @@ private fun LogStream(
     exploitLive: ExploitLiveState,
     modifier: Modifier = Modifier,
     onGeometry: (topInRoot: Float, height: Int) -> Unit = { _, _ -> },
+    fog: Boolean = true,
 ) {
     val listState = rememberLazyListState()
     val bg = MaterialTheme.colorScheme.background
@@ -750,7 +754,7 @@ private fun LogStream(
     val clearFrac = if (viewportH > 0) ((viewportH - clearPx) / viewportH).coerceIn(0.3f, 0.95f) else 0.85f
 
     // AGSL-шейдер прогрессивного размытия (туман поверх всего бокса)
-    val fogShader = if (android.os.Build.VERSION.SDK_INT >= 33) {
+    val fogShader = if (fog && android.os.Build.VERSION.SDK_INT >= 33) {
         remember { android.graphics.RuntimeShader(FOG_BLUR_SHADER) }
     } else {
         null
@@ -887,19 +891,21 @@ private fun LogStream(
 
         // Туман-непрозрачность: градиент поверх бокса (как в 0.4.24),
         // плотность растёт по квадратичной кривой к верху
-        val fogStops = buildList {
-            for (i in 0..10) {
-                val f = clearFrac * i / 10f
-                val e = (1f - f / clearFrac).let { it * it }
-                add(f to bg.copy(alpha = e))
+        if (fog) {
+            val fogStops = buildList {
+                for (i in 0..10) {
+                    val f = clearFrac * i / 10f
+                    val e = (1f - f / clearFrac).let { it * it }
+                    add(f to bg.copy(alpha = e))
+                }
+                add(1f to androidx.compose.ui.graphics.Color.Transparent)
             }
-            add(1f to androidx.compose.ui.graphics.Color.Transparent)
+            Box(
+                Modifier
+                    .matchParentSize()
+                    .background(androidx.compose.ui.graphics.Brush.verticalGradient(*fogStops.toTypedArray())),
+            )
         }
-        Box(
-            Modifier
-                .matchParentSize()
-                .background(androidx.compose.ui.graphics.Brush.verticalGradient(*fogStops.toTypedArray())),
-        )
     }
 }
 

@@ -530,8 +530,8 @@ private fun StatusGroup(state: UiState, onKsuClick: () -> Unit, onOpenLastLog: (
                 )
             },
         )
-        // Лог последнего запуска — если есть что показать
-        if (state.lastLog.isNotEmpty()) {
+        // История запусков — если есть что показать
+        if (state.logHistory.isNotEmpty()) {
             SettingsDivider()
             SettingsRow(
                 title = stringResource(R.string.home_lastlog),

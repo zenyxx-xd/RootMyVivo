@@ -13,6 +13,17 @@ enum class CatalogState { LOADING, READY, ERROR }
 
 data class LogEntry(val id: Long, val text: String, val status: LogLevel, val kind: LogKind = LogKind.NORMAL)
 
+/** Сохранённый запуск для истории логов. */
+data class LogRunInfo(
+    val startedAt: Long,
+    val durationSec: Long,
+    val success: Boolean,
+    val failReason: String?,
+    val variant: String,
+    val lines: Int,
+    val file: java.io.File,
+)
+
 /** Тип строки лога: обычная или шаг эксплойта (раскрываемый аккордеон). */
 enum class LogKind { NORMAL, EXPLOIT }
 
@@ -57,4 +68,6 @@ data class UiState(
     /** Сохранённый последний лог для просмотра */
     val lastLog: List<LogEntry> = emptyList(),
     val logViewerOpen: Boolean = false,
+    /** История запусков (до 5 последних) */
+    val logHistory: List<LogRunInfo> = emptyList(),
 )

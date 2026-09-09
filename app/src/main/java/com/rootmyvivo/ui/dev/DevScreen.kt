@@ -355,51 +355,6 @@ fun DevScreen(vm: MainViewModel, state: UiState, onClose: () -> Unit, onRootStar
                 }
             }
 
-            // ── Лог последнего реального запуска ──
-            AnimatedSection(3) {
-                Surface(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = MaterialTheme.shapes.large,
-                    color = MaterialTheme.colorScheme.surfaceContainerLow,
-                ) {
-                    Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Row(
-                            horizontalArrangement = Arrangement.spacedBy(10.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            Icon(
-                                Icons.Rounded.Description, null,
-                                tint = MaterialTheme.colorScheme.secondary,
-                                modifier = Modifier.size(20.dp),
-                            )
-                            Text(
-                                stringResource(R.string.dev_lastlog),
-                                style = MaterialTheme.typography.titleSmall,
-                                fontWeight = FontWeight.SemiBold,
-                            )
-                        }
-                        if (state.lastLog.isEmpty()) {
-                            Text(
-                                stringResource(R.string.dev_lastlog_empty),
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                        } else {
-                            OutlinedButton(
-                                onClick = {
-                                    demoState = UiState(
-                                        log = state.lastLog,
-                                        flowRunning = false,
-                                        flowResult = com.rootmyvivo.vm.FlowResult.Success,
-                                    )
-                                },
-                                modifier = Modifier.fillMaxWidth(),
-                            ) { Text(stringResource(R.string.dev_lastlog_open)) }
-                        }
-                    }
-                }
-            }
-
             Spacer(Modifier.height(28.dp))
         }
     }

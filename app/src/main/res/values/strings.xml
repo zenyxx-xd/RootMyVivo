@@ -8,7 +8,7 @@
 
     <!-- Статус -->
     <string name="status_rooted">Root активен</string>
-    <string name="status_rooted_desc">KernelSU работает. Перезагрузи телефон для закрепления.</string>
+    <string name="status_rooted_desc">KernelSU работает — рут активен</string>
     <string name="status_not_rooted">Устройство не рутовано</string>
     <string name="status_not_rooted_desc">Получи полный контроль над устройством в пару касаний</string>
     <string name="status_checking">Проверяем состояние…</string>
@@ -63,9 +63,6 @@
     <string name="dev_payloads">Пейлоады</string>
     <string name="dev_payloads_empty">Ничего не скачано</string>
     <string name="dev_payload_selected">Выбран в каталоге: %1$s</string>
-    <string name="dev_lastlog">Лог последнего запуска</string>
-    <string name="dev_lastlog_empty">Пока нет сохранённых логов</string>
-    <string name="dev_lastlog_open">Открыть</string>
     <string name="ksu_selected">Выбран: %s</string>
     <string name="ksu_select">Выбор KernelSU</string>
     <string name="ksu_select_desc">Все варианты работают через late-load на залоченном BL.</string>
@@ -78,7 +75,7 @@
     <string name="flow_title">Процесс рута</string>
     <string name="flow_running">Выполняется…</string>
     <string name="flow_success">ROOT ПОЛУЧЕН!</string>
-    <string name="flow_success_desc">Перезагрузи телефон для закрепления результата</string>
+    <string name="flow_success_desc">Root активен и восстановится сам после перезагрузки</string>
     <string name="flow_failed">Не удалось получить root</string>
     <string name="action_back">Назад</string>
     <string name="downloading">Скачивание…</string>
@@ -146,7 +143,12 @@
     <string name="confirm_softreboot_text">Перезагрузка userspace перезапустит системный интерфейс: приложения закроются, данные не потеряются.</string>
     <string name="confirm_softreboot_title">Перезапустить интерфейс?</string>
     <string name="home_softreboot">Перезагрузка userspace</string>
-    <string name="home_lastlog">Лог последнего запуска</string>
+    <string name="home_lastlog">История запусков</string>
+    <string name="logs_title">История запусков</string>
+    <string name="logs_empty">Запусков ещё не было</string>
+    <string name="logs_success">Root получен</string>
+    <string name="logs_failed">Не удалось</string>
+    <string name="logs_duration">%1$d с</string>
     <string name="transport_short_adb">ADB tcp</string>
     <string name="transport_short_shizuku">Shizuku</string>
     <string name="transport_short_perm">Нужно разрешение</string>

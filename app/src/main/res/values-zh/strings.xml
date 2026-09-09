@@ -6,7 +6,7 @@
     <string name="tab_settings">设置</string>
 
     <string name="status_rooted">Root 已激活</string>
-    <string name="status_rooted_desc">KernelSU 运行中。重启手机以巩固。</string>
+    <string name="status_rooted_desc">KernelSU 运行中 — root 已激活</string>
     <string name="status_not_rooted">设备未 Root</string>
     <string name="status_not_rooted_desc">轻点几下，完全掌控你的设备</string>
     <string name="status_checking">正在检查状态…</string>
@@ -58,9 +58,6 @@
     <string name="dev_payloads">载荷</string>
     <string name="dev_payloads_empty">尚未下载任何文件</string>
     <string name="dev_payload_selected">目录中已选择：%1$s</string>
-    <string name="dev_lastlog">上次运行的日志</string>
-    <string name="dev_lastlog_empty">暂无保存的日志</string>
-    <string name="dev_lastlog_open">打开</string>
     <string name="ksu_selected">已选择：%s</string>
     <string name="ksu_select">选择 KernelSU</string>
     <string name="ksu_select_desc">所有变体均通过 late-load 在锁定 BL 上工作。</string>
@@ -72,7 +69,7 @@
     <string name="flow_title">越狱</string>
     <string name="flow_running">运行中…</string>
     <string name="flow_success">ROOT 已获取！</string>
-    <string name="flow_success_desc">重启手机以巩固结果。</string>
+    <string name="flow_success_desc">Root 已激活，重启后会自动恢复</string>
     <string name="flow_failed">获取 root 失败</string>
     <string name="phase_catalog">正在加载目录…</string>
     <string name="phase_payload">正在查找载荷…</string>
@@ -133,7 +130,12 @@
     <string name="confirm_softreboot_text">用户空间重启将重启系统界面：应用将关闭，数据不会丢失。</string>
     <string name="confirm_softreboot_title">重启系统界面？</string>
     <string name="home_softreboot">用户空间重启</string>
-    <string name="home_lastlog">上次运行的日志</string>
+    <string name="home_lastlog">运行历史</string>
+    <string name="logs_title">运行历史</string>
+    <string name="logs_empty">还没有运行记录</string>
+    <string name="logs_success">Root 已获取</string>
+    <string name="logs_failed">失败</string>
+    <string name="logs_duration">%1$d 秒</string>
     <string name="transport_short_adb">ADB tcp</string>
     <string name="transport_short_shizuku">Shizuku</string>
     <string name="transport_short_perm">需要授权</string>

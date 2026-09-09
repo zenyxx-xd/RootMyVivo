@@ -45,7 +45,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         _state.value = _state.value.copy(
             selectedKsu = KsuVariant.byId(prefs.selectedKsu),
             needsSoftReboot = prefs.softRebootPendingActual(),
-            lastLog = loadLastLog(),
+            logHistory = loadLogHistory(),
         )
         // Транспорт обновляется при запуске/смерти Shizuku
         Transport.onBinderStateChanged = { refreshTransport() }
@@ -142,6 +142,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         val device = _state.value.device ?: return
         val ctx = getApplication<Application>()
         engine = ExploitEngine(ctx, device, catalog)
+        runStartedAt = System.currentTimeMillis()
         _state.value = _state.value.copy(
             flowRunning = true,
             log = emptyList(),
@@ -228,30 +229,15 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         _state.value = _state.value.copy(softRebootPrompt = false)
     }
 
-    /** Показать/скрыть просмотр последнего лога */
+    /** Показать/скрыть просмотр лога из истории */
     fun toggleLogViewer() {
         _state.value = _state.value.copy(logViewerOpen = !_state.value.logViewerOpen)
     }
 
-    /** Последний лог на диск — переживает перезагрузку телефона. */
-    private fun saveLastLog() {
-        try {
-            val f = java.io.File(getApplication<Application>().filesDir, "last_log.txt")
-            f.writeText(
-                _state.value.log.joinToString("\n") { entry ->
-                    entry.status.name + "\t" + entry.text.replace('\n', ' ')
-                },
-            )
-        } catch (_: Exception) {
-        }
-    }
-
-    private fun loadLastLog(): List<LogEntry> = try {
-        val f = java.io.File(getApplication<Application>().filesDir, "last_log.txt")
-        if (!f.exists()) {
-            emptyList()
-        } else {
-            f.readLines().mapIndexedNotNull { i, line ->
+    /** Открыть лог конкретного запуска из истории. */
+    fun openLogRun(info: LogRunInfo) {
+        val entries = try {
+            info.file.readLines().mapIndexedNotNull { i, line ->
                 val idx = line.indexOf('\t')
                 if (idx <= 0) {
                     null
@@ -260,10 +246,63 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                     LogEntry(i.toLong(), line.substring(idx + 1), st)
                 }
             }
+        } catch (_: Exception) {
+            emptyList()
         }
+        _state.value = _state.value.copy(lastLog = entries, logViewerOpen = true)
+    }
+
+    /** История запусков на диск: до 5 последних, с метаданными. Переживает ребут. */
+    private fun saveLogHistory(success: Boolean, failReason: String?) {
+        try {
+            val ctx = getApplication<Application>()
+            val dir = java.io.File(ctx.filesDir, "logs").apply { mkdirs() }
+            val start = runStartedAt
+            val dur = (System.currentTimeMillis() - start) / 1000
+            val body = _state.value.log.joinToString("\n") { entry ->
+                entry.status.name + "\t" + entry.text.replace('\n', ' ')
+            }
+            // Метастрока + лог; имя файла = время старта запуска
+            val f = java.io.File(dir, "$start.log")
+            f.writeText(
+                "META\t$start\t$dur\t${if (success) "ok" else "fail"}\t" +
+                    "${failReason ?: ""}\t${_state.value.selectedKsu.displayName}\t${_state.value.log.size}\n" +
+                    body,
+            )
+            // старее 5 запусков — вычищаем
+            dir.listFiles { x -> x.name.endsWith(".log") }
+                ?.sortedByDescending { it.name }
+                ?.drop(5)
+                ?.forEach { it.delete() }
+            _state.value = _state.value.copy(logHistory = loadLogHistory())
+        } catch (_: Exception) {
+        }
+    }
+
+    private fun loadLogHistory(): List<LogRunInfo> = try {
+        val dir = java.io.File(getApplication<Application>().filesDir, "logs")
+        dir.listFiles { x -> x.name.endsWith(".log") }
+            ?.sortedByDescending { it.name }
+            ?.mapNotNull { f ->
+                val meta = f.useLines { it.firstOrNull() } ?: return@mapNotNull null
+                val p = meta.split('\t')
+                if (p.size < 7 || p[0] != "META") return@mapNotNull null
+                LogRunInfo(
+                    startedAt = p[1].toLongOrNull() ?: return@mapNotNull null,
+                    durationSec = p[2].toLongOrNull() ?: 0,
+                    success = p[3] == "ok",
+                    failReason = p[4].ifEmpty { null },
+                    variant = p[5],
+                    lines = p[6].toIntOrNull() ?: 0,
+                    file = f,
+                )
+            } ?: emptyList()
     } catch (_: Exception) {
         emptyList()
     }
+
+    /** Время старта текущего/последнего запуска — для метаданных истории. */
+    private var runStartedAt = System.currentTimeMillis()
 
     private var logId = 0L
     private var liveId = 0L
@@ -376,7 +415,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                 downloadProgress = if (event.total > 0) event.read.toFloat() / event.total else null,
             )
             is FlowEvent.Success -> {
-                saveLastLog()
+                saveLogHistory(success = true, failReason = null)
                 // Софт-ребут рекомендуем только когда KSU реально загрузился
                 if (event.softRebootRecommended) markSoftRebootPending()
                 _state.value = _state.value.copy(
@@ -388,7 +427,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                 )
             }
             FlowEvent.NeedsSoftReboot -> {
-                saveLastLog()
+                saveLogHistory(success = true, failReason = null)
                 markSoftRebootPending()
                 _state.value = _state.value.copy(
                     flowResult = FlowResult.Success,
@@ -399,7 +438,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                 )
             }
             is FlowEvent.Failure -> {
-                saveLastLog()
+                saveLogHistory(success = false, failReason = event.reason.name)
                 _state.value = _state.value.copy(
                     flowResult = FlowResult.Failure(event.reason),
                     rootState = RootState.FAILED,

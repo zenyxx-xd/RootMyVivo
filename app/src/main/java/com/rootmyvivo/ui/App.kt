@@ -36,6 +36,7 @@ import com.rootmyvivo.R
 import com.rootmyvivo.ui.flow.FlowScreen
 import com.rootmyvivo.ui.dev.DevScreen
 import com.rootmyvivo.ui.home.HomeScreen
+import com.rootmyvivo.ui.logs.LogHistoryScreen
 import com.rootmyvivo.ui.settings.SettingsScreen
 import com.rootmyvivo.vm.MainViewModel
 import com.rootmyvivo.vm.UiState
@@ -45,6 +46,7 @@ import kotlinx.coroutines.launch
 fun App(vm: MainViewModel, state: UiState) {
     var flowOpen by rememberSaveable { mutableStateOf(false) }
     var devOpen by rememberSaveable { mutableStateOf(false) }
+    var logHistoryOpen by rememberSaveable { mutableStateOf(false) }
     var logViewerOpen by rememberSaveable { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
 
@@ -58,8 +60,13 @@ fun App(vm: MainViewModel, state: UiState) {
         devOpen = false
     }
 
-    // Системное «назад» в просмотре последнего лога
-    BackHandler(enabled = logViewerOpen && !flowOpen && !devOpen) {
+    // Системное «назад» в истории запусков
+    BackHandler(enabled = logHistoryOpen && !flowOpen && !devOpen) {
+        logHistoryOpen = false
+    }
+
+    // Системное «назад» в просмотре лога
+    BackHandler(enabled = logViewerOpen && !flowOpen && !devOpen && !logHistoryOpen) {
         logViewerOpen = false
     }
 
@@ -115,7 +122,7 @@ fun App(vm: MainViewModel, state: UiState) {
                     beyondViewportPageCount = 1,
                 ) { page ->
                     when (page) {
-                        0 -> HomeScreen(vm, state, onRootStarted = { flowOpen = true }, onOpenLastLog = { logViewerOpen = true })
+                        0 -> HomeScreen(vm, state, onRootStarted = { flowOpen = true }, onOpenLastLog = { logHistoryOpen = true })
                         else -> SettingsScreen(vm, state, onDevOpen = { devOpen = true })
                     }
                 }
@@ -146,9 +153,31 @@ fun App(vm: MainViewModel, state: UiState) {
         )
     }
 
-    // ── Просмотр лога последнего запуска ──
+    // ── История запусков: карточки последних логов ──
     AnimatedVisibility(
-        visible = logViewerOpen && !flowOpen && !devOpen,
+        visible = logHistoryOpen && !flowOpen && !devOpen,
+        enter = slideInVertically(
+            animationSpec = tween(350, easing = FastOutSlowInEasing),
+            initialOffsetY = { it },
+        ) + fadeIn(tween(350)),
+        exit = slideOutVertically(
+            animationSpec = tween(280, easing = FastOutSlowInEasing),
+            targetOffsetY = { it },
+        ) + fadeOut(),
+    ) {
+        LogHistoryScreen(
+            runs = state.logHistory,
+            onOpen = { run ->
+                vm.openLogRun(run)
+                logViewerOpen = true
+            },
+            onClose = { logHistoryOpen = false },
+        )
+    }
+
+    // ── Просмотр лога из истории (без тумана) ──
+    AnimatedVisibility(
+        visible = logViewerOpen && !flowOpen && !devOpen && !logHistoryOpen,
         enter = slideInVertically(
             animationSpec = tween(350, easing = FastOutSlowInEasing),
             initialOffsetY = { it },
@@ -173,6 +202,7 @@ fun App(vm: MainViewModel, state: UiState) {
             onSoftReboot = {},
             onDismissSoftReboot = {},
             onFullReboot = {},
+            fog = false,
         )
     }
 }
