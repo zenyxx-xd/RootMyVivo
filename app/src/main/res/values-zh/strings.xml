@@ -52,6 +52,9 @@
     <string name="dev_demo_failure">演示：失败</string>
     <string name="dev_demo_broken">演示：系统损坏</string>
     <string name="dev_demo_infinite">演示：无限</string>
+    <string name="dev_restart_exploit">重启漏洞利用</string>
+    <string name="dev_catalog_loading">正在加载目录…</string>
+    <string name="dev_catalog_error">目录不可用</string>
     <string name="dev_payloads">载荷</string>
     <string name="dev_payloads_empty">尚未下载任何文件</string>
     <string name="dev_payload_selected">目录中已选择：%1$s</string>
@@ -165,7 +168,6 @@
     <string name="log_ksu_download_fail">内核模块下载失败</string>
     <string name="log_ksu_vermagic">正在适配当前内核的 vermagic…</string>
     <string name="log_ksu_vermagic_fail">Vermagic 补丁失败</string>
-    <string name="log_ksu_partial_hint">完全重启设备后，模块将通过持久化脚本加载，root 将恢复</string>
     <string name="log_ksu_module_fail">内核模块未加载 — root 目前仅通过漏洞利用守护进程存活</string>
     <string name="log_ksu_load">正在加载内核模块…</string>
     <string name="log_ksu_already_loaded">KernelSU 模块已在内核中——由上次运行加载，跳过 insmod</string>

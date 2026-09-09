@@ -52,6 +52,9 @@
     <string name="dev_demo_failure">Demo: failure</string>
     <string name="dev_demo_broken">Demo: system broken</string>
     <string name="dev_demo_infinite">Demo: infinite</string>
+    <string name="dev_restart_exploit">Restart exploit</string>
+    <string name="dev_catalog_loading">Loading catalog…</string>
+    <string name="dev_catalog_error">Catalog unavailable</string>
     <string name="dev_payloads">Payloads</string>
     <string name="dev_payloads_empty">Nothing downloaded yet</string>
     <string name="dev_payload_selected">Selected in catalog: %1$s</string>
@@ -165,7 +168,6 @@
     <string name="log_ksu_download_fail">Failed to download the kernel module</string>
     <string name="log_ksu_vermagic">Adapting vermagic to the current kernel…</string>
     <string name="log_ksu_vermagic_fail">Vermagic patch failed</string>
-    <string name="log_ksu_partial_hint">After a full device reboot the module will load via the persistence script and root will return</string>
     <string name="log_ksu_module_fail">Kernel module did not load — root currently lives only via the exploit daemon</string>
     <string name="log_ksu_load">Loading the module into the kernel…</string>
     <string name="log_ksu_already_loaded">KernelSU module is already in the kernel — loaded by a previous run, insmod skipped</string>

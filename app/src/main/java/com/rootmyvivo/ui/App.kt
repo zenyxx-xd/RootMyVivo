@@ -135,7 +135,15 @@ fun App(vm: MainViewModel, state: UiState) {
             targetOffsetY = { it },
         ) + fadeOut(),
     ) {
-        DevScreen(state = state, onClose = { devOpen = false })
+        DevScreen(
+            vm = vm,
+            state = state,
+            onClose = { devOpen = false },
+            onRootStarted = {
+                devOpen = false
+                flowOpen = true
+            },
+        )
     }
 
     // ── Просмотр лога последнего запуска ──

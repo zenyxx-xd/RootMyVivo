@@ -1,5 +1,11 @@
 package com.rootmyvivo.ui.dev
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -10,16 +16,22 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
+import androidx.compose.material.icons.rounded.Bolt
 import androidx.compose.material.icons.rounded.BugReport
+import androidx.compose.material.icons.rounded.Cancel
+import androidx.compose.material.icons.rounded.CheckCircle
 import androidx.compose.material.icons.rounded.Description
 import androidx.compose.material.icons.rounded.Folder
+import androidx.compose.material.icons.rounded.Refresh
+import androidx.compose.material.icons.rounded.RestartAlt
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -28,8 +40,10 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -37,41 +51,46 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.rootmyvivo.R
+import com.rootmyvivo.data.Catalog
+import com.rootmyvivo.data.PayloadCatalog
 import com.rootmyvivo.root.LogLevel
 import com.rootmyvivo.root.Phase
 import com.rootmyvivo.ui.flow.FlowScreen
 import com.rootmyvivo.vm.LogEntry
 import com.rootmyvivo.vm.LogKind
+import com.rootmyvivo.vm.MainViewModel
 import com.rootmyvivo.vm.UiState
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import java.io.File
 
 /** Режим демо-флоу: что показывает заглушка вместо эксплойта. */
 enum class DemoVariant { SUCCESS, FAILURE, SYSTEM_BROKEN, INFINITE }
 
 /**
- * Экран разработчика: тест UI процесса рута без устройства —
- * демо-флоу с заглушкой эксплойта, просмотр пейлоадов и лога последнего запуска.
+ * Экран разработчика: демо-флоу с заглушкой эксплойта, перезапуск настоящего
+ * эксплойта, все пейлоады каталога по всем моделям и лог последнего запуска.
+ * Секции появляются каскадом (expand + fade со сдвигом фазы).
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun DevScreen(state: UiState, onClose: () -> Unit) {
-    var mode by remember { mutableStateOf<String?>(null) }
+fun DevScreen(vm: MainViewModel, state: UiState, onClose: () -> Unit, onRootStarted: () -> Unit) {
     var demoState by remember { mutableStateOf<UiState?>(null) }
+    var warnDialog by remember { mutableStateOf(false) }
+    // Чекер «больше не показывать» — локальный, фиксируется только подтверждением
+    var warnDontShow by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
     val ctx = LocalContext.current
     demoContext = ctx.applicationContext
 
     val closeDemo = {
         demoState = null
-        mode = null
     }
 
     // Демо-флоу рендерится тем же экраном процесса — с настоящим туманом,
@@ -87,6 +106,101 @@ fun DevScreen(state: UiState, onClose: () -> Unit) {
             onFullReboot = { closeDemo() },
         )
         return
+    }
+
+    // Перезапуск эксплойта — то же действие, что кнопка на главной:
+    // с предупреждением о паниках и чекером, если не скрыто ранее
+    fun startExploit() {
+        if (state.settings.warnDismissed) {
+            vm.startRoot()
+            onRootStarted()
+        } else {
+            warnDialog = true
+        }
+    }
+
+    if (warnDialog && state.settings.warnDismissed) {
+        warnDialog = false
+    }
+
+    if (warnDialog && !state.settings.warnDismissed) {
+        AlertDialog(
+            onDismissRequest = { warnDialog = false },
+            title = { Text(stringResource(R.string.warn_title), fontWeight = FontWeight.Bold) },
+            confirmButton = {
+                Button(onClick = {
+                    if (warnDontShow) vm.updateSettings { it.copy(warnDismissed = true) }
+                    warnDialog = false
+                    vm.startRoot()
+                    onRootStarted()
+                }) {
+                    Text(stringResource(R.string.warn_go))
+                }
+            },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        Icon(
+                            Icons.Rounded.Bolt, null,
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(20.dp),
+                        )
+                        Text(stringResource(R.string.warn_panics), style = MaterialTheme.typography.bodyMedium)
+                    }
+                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        Icon(
+                            Icons.Rounded.CheckCircle, null,
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(20.dp),
+                        )
+                        Text(stringResource(R.string.warn_stay), style = MaterialTheme.typography.bodyMedium)
+                    }
+                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        Icon(
+                            Icons.Rounded.Refresh, null,
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(20.dp),
+                        )
+                        Text(stringResource(R.string.warn_retry), style = MaterialTheme.typography.bodyMedium)
+                    }
+                    Spacer(Modifier.height(4.dp))
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier
+                            .padding(start = 8.dp)
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(12.dp))
+                            .clickable { warnDontShow = !warnDontShow },
+                    ) {
+                        Checkbox(
+                            checked = warnDontShow,
+                            onCheckedChange = { warnDontShow = it },
+                        )
+                        Text(
+                            stringResource(R.string.warn_dont_show),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { warnDialog = false }) {
+                    Text(stringResource(R.string.warn_cancel))
+                }
+            },
+            shape = MaterialTheme.shapes.extraLarge,
+        )
+    }
+
+    // Каталог пейлоадов: все модели, всё, что есть в репозитории
+    var catalog by remember { mutableStateOf<PayloadCatalog?>(null) }
+    var catalogFailed by remember { mutableStateOf(false) }
+    val catalogClient = remember(state.settings.catalogUrl) { Catalog(state.settings.catalogUrl) }
+    LaunchedEffect(catalogClient) {
+        catalogClient.fetch()
+            .onSuccess { catalog = it }
+            .onFailure { catalogFailed = true }
     }
 
     Scaffold(
@@ -112,139 +226,176 @@ fun DevScreen(state: UiState, onClose: () -> Unit) {
         ) {
             Spacer(Modifier.height(4.dp))
 
-            Text(
-                stringResource(R.string.dev_demo_title),
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold,
-            )
+            // ── Демо-флоу ──
+            AnimatedSection(0) {
+                Text(
+                    stringResource(R.string.dev_demo_title),
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                )
+                Spacer(Modifier.height(10.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Button(
+                        onClick = { runDemo(DemoVariant.SUCCESS, scope) { demoState = it } },
+                        modifier = Modifier.weight(1f),
+                    ) { Text(stringResource(R.string.dev_demo_success)) }
+                    OutlinedButton(
+                        onClick = { runDemo(DemoVariant.FAILURE, scope) { demoState = it } },
+                        modifier = Modifier.weight(1f),
+                    ) { Text(stringResource(R.string.dev_demo_failure)) }
+                }
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedButton(
+                        onClick = { runDemo(DemoVariant.SYSTEM_BROKEN, scope) { demoState = it } },
+                        modifier = Modifier.weight(1f),
+                    ) { Text(stringResource(R.string.dev_demo_broken)) }
+                    OutlinedButton(
+                        onClick = { runDemo(DemoVariant.INFINITE, scope) { demoState = it } },
+                        modifier = Modifier.weight(1f),
+                    ) { Text(stringResource(R.string.dev_demo_infinite)) }
+                }
+            }
 
-            // Варианты демо-флоу
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            // ── Перезапуск настоящего эксплойта ──
+            AnimatedSection(1) {
                 Button(
-                    onClick = {
-                        mode = "success"
-                        runDemo(DemoVariant.SUCCESS, scope) { demoState = it }
-                    },
-                    modifier = Modifier.weight(1f),
-                ) { Text(stringResource(R.string.dev_demo_success)) }
-                OutlinedButton(
-                    onClick = {
-                        mode = "failure"
-                        runDemo(DemoVariant.FAILURE, scope) { demoState = it }
-                    },
-                    modifier = Modifier.weight(1f),
-                ) { Text(stringResource(R.string.dev_demo_failure)) }
-            }
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                OutlinedButton(
-                    onClick = {
-                        mode = "broken"
-                        runDemo(DemoVariant.SYSTEM_BROKEN, scope) { demoState = it }
-                    },
-                    modifier = Modifier.weight(1f),
-                ) { Text(stringResource(R.string.dev_demo_broken)) }
-                OutlinedButton(
-                    onClick = {
-                        mode = "infinite"
-                        runDemo(DemoVariant.INFINITE, scope) { demoState = it }
-                    },
-                    modifier = Modifier.weight(1f),
-                ) { Text(stringResource(R.string.dev_demo_infinite)) }
+                    onClick = { startExploit() },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = MaterialTheme.shapes.large,
+                ) {
+                    Icon(Icons.Rounded.RestartAlt, null, modifier = Modifier.size(16.dp))
+                    Spacer(Modifier.width(6.dp))
+                    Text(stringResource(R.string.dev_restart_exploit))
+                }
             }
 
-            // Пейлоады: скачанные файлы + выбранный в каталоге
-            Surface(
-                modifier = Modifier.fillMaxWidth(),
-                shape = MaterialTheme.shapes.large,
-                color = MaterialTheme.colorScheme.surfaceContainerLow,
-            ) {
-                Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(10.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Icon(
-                            Icons.Rounded.Folder, null,
-                            tint = MaterialTheme.colorScheme.secondary,
-                            modifier = Modifier.size(20.dp),
-                        )
-                        Text(
-                            stringResource(R.string.dev_payloads),
-                            style = MaterialTheme.typography.titleSmall,
-                            fontWeight = FontWeight.SemiBold,
-                        )
-                    }
-                    val dir = File(ctx.filesDir, "payloads")
-                    val files = remember { dir.listFiles()?.sortedBy { it.name } ?: emptyList() }
-                    if (files.isEmpty()) {
-                        Text(
-                            stringResource(R.string.dev_payloads_empty),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    } else {
-                        files.forEach { f ->
-                            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                                Text(f.name, style = MaterialTheme.typography.bodySmall, fontFamily = FontFamily.Monospace)
-                                Text(
-                                    "%.1f КБ".format(f.length() / 1024.0),
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                )
+            // ── Все пейлоады каталога (все модели) ──
+            AnimatedSection(2) {
+                Surface(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = MaterialTheme.shapes.large,
+                    color = MaterialTheme.colorScheme.surfaceContainerLow,
+                ) {
+                    Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(10.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Icon(
+                                Icons.Rounded.Folder, null,
+                                tint = MaterialTheme.colorScheme.secondary,
+                                modifier = Modifier.size(20.dp),
+                            )
+                            Text(
+                                stringResource(R.string.dev_payloads),
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.SemiBold,
+                            )
+                        }
+                        when {
+                            catalogFailed -> Text(
+                                stringResource(R.string.dev_catalog_error),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                            catalog == null -> Text(
+                                stringResource(R.string.dev_catalog_loading),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                            catalog!!.payloads.isEmpty() -> Text(
+                                stringResource(R.string.dev_payloads_empty),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                            else -> catalog!!.payloads.forEach { p ->
+                                val selected = state.payload?.id == p.id
+                                Row(
+                                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                ) {
+                                    Icon(
+                                        if (p.enabled) Icons.Rounded.CheckCircle else Icons.Rounded.Cancel,
+                                        null,
+                                        tint = if (p.enabled) {
+                                            MaterialTheme.colorScheme.primary
+                                        } else {
+                                            MaterialTheme.colorScheme.error
+                                        },
+                                        modifier = Modifier.size(18.dp),
+                                    )
+                                    Column(Modifier.weight(1f)) {
+                                        Text(
+                                            p.displayName,
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
+                                            color = if (selected) {
+                                                MaterialTheme.colorScheme.primary
+                                            } else {
+                                                MaterialTheme.colorScheme.onSurface
+                                            },
+                                        )
+                                        Text(
+                                            p.marketNames.joinToString(" · "),
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        )
+                                        Text(
+                                            p.kernelVersions.joinToString(" · ") + "  ·  " +
+                                                fmtSize(p.files.values.sumOf { it.size }),
+                                            style = MaterialTheme.typography.bodySmall,
+                                            fontFamily = FontFamily.Monospace,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        )
+                                    }
+                                }
                             }
                         }
-                    }
-                    state.payload?.let { p ->
-                        Spacer(Modifier.height(2.dp))
-                        Text(
-                            stringResource(R.string.dev_payload_selected, p.displayName),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
                     }
                 }
             }
 
-            // Лог последнего реального запуска
-            Surface(
-                modifier = Modifier.fillMaxWidth(),
-                shape = MaterialTheme.shapes.large,
-                color = MaterialTheme.colorScheme.surfaceContainerLow,
-            ) {
-                Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(10.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Icon(
-                            Icons.Rounded.Description, null,
-                            tint = MaterialTheme.colorScheme.secondary,
-                            modifier = Modifier.size(20.dp),
-                        )
-                        Text(
-                            stringResource(R.string.dev_lastlog),
-                            style = MaterialTheme.typography.titleSmall,
-                            fontWeight = FontWeight.SemiBold,
-                        )
-                    }
-                    if (state.lastLog.isEmpty()) {
-                        Text(
-                            stringResource(R.string.dev_lastlog_empty),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    } else {
-                        OutlinedButton(
-                            onClick = {
-                                mode = "lastlog"
-                                demoState = UiState(
-                                    log = state.lastLog,
-                                    flowRunning = false,
-                                    flowResult = com.rootmyvivo.vm.FlowResult.Success,
-                                )
-                            },
-                            modifier = Modifier.fillMaxWidth(),
-                        ) { Text(stringResource(R.string.dev_lastlog_open)) }
+            // ── Лог последнего реального запуска ──
+            AnimatedSection(3) {
+                Surface(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = MaterialTheme.shapes.large,
+                    color = MaterialTheme.colorScheme.surfaceContainerLow,
+                ) {
+                    Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(10.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Icon(
+                                Icons.Rounded.Description, null,
+                                tint = MaterialTheme.colorScheme.secondary,
+                                modifier = Modifier.size(20.dp),
+                            )
+                            Text(
+                                stringResource(R.string.dev_lastlog),
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.SemiBold,
+                            )
+                        }
+                        if (state.lastLog.isEmpty()) {
+                            Text(
+                                stringResource(R.string.dev_lastlog_empty),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        } else {
+                            OutlinedButton(
+                                onClick = {
+                                    demoState = UiState(
+                                        log = state.lastLog,
+                                        flowRunning = false,
+                                        flowResult = com.rootmyvivo.vm.FlowResult.Success,
+                                    )
+                                },
+                                modifier = Modifier.fillMaxWidth(),
+                            ) { Text(stringResource(R.string.dev_lastlog_open)) }
+                        }
                     }
                 }
             }
@@ -252,6 +403,30 @@ fun DevScreen(state: UiState, onClose: () -> Unit) {
             Spacer(Modifier.height(28.dp))
         }
     }
+}
+
+/** Секция с каскадным появлением: расширение высоты + растворение. */
+@Composable
+private fun AnimatedSection(index: Int, content: @Composable () -> Unit) {
+    var visible by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) {
+        delay(index * 90L)
+        visible = true
+    }
+    AnimatedVisibility(
+        visible = visible,
+        enter = expandVertically(
+            animationSpec = tween(360, easing = FastOutSlowInEasing),
+        ) + fadeIn(tween(360, easing = FastOutSlowInEasing)),
+    ) {
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) { content() }
+    }
+}
+
+private fun fmtSize(bytes: Long): String = when {
+    bytes >= 1024 * 1024 -> "%.1f МБ".format(bytes / 1048576.0)
+    bytes >= 1024 -> "%.1f КБ".format(bytes / 1024.0)
+    else -> "$bytes Б"
 }
 
 /**
@@ -358,17 +533,14 @@ private fun runDemo(
             update(s)
         }
 
-        fun msg(res: Int, level: LogLevel = LogLevel.INFO, vararg args: Any?) =
-            com.rootmyvivo.root.FlowEvent.Log(appCtx.getString(res, *args), level)
-
         // ═══ Точная последовательность ExploitEngine.run() ═══
-        apply(msg(R.string.log_started))
+        apply(com.rootmyvivo.root.FlowEvent.Log(appCtx.getString(R.string.log_started)))
 
         apply(com.rootmyvivo.root.FlowEvent.Step(Phase.CATALOG, 1, 6))
         delay(600)
 
         apply(com.rootmyvivo.root.FlowEvent.Step(Phase.PAYLOAD, 2, 6))
-        apply(msg(R.string.log_payload, LogLevel.OK, "GhostLock PD2520-A16"))
+        apply(com.rootmyvivo.root.FlowEvent.Log(appCtx.getString(R.string.log_payload, "GhostLock PD2520-A16"), LogLevel.OK))
         delay(400)
 
         apply(com.rootmyvivo.root.FlowEvent.Step(Phase.DOWNLOAD, 3, 6))
@@ -390,7 +562,7 @@ private fun runDemo(
             "[+] rmv preload starting pid=20711",
             "[+] rmv exploit attempt 1/3",
             "[+] startup context pid=20712 uid=2000 euid=2000 gid=2000 attr=u:r:shell:s0 enforce=1",
-            "[+] build config label=pd2520-bp2a.250605.031.A3 slide=pselect main=pselect",
+            "[+] build config label=pd2520-bp2a.250605.031.a3 slide=pselect main=pselect",
             "[+] p0 profile phys_offset=0000000080000000 kernel_phys_load=00000000a8000000 delta=0000000028000000",
             "[*] slide child context route=pselect pid=27467 uid=2000 attr=u:r:shell:s0",
             "[+] slide boot_id_leaked_nfulnl_logger pid=27467 value=ffffffe81c102268",
@@ -435,10 +607,10 @@ private fun runDemo(
 
         apply(com.rootmyvivo.root.FlowEvent.Complete(true))
         delay(300)
-        apply(msg(R.string.log_root_obtained, LogLevel.OK, 42))
+        apply(com.rootmyvivo.root.FlowEvent.Log(appCtx.getString(R.string.log_root_obtained, 42), LogLevel.OK))
 
         // ═══ finishRoot ═══
-        apply(msg(R.string.log_verify, LogLevel.OK, "uid=0(root) gid=0(root) context=u:r:kernel:s0"))
+        apply(com.rootmyvivo.root.FlowEvent.Log(appCtx.getString(R.string.log_verify, "uid=0(root) gid=0(root) context=u:r:kernel:s0"), LogLevel.OK))
         apply(com.rootmyvivo.root.FlowEvent.Step(Phase.KSU, 6, 6))
         apply(com.rootmyvivo.root.FlowEvent.Progress(appCtx.getString(R.string.log_persist_start)))
         delay(700)
@@ -453,12 +625,12 @@ private fun runDemo(
         delay(500)
         apply(com.rootmyvivo.root.FlowEvent.Progress(appCtx.getString(R.string.log_ksu_load)))
         delay(700)
-        apply(msg(R.string.log_ksu_verify))
+        apply(com.rootmyvivo.root.FlowEvent.Log(appCtx.getString(R.string.log_ksu_verify)))
         delay(500)
 
         apply(com.rootmyvivo.root.FlowEvent.Progress(appCtx.getString(R.string.log_manager_download, "ReSukiSU")))
         delay(600)
-        apply(msg(R.string.log_manager_already, LogLevel.OK, "ReSukiSU"))
+        apply(com.rootmyvivo.root.FlowEvent.Log(appCtx.getString(R.string.log_manager_already, "ReSukiSU"), LogLevel.OK))
         delay(400)
         apply(com.rootmyvivo.root.FlowEvent.Complete(true, appCtx.getString(R.string.log_ksu_active, "ReSukiSU")))
 

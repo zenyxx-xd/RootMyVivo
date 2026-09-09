@@ -113,7 +113,6 @@ class KsuInstaller(
                 // закрепление всё равно пишем: на чистом ядре после полной
                 // перезагрузки insmod пройдёт и рут вернётся
                 setupPersistence(koPath)
-                log(R.string.log_ksu_partial_hint, LogLevel.WARN)
                 return@withContext KsuResult.PARTIAL
             }
 

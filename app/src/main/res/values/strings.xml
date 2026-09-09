@@ -57,6 +57,9 @@
     <string name="dev_demo_failure">Демо: провал</string>
     <string name="dev_demo_broken">Демо: система сломана</string>
     <string name="dev_demo_infinite">Демо: бесконечный</string>
+    <string name="dev_restart_exploit">Перезапуск эксплойта</string>
+    <string name="dev_catalog_loading">Загрузка каталога…</string>
+    <string name="dev_catalog_error">Каталог недоступен</string>
     <string name="dev_payloads">Пейлоады</string>
     <string name="dev_payloads_empty">Ничего не скачано</string>
     <string name="dev_payload_selected">Выбран в каталоге: %1$s</string>
@@ -178,7 +181,6 @@
     <string name="log_ksu_download_fail">Не удалось скачать модуль ядра</string>
     <string name="log_ksu_vermagic">Адаптация vermagic под текущее ядро…</string>
     <string name="log_ksu_vermagic_fail">Vermagic-патч не удался</string>
-    <string name="log_ksu_partial_hint">После полной перезагрузки устройства модуль встанет через скрипт закрепления, и рут вернётся</string>
     <string name="log_ksu_module_fail">Модуль ядра не загрузился — рут сейчас жив только через демон эксплойта</string>
     <string name="log_ksu_load">Загрузка модуля в ядро…</string>
     <string name="log_ksu_already_loaded">Модуль KernelSU уже в ядре — загружен прошлым запуском, insmod пропущен</string>
