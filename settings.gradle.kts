@@ -12,5 +12,5 @@ dependencyResolutionManagement {
         mavenCentral()
     }
 }
-rootProject.name = "RootMyVivo"
+rootProject.name = "RootMyVivoNeo"
 include(":app")

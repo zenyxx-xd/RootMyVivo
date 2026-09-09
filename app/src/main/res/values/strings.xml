@@ -1,84 +1,236 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">RootMyVivo</string>
+    <string name="app_name">RootMyVivo Beta</string>
 
-    <!-- Tabs -->
+    <!-- Навигация -->
     <string name="tab_home">Главная</string>
     <string name="tab_settings">Настройки</string>
 
-    <!-- Home -->
-    <string name="root_active">Root активен!</string>
-    <string name="root_active_desc">KernelSU работает.</string>
-    <string name="get_root">ПОЛУЧИТЬ ROOT</string>
-    <string name="running">Выполняется…</string>
-    <string name="rooted">Рут активен ✓</string>
-    <string name="not_supported">Не поддерживается</string>
-    <string name="payload_not_found">Пейлоад для этого устройства не найден в каталоге</string>
-    <string name="verified">verified: %s</string>
+    <!-- Статус -->
+    <string name="status_rooted">Root активен</string>
+    <string name="status_rooted_desc">KernelSU работает. Перезагрузи телефон для закрепления.</string>
+    <string name="status_not_rooted">Устройство не рутовано</string>
+    <string name="status_not_rooted_desc">Получи полный контроль над устройством в пару касаний</string>
+    <string name="status_checking">Проверяем состояние…</string>
+    <string name="status_unsupported">Не поддерживается</string>
 
-    <!-- Device card -->
-    <string name="device">Устройство</string>
-    <string name="model">Модель</string>
-    <string name="rom">ROM</string>
-    <string name="kernel">Ядро</string>
-    <string name="kmi">KMI</string>
-    <string name="patch">Патч</string>
-    <string name="soc">SoC</string>
+    <!-- Кнопка ROOT -->
+    <string name="action_root">ПОЛУЧИТЬ ROOT</string>
+    <string name="catalog_loading">Загрузка каталога…</string>
+    <string name="catalog_retry">Повторить</string>
 
-    <!-- Transport -->
-    <string name="transport_adb_title">Транспорт: adb tcp (5555)</string>
+    <!-- Транспорт -->
+    <string name="transport_adb">Транспорт: adb tcp (5555)</string>
     <string name="transport_adb_desc">Постоянное подключение — Shizuku не нужен</string>
-    <string name="transport_shizuku_title">Транспорт: Shizuku (shell)</string>
+    <string name="transport_shizuku">Транспорт: Shizuku (shell)</string>
     <string name="transport_shizuku_desc">После первого рута переключимся на adb tcp</string>
-    <string name="transport_shizuku_perm_title">Shizuku: нужно разрешение</string>
-    <string name="transport_shizuku_perm_desc">Нажми кнопку — Shizuku покажет диалог разрешения</string>
-    <string name="transport_none_title">Нет транспорта для эксплойта</string>
-    <string name="transport_none_desc">Первый запуск требует Shizuku (shell-домен):\nзапусти Shizuku и дай разрешение приложению</string>
-    <string name="allow_shizuku">Разрешить в Shizuku</string>
+    <string name="transport_shizuku_perm">Shizuku: нужно разрешение</string>
+    <string name="transport_shizuku_perm_desc">Нажми кнопку — Shizuku покажет диалог</string>
+    <string name="transport_none">Нет транспорта</string>
+    <string name="transport_none_desc">Первый запуск требует Shizuku: запусти его и выдай разрешение</string>
+    <string name="action_grant_shizuku">Разрешить в Shizuku</string>
+    <string name="action_open_shizuku">Перейти в Shizuku</string>
 
-    <!-- Jailbreak screen -->
-    <string name="jailbreak">Jailbreak</string>
-    <string name="back">Назад</string>
-    <string name="downloading">Скачивание…</string>
-    <string name="log_label">Лог:</string>
-    <string name="root_obtained">ROOT ПОЛУЧЕН!</string>
-    <string name="root_obtained_desc">KernelSU активен. Перезагрузи телефон для закрепления.</string>
-    <string name="root_failed">Не удалось получить рут.\nПопробуй ещё раз.</string>
+    <!-- Пейлоад -->
+    <string name="payload_searching">Ищем пейлоад для устройства…</string>
+    <string name="payload_verified">проверен: %s</string>
+    <string name="catalog_error">Каталог не загрузился — проверь интернет</string>
 
-    <!-- KSU -->
-    <string name="ksu_select">Выбери KernelSU</string>
+    <!-- Устройство -->
+    <string name="device_title">Устройство</string>
+    <string name="device_model">Модель</string>
+    <string name="device_rom">ROM</string>
+    <string name="device_kernel">Ядро</string>
+    <string name="device_kmi">KMI</string>
+    <string name="device_patch">Патч</string>
+    <string name="device_soc">SoC</string>
+
+    <!-- KernelSU -->
+    <string name="ksu_title">Рут-менеджер</string>
+    <string name="settings_dev">Для разработчика</string>
+    <string name="settings_dev_desc">Демо-процесс, пейлоады, логи</string>
+    <string name="settings_boot_restore">Восстанавливать root после перезагрузки</string>
+    <string name="settings_boot_restore_desc">Автоматически перезапускает эксплойт и загружает модуль KernelSU</string>
+    <string name="dev_title">Разработчику</string>
+    <string name="dev_demo_title">Демо-процесс рута (заглушка вместо эксплойта)</string>
+    <string name="dev_demo_success">Демо: успех</string>
+    <string name="dev_demo_failure">Демо: провал</string>
+    <string name="dev_demo_broken">Демо: система сломана</string>
+    <string name="dev_demo_infinite">Демо: бесконечный</string>
+    <string name="dev_payloads">Пейлоады</string>
+    <string name="dev_payloads_empty">Ничего не скачано</string>
+    <string name="dev_payload_selected">Выбран в каталоге: %1$s</string>
+    <string name="dev_lastlog">Лог последнего запуска</string>
+    <string name="dev_lastlog_empty">Пока нет сохранённых логов</string>
+    <string name="dev_lastlog_open">Открыть</string>
+    <string name="ksu_selected">Выбран: %s</string>
+    <string name="ksu_select">Выбор KernelSU</string>
     <string name="ksu_select_desc">Все варианты работают через late-load на залоченном BL.</string>
-    <string name="ksu_current">KernelSU: %s</string>
     <string name="ksu_desc_kernelsu">Оригинал. Стабильный.</string>
     <string name="ksu_desc_ksunext">Форк с susfs.</string>
     <string name="ksu_desc_sukisu">Активный форк.</string>
     <string name="ksu_desc_resukisu">GhostLock-совместимый.</string>
 
-    <!-- Settings -->
-    <string name="language">Язык</string>
-    <string name="appearance">Внешний вид</string>
-    <string name="theme">Тема</string>
+    <!-- Процесс рута -->
+    <string name="flow_title">Процесс рута</string>
+    <string name="flow_running">Выполняется…</string>
+    <string name="flow_success">ROOT ПОЛУЧЕН!</string>
+    <string name="flow_success_desc">Перезагрузи телефон для закрепления результата</string>
+    <string name="flow_failed">Не удалось получить root</string>
+    <string name="action_back">Назад</string>
+    <string name="downloading">Скачивание…</string>
+    <string name="log_title">rootmyvivo@localhost</string>
+
+    <!-- Фазы -->
+    <string name="phase_catalog">Загрузка каталога</string>
+    <string name="phase_payload">Поиск пейлоада</string>
+    <string name="phase_download">Скачивание файлов</string>
+    <string name="phase_deploy">Деплой эксплойта</string>
+    <string name="phase_exploit">Запуск эксплойта</string>
+    <string name="phase_root_wait">Ожидание root</string>
+    <string name="phase_ksu">Установка KernelSU</string>
+
+    <!-- Настройки -->
+    <string name="settings_title">Настройки</string>
+    <string name="settings_language">Язык</string>
+    <string name="lang_system">Авто</string>
+    <string name="lang_ru">Рус</string>
+    <string name="lang_en">English</string>
+    <string name="lang_zh">中文</string>
+    <string name="settings_appearance">Внешний вид</string>
     <string name="theme_auto">Авто</string>
     <string name="theme_light">Светлая</string>
     <string name="theme_dark">Тёмная</string>
-    <string name="material_you">Material You</string>
-    <string name="material_you_desc">Цвета из системы (Android 12+)</string>
-    <string name="root_manager">Рут-менеджер</string>
-    <string name="root_manager_desc">Какой KSU устанавливать после эксплойта</string>
-    <string name="payload_catalog">Каталог пейлоадов</string>
-    <string name="catalog_url">URL каталога</string>
-    <string name="catalog_hint">JSON с описанием поддерживаемых устройств</string>
-    <string name="save">Сохранить</string>
-    <string name="about">О приложении</string>
-    <string name="version">Версия</string>
-    <string name="author">Автор</string>
-    <string name="source_code">Исходный код</string>
-    <string name="catalog">Каталог</string>
-    <string name="exploit">Эксплойт</string>
-    <string name="disclaimer">Дисклеймер</string>
-    <string name="disclaimer_text">Используй только на устройствах которыми владеешь. Возможны kernel panic — это нормально. Авторы не несут ответственности за последствия.</string>
-    <string name="settings_title">Настройки</string>
-    <string name="russian">Русский</string>
-    <string name="english">English</string>
-    <string name="chinese">中文</string>
+    <string name="dynamic_colors">Material You</string>
+    <string name="dynamic_colors_desc">Динамические цвета системы (Android 12+)</string>
+    <string name="settings_root_manager">Рут-менеджер</string>
+    <string name="settings_root_manager_desc">Какой KernelSU устанавливать после эксплойта</string>
+    <string name="settings_catalog">Каталог пейлоадов</string>
+    <string name="settings_catalog_url">URL каталога</string>
+    <string name="settings_catalog_hint">JSON с описанием поддерживаемых устройств</string>
+    <string name="settings_about">О приложении</string>
+    <string name="about_version">Версия</string>
+    <string name="about_author">Автор</string>
+    <string name="about_source">Исходники</string>
+    <string name="about_exploit">Эксплойт</string>
+    <string name="action_save">Сохранить</string>
+
+    <!-- Дисклеймер -->
+    <string name="disclaimer_title">Внимание</string>
+    <string name="disclaimer_text">Приложение использует уязвимости ядра для получения root на устройствах с залоченным загрузчиком. Возможны kernel panic — это нормально и не брик. Используй только на своём устройстве.</string>
+<string name="settings_theme">Тема</string>
+    <string name="lang_system_full">Системный</string>
+    <string name="lang_ru_full">Русский</string>
+    <string name="lang_en_full">English</string>
+    <string name="lang_zh_full">中文</string>
+    <string name="action_close">Закрыть</string>
+    <string name="action_retry">Повторить</string>
+    <string name="action_full_reboot">Перезагрузить устройство</string>
+    <string name="ksu_selected_desc">Какой KernelSU установить после эксплойта</string>
+    <string name="flow_fail_no_transport">Нет транспорта: запусти Shizuku и выдай разрешение</string>
+    <string name="flow_fail_no_payload">Пейлоад для устройства не найден</string>
+    <string name="flow_fail_download">Ошибка скачивания файлов</string>
+    <string name="flow_fail_deploy">Не удалось передать эксплойт на устройство</string>
+    <string name="flow_fail_exploit">Эксплойт завершился без рута</string>
+    <string name="flow_fail_timeout">Таймаут ожидания root</string>
+    <string name="flow_fail_stopped">Остановлено пользователем</string>
+    <string name="flow_fail_ksu">KernelSU не активировался</string>
+    <string name="flow_fail_system_broken">Система повреждена</string>
+    <string name="hint_system_broken">Эксплойт нарушил работу системы: новые приложения не запускаются. Нужна полная перезагрузка — рут слетит, после загрузки получи его снова.</string>
+    <string name="flow_fail_other">Неизвестная ошибка</string>
+<string name="status_transport">Транспорт</string>
+    <string name="status_payload">Пейлоад</string>
+    <string name="confirm_softreboot_text">Перезагрузка userspace перезапустит системный интерфейс: приложения закроются, данные не потеряются.</string>
+    <string name="confirm_softreboot_title">Перезапустить интерфейс?</string>
+    <string name="home_softreboot">Перезагрузка userspace</string>
+    <string name="home_lastlog">Лог последнего запуска</string>
+    <string name="transport_short_adb">ADB tcp</string>
+    <string name="transport_short_shizuku">Shizuku</string>
+    <string name="transport_short_perm">Нужно разрешение</string>
+    <string name="transport_short_none">Нет</string>
+    <string name="payload_short_searching">Поиск…</string>
+    <string name="payload_short_error">Ошибка</string>
+<string name="transport_via_adb">через ADB tcp</string>
+    <string name="transport_via_shizuku">через Shizuku</string>
+    <!-- Лог -->
+    <string name="log_started">Запуск процесса получения root</string>
+    <string name="log_catalog_count">Каталог загружен: %1$d устройств</string>
+    <string name="log_payload">Используется пейлоад: %1$s</string>
+    <string name="log_download_start">Скачивание %1$s (%2$d КБ)…</string>
+    <string name="log_download_ok">%1$s — готово</string>
+    <string name="log_transport_adb">Транспорт: ADB tcp (5555)</string>
+    <string name="log_transport_shizuku">Транспорт: Shizuku (shell)</string>
+    <string name="log_deploy_ok">Эксплойт развёрнут в /data/local/tmp/rmv</string>
+    <string name="log_exploit_start">Запуск эксплойта…</string>
+    <string name="log_root_already">Root уже активен</string>
+    <string name="log_exploit_progress">Запуск эксплойта (%1$d/%2$d)</string>
+    <string name="log_exploit_resumed">Обнаружен работающий эксплойт — продолжаю наблюдение вместо нового запуска</string>
+    <string name="log_exploit_counter">Запуск эксплойта · %1$d/%2$d</string>
+    <string name="log_download_progress">%1$s: %2$d%%</string>
+    <string name="log_root_obtained">Root получен за %1$d с</string>
+    <string name="log_verify">Проверка: %1$s</string>
+    <string name="log_persist_start">Закрепление: постоянный ADB и ключ авторизации…</string>
+    <string name="log_persist_ok">ADB закреплён — после перезагрузок Shizuku не нужен</string>
+    <string name="log_persist_fail">Не удалось закрепить ADB (не критично)</string>
+    <string name="log_ksu_skip">KernelSU пропущен: ksud недоступен в каталоге</string>
+    <string name="log_ksu_skip2">Root-демон активен; KernelSU можно установить позже</string>
+    <string name="log_ksu_download">Скачивание модуля ядра (%1$s)…</string>
+    <string name="log_ksu_download_fail">Не удалось скачать модуль ядра</string>
+    <string name="log_ksu_vermagic">Адаптация vermagic под текущее ядро…</string>
+    <string name="log_ksu_vermagic_fail">Vermagic-патч не удался</string>
+    <string name="log_ksu_partial_hint">После полной перезагрузки устройства модуль встанет через скрипт закрепления, и рут вернётся</string>
+    <string name="log_ksu_module_fail">Модуль ядра не загрузился — рут сейчас жив только через демон эксплойта</string>
+    <string name="log_ksu_load">Загрузка модуля в ядро…</string>
+    <string name="log_ksu_already_loaded">Модуль KernelSU уже в ядре — загружен прошлым запуском, insmod пропущен</string>
+    <string name="log_ksu_other_variant">В ядре, похоже, модуль другого варианта — для %1$s нужен полный ребут</string>
+    <string name="log_ksu_verify">Проверка su…</string>
+    <string name="log_ksu_active">%1$s активен</string>
+    <string name="log_ksu_soft_reboot">Модуль загружен, su недоступен — потребуется перезагрузка userspace</string>
+    <string name="log_manager_download">Скачивание менеджера %1$s…</string>
+    <string name="log_manager_download_fail">Не удалось скачать менеджер</string>
+    <string name="log_manager_already">Менеджер %1$s уже установлен</string>
+    <string name="log_manager_install">Установка менеджера…</string>
+    <string name="log_manager_install_ok">Менеджер установлен</string>
+    <string name="log_manager_install_fail">Установка менеджера не удалась</string>
+    <string name="log_adb_test">Диагностика ADB: подключение…</string>
+    <!-- Подсказки при провале -->
+    <string name="hint_no_transport">Запусти Shizuku и выдай разрешение, затем попробуй снова</string>
+    <string name="hint_no_payload">Проверь интернет-соединение</string>
+    <string name="hint_download">Проверь интернет-соединение и попробуй снова</string>
+    <string name="hint_deploy">Попробуй ещё раз</string>
+    <string name="hint_exploit">Это лотерея таймингов — перезагрузи телефон и попробуй снова</string>
+    <string name="hint_timeout">Перезагрузи телефон и попробуй ещё раз</string>
+    <string name="hint_ksu">Перезагрузка userspace может активировать модуль</string>
+    <!-- Предупреждение -->
+    <string name="warning_soft_reboot">Сейчас потребуется перезагрузка userspace для активации KernelSU</string>
+    <!-- Уведомления -->
+    <string name="notif_channel">Root-статус</string>
+    <string name="notif_root_active_title">Root получен</string>
+    <string name="notif_root_active_text">KernelSU активен после перезагрузки</string>
+    <string name="notif_root_lost_title">Root сброшен перезагрузкой</string>
+    <string name="notif_root_lost_text">Открой приложение — root вернётся за пару касаний</string>
+
+    <string name="settings_dev_unlocked">Меню разработчика разблокировано</string>
+    <string name="log_softreboot_perform">Выполняю перезагрузку userspace…</string>
+    <string name="notif_root_running">Получение root-доступа…</string>
+    <string name="notif_boot_restore_running">Восстановление root после перезагрузки…</string>
+    <string name="notif_boot_restore_ok_title">Root восстановлен</string>
+    <string name="notif_boot_restore_ok_text">KernelSU снова активен</string>
+    <string name="notif_boot_restore_fail_title">Root не восстановился</string>
+    <string name="notif_boot_restore_fail_text">Открой приложение и запусти процесс вручную</string>
+    <string name="log_full_reboot">Перезагружаю устройство…</string>
+    <string name="log_softreboot_broken">Система повреждена — перезагрузка userspace зависнет. Выполняю полную перезагрузку…</string>
+    <string name="log_softreboot_fail">Перезагрузка userspace не удалась — перезапусти интерфейс вручную и рут активируется</string>
+<string name="log_ksud_download">Скачивание ksud…</string>
+    <string name="log_ksud_fail">Не удалось скачать ksud — KernelSU пропущен, root-демон активен</string>
+<string name="warn_title">Перед началом</string>
+    <string name="warn_panics">Возможны kernel panic — телефон перезагрузится сам. Это не брик, просто перезагрузка.</string>
+    <string name="warn_stay">Не выходите из приложения, пока идёт процесс.</string>
+    <string name="warn_retry">Если не получилось — перезагрузите телефон и попробуйте снова: это лотерея таймингов.</string>
+    <string name="warn_go">Поехали</string>
+    <string name="warn_cancel">Отмена</string>
+<string name="warn_dont_show">Больше не показывать</string>
+    <string name="view_last_log">Последний лог запуска</string>
+    <string name="copy_log">Копировать лог</string>
+    <string name="log_copied">Лог скопирован в буфер</string>
 </resources>

@@ -1,16 +1,14 @@
 package com.rootmyvivo
 
 import android.app.Application
-import com.rootmyvivo.core.ShellBridge
-import com.rootmyvivo.core.native.NativeLibs
+import com.rootmyvivo.shell.Transport
 
 class RmvApp : Application() {
     override fun onCreate() {
         super.onCreate()
         instance = this
-        NativeLibs.init()
-        // Shizuku binder-листенеры (sticky — сразу получим состояние)
-        ShellBridge.initShizukuListeners(this)
+        // Shizuku binder-листенеры (sticky — состояние придёт сразу)
+        Transport.initShizuku(this)
     }
 
     companion object {
