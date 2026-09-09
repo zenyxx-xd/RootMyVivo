@@ -88,14 +88,11 @@ class KsuInstaller(
                     "$REMOTE_KSUD late-load --allow-shell --package-name $restartPkg",
                 ).second
             } else {
-                // Модуль деплоим в /data/local/tmp: insmod из root-домена не
-                // должен зависеть от чтения приватных файлов приложения
-                val remoteKo = "/data/local/tmp/rmv/kernelsu.ko"
-                val (ok, o) = if (Transport.deploy(ctx, koPath, remoteKo)) {
-                    loadModule(ctx, remoteKo, restartPkg, REMOTE_KSUD)
-                } else {
-                    loadModule(ctx, koPath, restartPkg, REMOTE_KSUD)
-                }
+                // Модуль грузим прямо из приватного каталога приложения:
+                // root-домен читает его (проверено KernelSU Next), а файловый
+                // сканер vivo /data/local/tmp прочёсывает — там .ko успевал
+                // схватить write-дескриптором (ETXTBSY) или вовсе удалить
+                val (ok, o) = loadModule(ctx, koPath, restartPkg, REMOTE_KSUD)
                 loadedNow = ok
                 out = o
             }
