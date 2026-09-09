@@ -74,8 +74,8 @@ class KsuInstaller(
             // уже в ядре (прошлый запуск без перезагрузки) — не пытаемся,
             // но userspace-настройку late-load проводим
             val (_, preMods) = Transport.exec(ctx, "grep -i kernelsu /proc/modules 2>/dev/null")
-            var code: Int
             var out: String
+            var loadedNow = false
             if (preMods.isNotBlank()) {
                 val loadedOf = prefs.loadedModuleVariant
                 if (loadedOf.isNotEmpty() && loadedOf != variant.id) {
@@ -83,43 +83,30 @@ class KsuInstaller(
                 } else {
                     log(R.string.log_ksu_already_loaded, LogLevel.WARN)
                 }
-                val (c, o) = Transport.su(
+                out = Transport.su(
                     ctx,
                     "$REMOTE_KSUD late-load --allow-shell --package-name $restartPkg",
-                )
-                code = c
-                out = o
+                ).second
             } else {
                 // Модуль деплоим в /data/local/tmp: insmod из root-домена не
                 // должен зависеть от чтения приватных файлов приложения
                 val remoteKo = "/data/local/tmp/rmv/kernelsu.ko"
-                val deployed = Transport.deploy(ctx, koPath, remoteKo)
-                val (c, o) = if (deployed) {
+                val (ok, o) = if (Transport.deploy(ctx, koPath, remoteKo)) {
                     loadModule(ctx, remoteKo, restartPkg, REMOTE_KSUD)
                 } else {
                     loadModule(ctx, koPath, restartPkg, REMOTE_KSUD)
                 }
-                code = c
+                loadedNow = ok
                 out = o
             }
-            Log.i(TAG, "module load: code=$code ${out.take(120)}")
-
-            // Модуль реально в ядре? Без этой проверки su может работать через
-            // демон эксплойта — и рут умрёт вместе с ним при перезагрузке,
-            // хотя лог говорит «активен». Проверяем обоими путями: adb-канал
-            // мог мигнуть — тогда su-путь спасёт от ложного провала
-            var (_, modsOut) = Transport.exec(ctx, "grep -i kernelsu /proc/modules 2>/dev/null")
-            if (modsOut.isBlank()) {
-                modsOut = Transport.su(ctx, "grep -i kernelsu /proc/modules 2>/dev/null").second
-            }
-            if (preMods.isBlank() && modsOut.isNotBlank()) {
+            Log.i(TAG, "module load: loaded=$loadedNow ${out.take(160)}")
+            if (loadedNow) {
                 prefs.loadedModuleVariant = variant.id
-            }
-            if (modsOut.isBlank()) {
+            } else if (preMods.isBlank()) {
                 complete(false, R.string.log_ksu_module_fail)
-                // диагностика ksud — почему модуль не встал
+                // диагностика: что ответила каждая попытка загрузки
                 if (out.isNotBlank()) {
-                    onEvent(FlowEvent.Log(out.trim().takeLast(300), LogLevel.PLAIN))
+                    onEvent(FlowEvent.Log(out.trim().takeLast(400), LogLevel.PLAIN))
                 }
                 installManager(variant)
                 // закрепление всё равно пишем: на чистом ядре после полной
@@ -556,41 +543,48 @@ class KsuInstaller(
 
         /**
          * Загрузить модуль в ядро с фолбэками под разные CLI ksud:
-         *  1. `ksud insmod <ko> allow_shell=1` + `late-load` без пути —
-         *     новый CLI (KernelSU-Next / ReSukiSU 3.x): late-load грузит
-         *     встроенный CI-модуль с чужим vermagic, поэтому наш грузим insmod'ом,
-         *     а late-load выполняет userspace-настройку (sepolicy, менеджер)
+         *  1. `ksud insmod <ko> allow_shell=1` — новый CLI (KernelSU-Next /
+         *     ReSukiSU 3.x); затем late-load без пути для userspace-настройки
          *  2. `late-load ... <путь>` — старый CLI с позиционным аргументом
          *  3. Системный `/system/bin/insmod` — ksud вообще без подкоманд
-         *     загрузки (SukiSU v4.1): late-load путь модуль выполняет сам
-         *     в init — хуки, sepolicy-правила, коронация менеджера
+         *     загрузки (SukiSU v4.1)
+         *
+         * Коды возврата su НЕИСПЬЗУЕМ: su-клиент эксплойта в -c-режиме
+         * всегда возвращает 0 (client_main завершается return 0), успех
+         * каждой попытки проверяем по /proc/modules.
          */
         suspend fun loadModule(
             ctx: android.content.Context,
             koPath: String,
             managerPkg: String,
             ksudPath: String,
-        ): Pair<Int, String> {
-            // Вывод каждой попытки помечаем: в логе видно, что именно ответило
-            val (c1, o1) = Transport.su(ctx, "$ksudPath insmod $koPath allow_shell=1")
-            if (c1 == 0) {
-                val (c2, o2) = Transport.su(
-                    ctx,
-                    "$ksudPath late-load --allow-shell --package-name $managerPkg",
-                )
-                return c2 to "ksud insmod (rc=0): ok\nlate-load (rc=$c2): ${o2.trim()}"
+        ): Pair<Boolean, String> {
+            suspend fun loaded(): Boolean {
+                val viaExec = Transport.exec(ctx, "grep -i kernelsu /proc/modules 2>/dev/null").second
+                return viaExec.isNotBlank() ||
+                    Transport.su(ctx, "grep -i kernelsu /proc/modules 2>/dev/null").second.isNotBlank()
             }
-            val (c3, o3) = Transport.su(
+
+            val sb = StringBuilder()
+            val (_, o1) = Transport.su(ctx, "$ksudPath insmod $koPath allow_shell=1")
+            sb.append("ksud insmod: ").append(o1.trim().ifEmpty { "(нет вывода)" }).append('\n')
+            if (loaded()) {
+                // userspace-настройка (sepolicy, менеджер); провал не критичен —
+                // модуль уже в ядре
+                val (_, o2) = Transport.su(ctx, "$ksudPath late-load --allow-shell --package-name $managerPkg")
+                if (o2.isNotBlank()) sb.append("late-load: ").append(o2.trim())
+                return true to sb.toString()
+            }
+            val (_, o3) = Transport.su(
                 ctx,
                 "$ksudPath late-load --allow-shell --package-name $managerPkg $koPath",
             )
-            if (c3 == 0) return c3 to "ksud insmod (rc=$c1): ${o1.trim()}\nlate-load (rc=0): ok"
-            val (c4, o4) = Transport.su(ctx, "/system/bin/insmod $koPath allow_shell=1")
-            return c4 to listOf(
-                "ksud insmod (rc=$c1): ${o1.trim()}",
-                "ksud late-load (rc=$c3): ${o3.trim()}",
-                "insmod (rc=$c4): ${o4.trim().ifEmpty { if (c4 == 0) "ok" else "нет вывода" }}",
-            ).joinToString("\n")
+            sb.append("ksud late-load: ").append(o3.trim().ifEmpty { "(нет вывода)" }).append('\n')
+            if (loaded()) return true to sb.toString()
+            val (_, o4) = Transport.su(ctx, "/system/bin/insmod $koPath allow_shell=1")
+            sb.append("insmod: ").append(o4.trim().ifEmpty { "(нет вывода)" }).append('\n')
+            val ok = loaded()
+            return ok to sb.toString()
         }
     }
 }
