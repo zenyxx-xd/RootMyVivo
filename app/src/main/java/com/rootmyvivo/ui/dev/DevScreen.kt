@@ -226,8 +226,21 @@ fun DevScreen(vm: MainViewModel, state: UiState, onClose: () -> Unit, onRootStar
         ) {
             Spacer(Modifier.height(4.dp))
 
-            // ── Демо-флоу ──
+            // ── Перезапуск настоящего эксплойта ──
             AnimatedSection(0) {
+                Button(
+                    onClick = { startExploit() },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = MaterialTheme.shapes.large,
+                ) {
+                    Icon(Icons.Rounded.RestartAlt, null, modifier = Modifier.size(16.dp))
+                    Spacer(Modifier.width(6.dp))
+                    Text(stringResource(R.string.dev_restart_exploit))
+                }
+            }
+
+            // ── Демо-флоу ──
+            AnimatedSection(1) {
                 Text(
                     stringResource(R.string.dev_demo_title),
                     style = MaterialTheme.typography.titleMedium,
@@ -235,7 +248,7 @@ fun DevScreen(vm: MainViewModel, state: UiState, onClose: () -> Unit, onRootStar
                 )
                 Spacer(Modifier.height(10.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Button(
+                    OutlinedButton(
                         onClick = { runDemo(DemoVariant.SUCCESS, scope) { demoState = it } },
                         modifier = Modifier.weight(1f),
                     ) { Text(stringResource(R.string.dev_demo_success)) }
@@ -253,19 +266,6 @@ fun DevScreen(vm: MainViewModel, state: UiState, onClose: () -> Unit, onRootStar
                         onClick = { runDemo(DemoVariant.INFINITE, scope) { demoState = it } },
                         modifier = Modifier.weight(1f),
                     ) { Text(stringResource(R.string.dev_demo_infinite)) }
-                }
-            }
-
-            // ── Перезапуск настоящего эксплойта ──
-            AnimatedSection(1) {
-                Button(
-                    onClick = { startExploit() },
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = MaterialTheme.shapes.large,
-                ) {
-                    Icon(Icons.Rounded.RestartAlt, null, modifier = Modifier.size(16.dp))
-                    Spacer(Modifier.width(6.dp))
-                    Text(stringResource(R.string.dev_restart_exploit))
                 }
             }
 

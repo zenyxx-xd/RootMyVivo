@@ -136,6 +136,7 @@
     <string name="logs_success">Root obtained</string>
     <string name="logs_failed">Failed</string>
     <string name="logs_duration">%1$d s</string>
+    <string name="logs_lines">%1$d lines</string>
     <string name="transport_short_adb">ADB tcp</string>
     <string name="transport_short_shizuku">Shizuku</string>
     <string name="transport_short_perm">Permission needed</string>
@@ -149,7 +150,7 @@
     <string name="log_catalog_count">Catalog loaded: %1$d devices</string>
     <string name="log_payload">Using payload: %1$s</string>
     <string name="log_download_start">Downloading %1$s (%2$d KB)…</string>
-    <string name="log_download_ok">%1$s — done</string>
+    <string name="log_download_ok">%1$s downloaded</string>
     <string name="log_transport_adb">Transport: ADB tcp (5555)</string>
     <string name="log_transport_shizuku">Transport: Shizuku (shell)</string>
     <string name="log_deploy_ok">Exploit deployed to /data/local/tmp/rmv</string>
@@ -175,6 +176,7 @@
     <string name="log_ksu_already_loaded">KernelSU module is already in the kernel — loaded by a previous run, insmod skipped</string>
     <string name="log_ksu_other_variant">A different variant’s module seems to be loaded — a full reboot is required for %1$s</string>
     <string name="log_ksu_verify">Verifying su…</string>
+    <string name="log_done">Done</string>
     <string name="log_ksu_active">%1$s is active</string>
     <string name="log_ksu_soft_reboot">Module loaded, su not ready — a userspace reboot is required</string>
     <string name="log_manager_download">Downloading %1$s manager…</string>

@@ -36,93 +36,110 @@ class KsuInstaller(
 
     suspend fun install(variant: KsuVariant): KsuResult =
         withContext(Dispatchers.IO) {
-            // ksud из релиза GitHub — каталог может его не содержать
-            progress(R.string.log_ksud_download)
-            val ksudOk = downloadKsud(variant)
-            if (ksudOk) {
-                onEvent(FlowEvent.Complete(true))
-            } else {
-                complete(false, R.string.log_ksud_fail)
-                // Менеджер всё равно ставим; root-демон уже активен
-                installManager(variant)
-                return@withContext KsuResult.PARTIAL
-            }
-
-            val koPath = File(workDir, "kernelsu_${variant.id}.ko").absolutePath
-            File(koPath).delete()
-
-            progress(R.string.log_ksu_download, device.kmi)
-            if (!downloadKo(variant, koPath)) {                complete(false, R.string.log_ksu_download_fail)
-                installManager(variant)
-                return@withContext KsuResult.PARTIAL
-            }
-
-            progress(R.string.log_ksu_vermagic)
-            if (!patchVermagic(koPath, device.kernel)) {
-                complete(false, R.string.log_ksu_vermagic_fail)
-                installManager(variant)
-                return@withContext KsuResult.PARTIAL
-            }
-
-            progress(R.string.log_ksu_load)
             val prefs = com.rootmyvivo.data.Prefs(ctx)
             // Пакет для перезапуска менеджера из late-load: у spoofed-сборок
             // он рандомный — берём фактический из прошлой установки
             val restartPkg = prefs.managerPackage.ifEmpty { variant.packageName }
-            // Все форки называют модуль одинаково — kernelsu: второй insmod
-            // в рамках одного запуска ядра падает с «File exists». Если модуль
-            // уже в ядре (прошлый запуск без перезагрузки) — не пытаемся,
-            // но userspace-настройку late-load проводим
+
+            // ── 1. Аудит: что уже есть на устройстве, до любых скачиваний ──
             val (_, preMods) = Transport.exec(ctx, "grep -i kernelsu /proc/modules 2>/dev/null")
-            var out: String
-            var loadedNow = false
-            if (preMods.isNotBlank()) {
-                val loadedOf = prefs.loadedModuleVariant
-                if (loadedOf.isNotEmpty() && loadedOf != variant.id) {
-                    log(R.string.log_ksu_other_variant, LogLevel.WARN, variant.displayName)
-                } else {
-                    log(R.string.log_ksu_already_loaded, LogLevel.WARN)
-                }
-                out = Transport.su(
-                    ctx,
-                    "$REMOTE_KSUD late-load --allow-shell --package-name $restartPkg",
-                ).second
-            } else {
-                // Модуль грузим прямо из приватного каталога приложения:
-                // root-домен читает его (проверено KernelSU Next), а файловый
-                // сканер vivo /data/local/tmp прочёсывает — там .ko успевал
-                // схватить write-дескриптором (ETXTBSY) или вовсе удалить.
-                //
-                // ksud'ы пробуем по списку: первым — из установленного менеджера
-                // (lib/arm64/libksud.so, свежая версия с kallsyms-insmod:
-                // модулям SukiSU нужны неэкспортируемые символы SELinux,
-                // которые резолвит только их загрузчик), затем скачанный с GitHub
-                val managerKsud = findManagerKsud(ctx, listOf(variant.packageName, prefs.managerPackage))
-                val ksudPaths = buildList {
-                    managerKsud?.let { add(it) }
-                    add(REMOTE_KSUD)
-                }
-                val (ok, o) = loadModule(ctx, koPath, restartPkg, ksudPaths)
-                loadedNow = ok
-                out = o
+            val moduleLoaded = preMods.isNotBlank()
+            val loadedOf = prefs.loadedModuleVariant
+            if (moduleLoaded && loadedOf.isNotEmpty() && loadedOf != variant.id) {
+                log(R.string.log_ksu_other_variant, LogLevel.WARN, variant.displayName)
+            } else if (moduleLoaded) {
+                log(R.string.log_ksu_already_loaded, LogLevel.WARN)
             }
-            Log.i(TAG, "module load: loaded=$loadedNow ${out.take(160)}")
-            if (loadedNow) {
-                prefs.loadedModuleVariant = variant.id
-            } else if (preMods.isBlank()) {
-                complete(false, R.string.log_ksu_module_fail)
-                // диагностика: что ответила каждая попытка загрузки
-                if (out.isNotBlank()) {
-                    onEvent(FlowEvent.Log(out.trim().takeLast(400), LogLevel.PLAIN))
+            val managerKsud = findManagerKsud(ctx, listOf(variant.packageName, prefs.managerPackage))
+            val (_, probe) = Transport.exec(
+                ctx,
+                "[ -f /data/adb/rmv/kernelsu.ko ] && echo RMV_CACHE; [ -f $REMOTE_KSUD ] && echo RMV_KSUD",
+            )
+            val koCached = probe.contains("RMV_CACHE")
+            val remoteKsud = probe.contains("RMV_KSUD")
+
+            // ── 2. ksud: скачиваем только если нет ни менеджерного, ни remote ──
+            if (managerKsud == null && !remoteKsud) {
+                progress(R.string.log_ksud_download)
+                if (downloadKsud(variant)) {
+                    onEvent(FlowEvent.Complete(true))
+                } else {
+                    complete(false, R.string.log_ksud_fail)
+                    // Менеджер всё равно ставим; root-демон уже активен
+                    installManager(variant)
+                    return@withContext KsuResult.PARTIAL
                 }
-                installManager(variant)
-                // закрепление всё равно пишем: на чистом ядре после полной
-                // перезагрузки insmod пройдёт и рут вернётся
-                setupPersistence(koPath)
-                return@withContext KsuResult.PARTIAL
             }
 
-            log(R.string.log_ksu_verify, LogLevel.INFO)
+            // ── 3. Модуль: без скачивания, если он уже в ядре и кэш на месте ──
+            val koPath = File(workDir, "kernelsu_${variant.id}.ko").absolutePath
+            var out = ""
+            if (moduleLoaded && koCached && (loadedOf.isEmpty() || loadedOf == variant.id)) {
+                // Модуль уже работает, закрепление записано — только userspace-
+                // настройка при наличии ksud
+                if (managerKsud != null || remoteKsud) {
+                    out = Transport.su(
+                        ctx,
+                        "${managerKsud ?: REMOTE_KSUD} late-load --allow-shell --package-name $restartPkg",
+                    ).second
+                }
+            } else {
+                File(koPath).delete()
+                progress(R.string.log_ksu_download, device.kmi)
+                if (!downloadKo(variant, koPath)) {
+                    complete(false, R.string.log_ksu_download_fail)
+                    installManager(variant)
+                    return@withContext KsuResult.PARTIAL
+                }
+
+                progress(R.string.log_ksu_vermagic)
+                if (!patchVermagic(koPath, device.kernel)) {
+                    complete(false, R.string.log_ksu_vermagic_fail)
+                    installManager(variant)
+                    return@withContext KsuResult.PARTIAL
+                }
+
+                if (!moduleLoaded) {
+                    progress(R.string.log_ksu_load)
+                    // Модуль грузим прямо из приватного каталога приложения:
+                    // root-домен читает его (проверено KernelSU Next), а файловый
+                    // сканер vivo /data/local/tmp прочёсывает — там .ko успевал
+                    // схватить write-дескриптором (ETXTBSY) или вовсе удалить.
+                    //
+                    // ksud'ы пробуем по списку: первым — из установленного менеджера
+                    // (lib/arm64/libksud.so, свежая версия с kallsyms-insmod:
+                    // модулям SukiSU нужны неэкспортируемые символы SELinux,
+                    // которые резолвит только их загрузчик), затем скачанный с GitHub
+                    val ksudPaths = buildList {
+                        managerKsud?.let { add(it) }
+                        add(REMOTE_KSUD)
+                    }
+                    val (ok, o) = loadModule(ctx, koPath, restartPkg, ksudPaths)
+                    out = o
+                    Log.i(TAG, "module load: loaded=$ok ${out.take(160)}")
+                    if (ok) {
+                        prefs.loadedModuleVariant = variant.id
+                    } else {
+                        complete(false, R.string.log_ksu_module_fail)
+                        // диагностика: что ответила каждая попытка загрузки
+                        if (out.isNotBlank()) {
+                            onEvent(FlowEvent.Log(out.trim().takeLast(400), LogLevel.PLAIN))
+                        }
+                        installManager(variant)
+                        // закрепление всё равно пишем: на чистом ядре после полной
+                        // перезагрузки insmod пройдёт и рут вернётся
+                        setupPersistence(koPath)
+                        return@withContext KsuResult.PARTIAL
+                    }
+                } else {
+                    // Другой вариант в ядре: скачанный модуль уйдёт в кэш
+                    // закрепления и поднимется после следующей перезагрузки
+                    progress(R.string.log_ksu_load)
+                }
+            }
+
+            // ── 4. Проверка su, менеджер, закрепление ──
+            progress(R.string.log_ksu_verify)
             val (vCode, vOut) = Transport.su(ctx, "id")
             val rooted = vCode == 0 && vOut.contains("uid=0")
             // Менеджер ставится скриптом через su (без проверок vivo) в обоих случаях

@@ -136,6 +136,7 @@
     <string name="logs_success">Root 已获取</string>
     <string name="logs_failed">失败</string>
     <string name="logs_duration">%1$d 秒</string>
+    <string name="logs_lines">%1$d 行</string>
     <string name="transport_short_adb">ADB tcp</string>
     <string name="transport_short_shizuku">Shizuku</string>
     <string name="transport_short_perm">需要授权</string>
@@ -149,7 +150,7 @@
     <string name="log_catalog_count">目录已加载：%1$d 台设备</string>
     <string name="log_payload">使用载荷：%1$s</string>
     <string name="log_download_start">正在下载 %1$s（%2$d KB）…</string>
-    <string name="log_download_ok">%1$s — 完成</string>
+    <string name="log_download_ok">%1$s 已下载</string>
     <string name="log_transport_adb">传输：ADB tcp (5555)</string>
     <string name="log_transport_shizuku">传输：Shizuku (shell)</string>
     <string name="log_deploy_ok">漏洞利用已部署到 /data/local/tmp/rmv</string>
@@ -175,6 +176,7 @@
     <string name="log_ksu_already_loaded">KernelSU 模块已在内核中——由上次运行加载，跳过 insmod</string>
     <string name="log_ksu_other_variant">内核中似乎是其他变体的模块——切换到 %1$s 需要完全重启</string>
     <string name="log_ksu_verify">正在验证 su…</string>
+    <string name="log_done">完成</string>
     <string name="log_ksu_active">%1$s 已激活</string>
     <string name="log_ksu_soft_reboot">模块已加载，su 尚未就绪 — 需要用户空间重启</string>
     <string name="log_manager_download">正在下载 %1$s 管理器…</string>

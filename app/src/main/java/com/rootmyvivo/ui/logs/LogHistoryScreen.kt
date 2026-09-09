@@ -146,7 +146,7 @@ private fun RunCard(run: LogRunInfo, dateFmt: SimpleDateFormat, onClick: () -> U
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
                 Text(
-                    run.variant + "  ·  " + run.lines,
+                    run.variant + "  ·  " + stringResource(R.string.logs_lines, run.lines),
                     style = MaterialTheme.typography.bodySmall,
                     fontFamily = FontFamily.Monospace,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,

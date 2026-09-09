@@ -307,6 +307,17 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     private var logId = 0L
     private var liveId = 0L
 
+    /** Финальная строка успешного процесса — «Готово». */
+    private fun appendDoneLine() {
+        _state.value = _state.value.copy(
+            log = _state.value.log + LogEntry(
+                ++logId,
+                getApplication<Application>().getString(R.string.log_done),
+                LogLevel.OK,
+            ),
+        )
+    }
+
     /** Root получен: запоминаем, что soft reboot ещё не выполнялся (до перезагрузки устройства). */
     private fun markSoftRebootPending() {
         prefs.softRebootPending = true
@@ -415,6 +426,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                 downloadProgress = if (event.total > 0) event.read.toFloat() / event.total else null,
             )
             is FlowEvent.Success -> {
+                appendDoneLine()
                 saveLogHistory(success = true, failReason = null)
                 // Софт-ребут рекомендуем только когда KSU реально загрузился
                 if (event.softRebootRecommended) markSoftRebootPending()
@@ -427,6 +439,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                 )
             }
             FlowEvent.NeedsSoftReboot -> {
+                appendDoneLine()
                 saveLogHistory(success = true, failReason = null)
                 markSoftRebootPending()
                 _state.value = _state.value.copy(

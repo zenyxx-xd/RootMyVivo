@@ -169,6 +169,9 @@ fun App(vm: MainViewModel, state: UiState) {
             runs = state.logHistory,
             onOpen = { run ->
                 vm.openLogRun(run)
+                // экран истории закрываем сразу — иначе просмотрщик
+                // показывается только после выхода из истории
+                logHistoryOpen = false
                 logViewerOpen = true
             },
             onClose = { logHistoryOpen = false },

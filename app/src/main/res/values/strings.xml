@@ -149,6 +149,7 @@
     <string name="logs_success">Root получен</string>
     <string name="logs_failed">Не удалось</string>
     <string name="logs_duration">%1$d с</string>
+    <string name="logs_lines">%1$d строк</string>
     <string name="transport_short_adb">ADB tcp</string>
     <string name="transport_short_shizuku">Shizuku</string>
     <string name="transport_short_perm">Нужно разрешение</string>
@@ -162,7 +163,7 @@
     <string name="log_catalog_count">Каталог загружен: %1$d устройств</string>
     <string name="log_payload">Используется пейлоад: %1$s</string>
     <string name="log_download_start">Скачивание %1$s (%2$d КБ)…</string>
-    <string name="log_download_ok">%1$s — готово</string>
+    <string name="log_download_ok">%1$s скачан</string>
     <string name="log_transport_adb">Транспорт: ADB tcp (5555)</string>
     <string name="log_transport_shizuku">Транспорт: Shizuku (shell)</string>
     <string name="log_deploy_ok">Эксплойт развёрнут в /data/local/tmp/rmv</string>
@@ -188,6 +189,7 @@
     <string name="log_ksu_already_loaded">Модуль KernelSU уже в ядре — загружен прошлым запуском, insmod пропущен</string>
     <string name="log_ksu_other_variant">В ядре, похоже, модуль другого варианта — для %1$s нужен полный ребут</string>
     <string name="log_ksu_verify">Проверка su…</string>
+    <string name="log_done">Готово</string>
     <string name="log_ksu_active">%1$s активен</string>
     <string name="log_ksu_soft_reboot">Модуль загружен, su недоступен — потребуется перезагрузка userspace</string>
     <string name="log_manager_download">Скачивание менеджера %1$s…</string>
