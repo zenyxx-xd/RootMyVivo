@@ -91,8 +91,18 @@ class KsuInstaller(
                 // Модуль грузим прямо из приватного каталога приложения:
                 // root-домен читает его (проверено KernelSU Next), а файловый
                 // сканер vivo /data/local/tmp прочёсывает — там .ko успевал
-                // схватить write-дескриптором (ETXTBSY) или вовсе удалить
-                val (ok, o) = loadModule(ctx, koPath, restartPkg, REMOTE_KSUD)
+                // схватить write-дескриптором (ETXTBSY) или вовсе удалить.
+                //
+                // ksud'ы пробуем по списку: первым — из установленного менеджера
+                // (lib/arm64/libksud.so, свежая версия с kallsyms-insmod:
+                // модулям SukiSU нужны неэкспортируемые символы SELinux,
+                // которые резолвит только их загрузчик), затем скачанный с GitHub
+                val managerKsud = findManagerKsud(ctx, listOf(variant.packageName, prefs.managerPackage))
+                val ksudPaths = buildList {
+                    managerKsud?.let { add(it) }
+                    add(REMOTE_KSUD)
+                }
+                val (ok, o) = loadModule(ctx, koPath, restartPkg, ksudPaths)
                 loadedNow = ok
                 out = o
             }
@@ -539,12 +549,34 @@ class KsuInstaller(
         private const val REMOTE_KSUD = "/data/local/tmp/rmv/ksud"
 
         /**
+         * Найти ksud внутри установленного менеджера (lib/arm64/libksud.so).
+         * Это самая свежая версия — у форков в релизах ассета ksud часто нет
+         * вовсе (SukiSU v4.2+), а их модулям нужен kallsyms-загрузчик
+         * («insmod — load a kernel module with kallsyms access») для
+         * неэкспортируемых символов SELinux (policydb_*, sidtab_*, uts_sem).
+         * pm вызывается через транспорт (shell-домен): su-демон эксплойта
+         * живёт в kernel-контексте и binder-сервисов не видит.
+         */
+        suspend fun findManagerKsud(ctx: android.content.Context, pkgs: List<String>): String? {
+            for (pkg in pkgs.filter { it.isNotEmpty() }.distinct()) {
+                val (_, out) = Transport.exec(ctx, "pm path $pkg", timeoutSec = 30)
+                val apk = out.lineSequence()
+                    .firstOrNull { it.startsWith("package:") }
+                    ?.removePrefix("package:")?.trim() ?: continue
+                val ksud = apk.substringBeforeLast("/") + "/lib/arm64/libksud.so"
+                val (_, probe) = Transport.exec(ctx, "[ -f $ksud ] && echo RMV_YES", timeoutSec = 15)
+                if (probe.contains("RMV_YES")) return ksud
+            }
+            return null
+        }
+
+        /**
          * Загрузить модуль в ядро с фолбэками под разные CLI ksud:
-         *  1. `ksud insmod <ko> allow_shell=1` — новый CLI (KernelSU-Next /
-         *     ReSukiSU 3.x); затем late-load без пути для userspace-настройки
+         *  1. `ksud insmod <ko> allow_shell=1` каждым доступным ksud —
+         *     у свежих это kallsyms-загрузчик; после успеха — late-load
+         *     для userspace-настройки (sepolicy, перезапуск менеджера)
          *  2. `late-load ... <путь>` — старый CLI с позиционным аргументом
-         *  3. Системный `/system/bin/insmod` — ksud вообще без подкоманд
-         *     загрузки (SukiSU v4.1)
+         *  3. Системный `/system/bin/insmod` — модулям без внешних символов
          *
          * Коды возврата su НЕИСПЬЗУЕМ: su-клиент эксплойта в -c-режиме
          * всегда возвращает 0 (client_main завершается return 0), успех
@@ -554,7 +586,7 @@ class KsuInstaller(
             ctx: android.content.Context,
             koPath: String,
             managerPkg: String,
-            ksudPath: String,
+            ksudPaths: List<String>,
         ): Pair<Boolean, String> {
             suspend fun loaded(): Boolean {
                 val viaExec = Transport.exec(ctx, "grep -i kernelsu /proc/modules 2>/dev/null").second
@@ -565,23 +597,29 @@ class KsuInstaller(
             val sb = StringBuilder()
             // userspace-настройка (sepolicy, перезапуск менеджера); провал
             // не критичен — модуль уже в ядре
-            suspend fun userspaceSetup() {
-                val (_, o) = Transport.su(ctx, "$ksudPath late-load --allow-shell --package-name $managerPkg")
+            suspend fun userspaceSetup(ksud: String) {
+                val (_, o) = Transport.su(ctx, "$ksud late-load --allow-shell --package-name $managerPkg")
                 if (o.isNotBlank()) sb.append("late-load: ").append(o.trim()).append('\n')
             }
 
-            val (_, o1) = Transport.su(ctx, "$ksudPath insmod $koPath allow_shell=1")
-            sb.append("ksud insmod: ").append(o1.trim().ifEmpty { "(нет вывода)" }).append('\n')
-            if (loaded()) {
-                userspaceSetup()
-                return true to sb.toString()
+            for (ksud in ksudPaths) {
+                val (_, o1) = Transport.su(ctx, "$ksud insmod $koPath allow_shell=1")
+                sb.append("ksud insmod [${ksud.substringAfterLast('/')}]: ")
+                    .append(o1.trim().ifEmpty { "(нет вывода)" }).append('\n')
+                if (loaded()) {
+                    userspaceSetup(ksud)
+                    return true to sb.toString()
+                }
             }
-            val (_, o3) = Transport.su(
-                ctx,
-                "$ksudPath late-load --allow-shell --package-name $managerPkg $koPath",
-            )
-            sb.append("ksud late-load: ").append(o3.trim().ifEmpty { "(нет вывода)" }).append('\n')
-            if (loaded()) return true to sb.toString()
+            for (ksud in ksudPaths) {
+                val (_, o3) = Transport.su(
+                    ctx,
+                    "$ksud late-load --allow-shell --package-name $managerPkg $koPath",
+                )
+                sb.append("ksud late-load [${ksud.substringAfterLast('/')}]: ")
+                    .append(o3.trim().ifEmpty { "(нет вывода)" }).append('\n')
+                if (loaded()) return true to sb.toString()
+            }
             // ETXTBSY («Text file busy»): у свежезаписанного файла ещё держится
             // дескриптор на запись (файловый сканер и т.п.) — ядро отказывается
             // грузить модуль. Пауза, затем копия в новый inode
@@ -593,7 +631,7 @@ class KsuInstaller(
             )
             sb.append("insmod: ").append(o4.trim().ifEmpty { "(нет вывода)" }).append('\n')
             if (loaded()) {
-                userspaceSetup()
+                ksudPaths.lastOrNull()?.let { userspaceSetup(it) }
                 return true to sb.toString()
             }
             return false to sb.toString()

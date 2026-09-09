@@ -162,18 +162,21 @@ class BootRootService : Service() {
             }
             ko = "/data/local/tmp/rmv/kernelsu.ko"
         }
-        val ksud = if (remoteFileExists("/data/adb/rmv/ksud")) {
-            "/data/adb/rmv/ksud"
-        } else {
-            "/data/local/tmp/rmv/ksud"
-        }
-        if (!remoteFileExists(ksud)) return false
-
         val pkg = prefs.managerPackage.ifEmpty {
             KsuVariant.byId(prefs.selectedKsu).packageName
         }
-        Transport.exec(this, "chmod 755 $ksud", timeoutSec = 15)
-        com.rootmyvivo.root.KsuInstaller.loadModule(this, ko, pkg, ksud)
+        // ksud'ы по списку: из установленного менеджера (свежий, с kallsyms-
+        // insmod), затем кэшированные копии
+        val ksudPaths = buildList {
+            com.rootmyvivo.root.KsuInstaller
+                .findManagerKsud(this@BootRootService, listOf(pkg, KsuVariant.byId(prefs.selectedKsu).packageName))
+                ?.let { add(it) }
+            if (remoteFileExists("/data/adb/rmv/ksud")) add("/data/adb/rmv/ksud")
+            if (remoteFileExists("/data/local/tmp/rmv/ksud")) add("/data/local/tmp/rmv/ksud")
+        }
+        if (ksudPaths.isEmpty()) return false
+        Transport.exec(this, "chmod 755 ${ksudPaths.joinToString(" ")}", timeoutSec = 15)
+        com.rootmyvivo.root.KsuInstaller.loadModule(this, ko, pkg, ksudPaths)
 
         val (_, mods2) = Transport.exec(this, "grep -i kernelsu /proc/modules 2>/dev/null")
         return mods2.isNotBlank()
