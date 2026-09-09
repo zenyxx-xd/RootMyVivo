@@ -566,13 +566,17 @@ class KsuInstaller(
             }
 
             val sb = StringBuilder()
+            // userspace-настройка (sepolicy, перезапуск менеджера); провал
+            // не критичен — модуль уже в ядре
+            suspend fun userspaceSetup() {
+                val (_, o) = Transport.su(ctx, "$ksudPath late-load --allow-shell --package-name $managerPkg")
+                if (o.isNotBlank()) sb.append("late-load: ").append(o.trim()).append('\n')
+            }
+
             val (_, o1) = Transport.su(ctx, "$ksudPath insmod $koPath allow_shell=1")
             sb.append("ksud insmod: ").append(o1.trim().ifEmpty { "(нет вывода)" }).append('\n')
             if (loaded()) {
-                // userspace-настройка (sepolicy, менеджер); провал не критичен —
-                // модуль уже в ядре
-                val (_, o2) = Transport.su(ctx, "$ksudPath late-load --allow-shell --package-name $managerPkg")
-                if (o2.isNotBlank()) sb.append("late-load: ").append(o2.trim())
+                userspaceSetup()
                 return true to sb.toString()
             }
             val (_, o3) = Transport.su(
@@ -581,10 +585,21 @@ class KsuInstaller(
             )
             sb.append("ksud late-load: ").append(o3.trim().ifEmpty { "(нет вывода)" }).append('\n')
             if (loaded()) return true to sb.toString()
-            val (_, o4) = Transport.su(ctx, "/system/bin/insmod $koPath allow_shell=1")
+            // ETXTBSY («Text file busy»): у свежезаписанного файла ещё держится
+            // дескриптор на запись (файловый сканер и т.п.) — ядро отказывается
+            // грузить модуль. Пауза, затем копия в новый inode
+            val (_, o4) = Transport.su(
+                ctx,
+                "sleep 1; /system/bin/insmod $koPath allow_shell=1 || " +
+                    "{ sleep 2; cp -f $koPath $koPath.try && /system/bin/insmod $koPath.try allow_shell=1; }; " +
+                    "rm -f $koPath.try",
+            )
             sb.append("insmod: ").append(o4.trim().ifEmpty { "(нет вывода)" }).append('\n')
-            val ok = loaded()
-            return ok to sb.toString()
+            if (loaded()) {
+                userspaceSetup()
+                return true to sb.toString()
+            }
+            return false to sb.toString()
         }
     }
 }
