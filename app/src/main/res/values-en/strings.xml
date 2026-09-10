@@ -157,6 +157,7 @@
     <string name="log_exploit_start">Running exploit…</string>
     <string name="log_root_already">Root is already active</string>
     <string name="log_exploit_progress">Running exploit (%1$d/%2$d)</string>
+    <string name="log_exploit_empty">No exploit output</string>
     <string name="log_exploit_resumed">Running exploit detected — resuming it instead of starting a new one</string>
     <string name="log_exploit_counter">Running exploit · %1$d/%2$d</string>
     <string name="log_download_progress">%1$s: %2$d%%</string>

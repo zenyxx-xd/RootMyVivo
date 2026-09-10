@@ -530,21 +530,20 @@ private fun StatusGroup(state: UiState, onKsuClick: () -> Unit, onOpenLastLog: (
                 )
             },
         )
-        // История запусков — если есть что показать
-        if (state.logHistory.isNotEmpty()) {
-            SettingsDivider()
-            SettingsRow(
-                title = stringResource(R.string.home_lastlog),
-                icon = Icons.Rounded.Description,
-                onClick = onOpenLastLog,
-                trailing = {
-                    Icon(
-                        Icons.AutoMirrored.Rounded.KeyboardArrowRight, null,
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                },
-            )
-        }
+        // История запусков — всегда видима: на свежей установке это
+        // единственная точка входа к логам, пустая история не повод её прятать
+        SettingsDivider()
+        SettingsRow(
+            title = stringResource(R.string.home_lastlog),
+            icon = Icons.Rounded.Description,
+            onClick = onOpenLastLog,
+            trailing = {
+                Icon(
+                    Icons.AutoMirrored.Rounded.KeyboardArrowRight, null,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            },
+        )
     }
 }
 

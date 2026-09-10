@@ -262,16 +262,31 @@ object Transport {
 
     /**
      * Пост-root закрепление: persist-порт + свой ключ в adb_keys —
-     * бесшовная авторизация после любых перезагрузок.
-     * Через su() — наш пейлоад кладёт su в /data/local/tmp, а не в PATH.
+     * бесшерстная авторизация после любых перезагрузок.
+     *
+     * ВАЖНО: setprop из контекста su-демона vivo блокирует property
+     * service («Failed to set property … See dmesg») — пропишем порт из
+     * shell-домена через транспорт (Shizuku/adb), это разрешено. adb_keys
+     * пишем через su (файловые операции из демона работают), после чего
+     * перезапускаем adbd, чтобы он поднял TCP-порт.
      */
     suspend fun persistAfterRoot(ctx: Context): Boolean = withContext(Dispatchers.IO) {
-        val (code, _) = su(ctx, "setprop persist.adb.tcp.port 5555")
+        // 1. persist-порт из shell-домена
+        exec(ctx, "setprop persist.adb.tcp.port 5555", timeoutSec = 15)
+        val (_, portNow) = exec(ctx, "getprop persist.adb.tcp.port", timeoutSec = 10)
+        val portOk = portNow.trim() == "5555"
+        Log.i(TAG, "persist port: $portNow ($portOk)")
+        // 2. ключ в adb_keys (su: файловые операции из демона работают)
         AdbWire.publicKeyAndroid(ctx)?.let { key ->
             val (kc, kout) = su(ctx, "echo \"$key rootmyvivo\" >> /data/misc/adb/adb_keys")
             Log.i(TAG, "adb_keys install: code=$kc ${kout.take(60)}")
         }
-        code == 0
+        // 3. adbd перечитывает persist-порт только на старте — рестарт
+        // (init перезапустит его; на транспорте Shizuku это безопасно)
+        if (portOk) {
+            su(ctx, "pkill -x adbd", timeoutSec = 10)
+        }
+        portOk
     }
 
     /**

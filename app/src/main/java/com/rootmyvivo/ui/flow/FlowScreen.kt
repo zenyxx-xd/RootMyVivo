@@ -960,6 +960,16 @@ private fun LiveLogBlock(lines: List<com.rootmyvivo.vm.LiveLogLine>, expanded: B
                     animationSpec = tween(320, easing = androidx.compose.animation.core.FastOutSlowInEasing),
                 ),
         ) {
+            if (lines.isEmpty()) {
+                // Пустой блок выглядит «нажал — ничего не произошло»;
+                // заглушка даёт видимый отклик на раскрытие
+                Text(
+                    stringResource(R.string.log_exploit_empty),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(start = 34.dp, top = 2.dp, bottom = 4.dp),
+                )
+            }
             lines.forEach { line ->
                 LiveLine(line)
             }
