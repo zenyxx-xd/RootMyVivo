@@ -67,8 +67,13 @@ class BootRootService : Service() {
             return
         }
 
-        // Дать системе подняться: adbd, сетевой стек, пакетный менеджер
-        delay(20_000)
+        // Дать системе подняться и ОСТЫТЬ. Ночные прогоны на PD2520:
+        // pselect-маршрут CFI стабильно промахивается на «горячем» ядре
+        // первых минут после загрузки (попытки 1-3 почти всегда fail,
+        // успех приходит на 3-6-й, лучше всего — после ~8 мин uptime).
+        // 20 секунд было слишком рано; 8 минут — эмпирический оптимум
+        // между надёжностью и ожиданием пользователя.
+        delay(BOOT_SETTLE_MS)
 
         // Рут на месте (например, это soft reboot — модуль жив, ядро то же)
         // — восстанавливать нечего, тихо выходим без уведомлений
@@ -91,20 +96,27 @@ class BootRootService : Service() {
             return
         }
 
+        // Прогон эксплойта с ретраями: один запуск preload делает до
+        // N попыток внутри (RMV_ATTEMPTS из каталога), но на свежем ядре
+        // иногда не хватает и их — повторяем запуск целиком с паузой.
         prefs.bootRestoreLastAttempt = System.currentTimeMillis()
-        if (!launchExploit()) {
-            notifyResult(ok = false)
-            return
-        }
-
-        // Эксплойт идёт 1–3 минуты (иногда дольше): опрашиваем su
         var rooted = false
-        for (i in 0 until 200) {
-            if (rootActive()) {
-                rooted = true
-                break
+        for (round in 1..EXPLOIT_ROUNDS) {
+            if (!launchExploit()) {
+                notifyResult(ok = false)
+                return
             }
-            delay(3000)
+            // Внутренние попытки идут до ~10 мин; опрашиваем su
+            for (i in 0 until 200) {
+                if (rootActive()) {
+                    rooted = true
+                    break
+                }
+                delay(3000)
+            }
+            if (rooted) break
+            // ретрай-цикл с растущей паузой: слэбу нужно время «остыть»
+            delay(round * 60_000L)
         }
         if (!rooted) {
             notifyResult(ok = false)
@@ -251,6 +263,12 @@ class BootRootService : Service() {
 
         /** Окно бутлуп-гарда: ребут раньше этого срока после попытки = подозрение на панику. */
         private const val BOOTLOOP_WINDOW_MS = 10 * 60 * 1000L
+
+        /** Пауза после загрузки до эксплойта: см. комментарий в restore(). */
+        private const val BOOT_SETTLE_MS = 8 * 60 * 1000L
+
+        /** Сколько раз запускать эксплойт целиком (внутри — ещё N попыток preload). */
+        private const val EXPLOIT_ROUNDS = 2
 
         fun start(ctx: Context) {
             try {
