@@ -22,6 +22,8 @@ data class LogRunInfo(
     val variant: String,
     val lines: Int,
     val file: java.io.File,
+    /** Живой лог эксплойта (live.log), если был сохранён */
+    val exploitFile: java.io.File? = null,
 )
 
 /** Тип строки лога: обычная или шаг эксплойта (раскрываемый аккордеон). */
@@ -67,6 +69,8 @@ data class UiState(
     val needsSoftReboot: Boolean = false,
     /** Сохранённый последний лог для просмотра */
     val lastLog: List<LogEntry> = emptyList(),
+    /** Live-лог эксплойта для просмотра из истории */
+    val lastExploitLog: List<String> = emptyList(),
     val logViewerOpen: Boolean = false,
     /** История запусков (до 5 последних) */
     val logHistory: List<LogRunInfo> = emptyList(),

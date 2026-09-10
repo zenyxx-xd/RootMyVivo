@@ -197,7 +197,13 @@ fun App(vm: MainViewModel, state: UiState) {
                 flowResult = null,
                 downloadProgress = null,
                 softRebootPrompt = false,
-                exploitLive = com.rootmyvivo.vm.ExploitLiveState(),
+                // live-лог эксплойта сохранённого запуска: показываем в
+                // аккордеоне как при живом процессе
+                exploitLive = com.rootmyvivo.vm.ExploitLiveState(
+                    lines = state.lastExploitLog.mapIndexed { i, t ->
+                        com.rootmyvivo.vm.LiveLogLine(i.toLong(), t)
+                    },
+                ),
             ),
             canClose = true,
             onClose = { logViewerOpen = false },

@@ -130,7 +130,16 @@ fun FlowScreen(
                     val ctx = androidx.compose.ui.platform.LocalContext.current
                     IconButton(
                         onClick = {
-                            val text = state.log.joinToString("\n") { it.text }
+                            // Основной лог + живой лог эксплойта (попытки/этапы
+                            // из live.log) — вместе, чтобы в копии был полный
+                            // диф при разборе проблем
+                            val text = buildString {
+                                append(state.log.joinToString("\n") { it.text })
+                                if (state.exploitLive.lines.isNotEmpty()) {
+                                    append("\n\n=== exploit live log ===\n")
+                                    append(state.exploitLive.lines.joinToString("\n") { it.text })
+                                }
+                            }
                             clipboard.setText(androidx.compose.ui.text.AnnotatedString(text))
                             android.widget.Toast.makeText(ctx, ctx.getString(R.string.log_copied), android.widget.Toast.LENGTH_SHORT).show()
                         },
@@ -815,6 +824,10 @@ private fun LogStream(
             },
     ) {
         val exploitEntry = log.lastOrNull { it.kind == LogKind.EXPLOIT }
+        // Просмотр сохранённого запуска: строки эксплойта в логе нет, но
+        // live-лог подгружен из истории — показываем его блоком сразу
+        val viewerExploit = exploitEntry == null && exploitLive.lines.isNotEmpty()
+        val showLiveBlock = livePresent && exploitEntry != null
         LazyColumn(
             state = listState,
             modifier = Modifier
@@ -835,7 +848,7 @@ private fun LogStream(
             reverseLayout = true,
             contentPadding = androidx.compose.foundation.layout.PaddingValues(start = 20.dp, end = 20.dp, top = 20.dp, bottom = 20.dp),
         ) {
-            if (livePresent && exploitEntry != null) {
+            if (showLiveBlock) {
                 // Записи новее шапки — ниже неё (новейшая в самом низу):
                 // пока шапка — последняя строка лога, она и стоит в низу;
                 // когда приходят новые записи, они появляются под ней как обычно
@@ -868,6 +881,18 @@ private fun LogStream(
                         animateIn = entry.id in newIds,
                         modifier = Modifier.animateItem(fadeInSpec = null, fadeOutSpec = null),
                     )
+                }
+            } else if (viewerExploit) {
+                // Сохранённый запуск: обычные строки + live-лог эксплойта
+                items(log.asReversed(), key = { it.id }) { entry ->
+                    LogLine(
+                        entry = entry,
+                        animateIn = entry.id in newIds,
+                        modifier = Modifier.animateItem(fadeInSpec = null, fadeOutSpec = null),
+                    )
+                }
+                item(key = "live_block_viewer") {
+                    LiveLogBlock(exploitLive.lines, expanded = true)
                 }
             } else {
                 items(log.asReversed(), key = { it.id }) { entry ->

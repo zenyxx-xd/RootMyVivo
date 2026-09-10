@@ -140,10 +140,14 @@ class KsuInstaller(
                         prefs.loadedModuleVariant = variant.id
                     } else {
                         complete(false, R.string.log_ksu_module_fail)
-                        // диагностика: что ответила каждая попытка загрузки
-                        if (out.isNotBlank()) {
-                            onEvent(FlowEvent.Log(out.trim().takeLast(400), LogLevel.PLAIN))
-                        }
+                        // диагностика: что ответила каждая попытка загрузки.
+                        // Каждый шаг отдельной строкой — раньше takeLast(400)
+                        // отрезал начало (ksud insmod) и мы не видели его вывод
+                        out.lineSequence()
+                            .map { it.trim() }
+                            .filter { it.isNotEmpty() }
+                            .take(12)
+                            .forEach { onEvent(FlowEvent.Log(it, LogLevel.PLAIN)) }
                         installManager(variant)
                         // закрепление всё равно пишем: на чистом ядре после полной
                         // перезагрузки insmod пройдёт и рут вернётся

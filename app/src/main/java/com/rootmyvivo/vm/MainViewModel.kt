@@ -237,7 +237,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     /** Открыть лог конкретного запуска из истории. */
     fun openLogRun(info: LogRunInfo) {
         val entries = try {
-            info.file.readLines().mapIndexedNotNull { i, line ->
+            info.file.readLines().drop(1).mapIndexedNotNull { i, line ->
                 val idx = line.indexOf('\t')
                 if (idx <= 0) {
                     null
@@ -249,7 +249,20 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         } catch (_: Exception) {
             emptyList()
         }
-        _state.value = _state.value.copy(lastLog = entries, logViewerOpen = true)
+        val exploit = try {
+            info.exploitFile?.takeIf { it.exists() }
+                ?.readLines()
+                ?.filter { it.isNotBlank() }
+                ?.takeLast(300)
+                ?: emptyList()
+        } catch (_: Exception) {
+            emptyList()
+        }
+        _state.value = _state.value.copy(
+            lastLog = entries,
+            lastExploitLog = exploit,
+            logViewerOpen = true,
+        )
     }
 
     /** История запусков на диск: до 5 последних, с метаданными. Переживает ребут. */
@@ -269,11 +282,23 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                     "${failReason ?: ""}\t${_state.value.selectedKsu.displayName}\t${_state.value.log.size}\n" +
                     body,
             )
-            // старее 5 запусков — вычищаем
+            // Живой лог эксплойта (live.log: попытки, CFI-этапы, phys step,
+            // cred) — отдельным файлом, рядом; нужен для разбора сбоев
+            val live = _state.value.exploitLive.lines
+            if (live.isNotEmpty()) {
+                java.io.File(dir, "$start.exploit.log").writeText(
+                    live.joinToString("\n") { it.text },
+                )
+            }
+            // старее 5 запусков — вычищаем (и live-логи тоже)
             dir.listFiles { x -> x.name.endsWith(".log") }
                 ?.sortedByDescending { it.name }
-                ?.drop(5)
-                ?.forEach { it.delete() }
+                ?.groupBy { it.name.substringBefore('.') }
+                ?.let { groups ->
+                    groups.entries.sortedByDescending { it.key.toLongOrNull() ?: 0L }
+                        .drop(5)
+                        .forEach { (_, files) -> files.forEach { it.delete() } }
+                }
             _state.value = _state.value.copy(logHistory = loadLogHistory())
         } catch (_: Exception) {
         }
@@ -281,12 +306,13 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
 
     private fun loadLogHistory(): List<LogRunInfo> = try {
         val dir = java.io.File(getApplication<Application>().filesDir, "logs")
-        dir.listFiles { x -> x.name.endsWith(".log") }
+        dir.listFiles { x -> x.name.endsWith(".log") && !x.name.endsWith(".exploit.log") }
             ?.sortedByDescending { it.name }
             ?.mapNotNull { f ->
                 val meta = f.useLines { it.firstOrNull() } ?: return@mapNotNull null
                 val p = meta.split('\t')
                 if (p.size < 7 || p[0] != "META") return@mapNotNull null
+                val exploit = java.io.File(f.parentFile, f.nameWithoutExtension + ".exploit.log")
                 LogRunInfo(
                     startedAt = p[1].toLongOrNull() ?: return@mapNotNull null,
                     durationSec = p[2].toLongOrNull() ?: 0,
@@ -295,6 +321,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                     variant = p[5],
                     lines = p[6].toIntOrNull() ?: 0,
                     file = f,
+                    exploitFile = exploit.takeIf { it.exists() },
                 )
             } ?: emptyList()
     } catch (_: Exception) {
