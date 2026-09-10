@@ -181,11 +181,11 @@ class BootRootService : Service() {
         val pkg = prefs.managerPackage.ifEmpty {
             KsuVariant.byId(prefs.selectedKsu).packageName
         }
-        // ksud'ы по списку: скачанный/кэшированный ksud первым (у свежих
-        // kallsyms-insmod), затем из установленного менеджера
+        // ksud'ы по списку: сначала свежий в /data/local/tmp (приложение его
+        // перекачивает при апдейтах), затем кэш закрепления, затем менеджер
         val ksudPaths = buildList {
-            if (remoteFileExists("/data/adb/rmv/ksud")) add("/data/adb/rmv/ksud")
             if (remoteFileExists("/data/local/tmp/rmv/ksud")) add("/data/local/tmp/rmv/ksud")
+            if (remoteFileExists("/data/adb/rmv/ksud")) add("/data/adb/rmv/ksud")
             com.rootmyvivo.root.KsuInstaller
                 .findManagerKsud(this@BootRootService, listOf(pkg, KsuVariant.byId(prefs.selectedKsu).packageName))
                 ?.let { add(it) }

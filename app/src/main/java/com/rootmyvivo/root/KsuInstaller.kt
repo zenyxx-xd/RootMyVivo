@@ -58,9 +58,16 @@ class KsuInstaller(
                 "[ -f /data/adb/rmv/kernelsu.ko ] && echo RMV_CACHE; [ -f $REMOTE_KSUD ] && echo RMV_KSUD",
             )
             val koCached = probe.contains("RMV_CACHE")
-            val remoteKsud = probe.contains("RMV_KSUD")
+            // Файл есть — но старые ksud (до фиксов) не умеют late-load/insmod
+            // и флоу молча падает. Валидируем поддержку подкоманд; битый
+            // ksud перекачиваем как отсутствующий
+            var remoteKsud = false
+            if (probe.contains("RMV_KSUD")) {
+                val (_, hp) = Transport.exec(ctx, "$REMOTE_KSUD --help 2>/dev/null", timeoutSec = 15)
+                remoteKsud = hp.contains("late-load")
+            }
 
-            // ── 2. ksud: скачиваем только если нет ни менеджерного, ни remote ──
+            // ── 2. ksud: скачиваем только если нет ни менеджерного, ни валидного remote ──
             if (managerKsud == null && !remoteKsud) {
                 progress(R.string.log_ksud_download)
                 if (downloadKsud(variant)) {
@@ -656,18 +663,21 @@ class KsuInstaller(
                 if (o.isNotBlank()) sb.append("late-load: ").append(o.trim()).append('\n')
             }
 
-            // 0. ОФИЦИАЛЬНЫЙ джейлбрейк-флоу ReSukiSU (для resukisu):
-            //    `ksud late-load --magica --allow-shell` — ksud сам выбирает
-            //    встроенный kernelsu.ko по KMI (бинарник содержит все сборки),
-            //    грузит kallsyms-загрузчиком и выполняет late-load скрипты.
-            //    «Use adb root to execute late-load for jailbreaking by Magica»
+            // 0. ОФИЦИАЛЬНЫЙ флоу ReSukiSU (для resukisu):
+            //    `ksud late-load --allow-shell --package-name X` — ksud сам
+            //    выбирает встроенный kernelsu.ko по KMI (бинарник содержит
+            //    все сборки), грузит kallsyms-загрузчиком и выполняет
+            //    late-load скрипты (userspace, /system/bin/su, sepolicy).
+            //    Проверено живьём на PD2520: модуль Live, su u:r:ksu:s0.
+            //    Обёртку --magica не используем: она поднимает adb root
+            //    через setprop service.adb.root, который vivo блокирует.
             if (magicaFirst) {
                 for (ksud in ksudPaths) {
                     val (_, o0) = Transport.su(
                         ctx,
-                        "$ksud late-load --magica --allow-shell --package-name $managerPkg",
+                        "$ksud late-load --allow-shell --package-name $managerPkg",
                     )
-                    sb.append("ksud magica [${ksud.substringAfterLast('/')}]: ")
+                    sb.append("ksud late-load [${ksud.substringAfterLast('/')}]: ")
                         .append(o0.trim().ifEmpty { "(нет вывода)" }).append('\n')
                     if (loaded()) return true to sb.toString()
                 }
