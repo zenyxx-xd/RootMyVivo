@@ -193,8 +193,12 @@ class BootRootService : Service() {
         if (ksudPaths.isEmpty()) return false
         Transport.exec(this, "chmod 755 ${ksudPaths.joinToString(" ")}", timeoutSec = 15)
         // кэш kernelsu.ko пишет setupPersistence уже ПАТЧЕННЫМ (vermagic под
-        // это ядро): ksud insmod проглотит и такой, системному insmod он нужен
-        com.rootmyvivo.root.KsuInstaller.loadModule(this, ko, ko, pkg, ksudPaths)
+        // это ядро): ksud insmod проглотит и такой, системному insmod он нужен.
+        // Для resukisu — официальный джейлбрейк-флоу late-load --magica первым
+        com.rootmyvivo.root.KsuInstaller.loadModule(
+            this, ko, ko, pkg, ksudPaths,
+            magicaFirst = prefs.selectedKsu == "resukisu",
+        )
 
         val (_, mods2) = Transport.exec(this, "grep -i kernelsu /proc/modules 2>/dev/null")
         return mods2.isNotBlank()

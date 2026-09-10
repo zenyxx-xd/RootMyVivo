@@ -133,7 +133,7 @@ class KsuInstaller(
                         add(REMOTE_KSUD)
                         if (variant.id != "sukisu") managerKsud?.let { add(it) }
                     }
-                    val (ok, o) = loadModule(ctx, koPath, koPatched, restartPkg, ksudPaths)
+                    val (ok, o) = loadModule(ctx, koPath, koPatched, restartPkg, ksudPaths, magicaFirst = variant.id == "resukisu")
                     out = o
                     Log.i(TAG, "module load: loaded=$ok ${out.take(160)}")
                     if (ok) {
@@ -188,8 +188,18 @@ class KsuInstaller(
         return try {
             val family = variant.id in setOf("ksunext", "sukisu", "resukisu")
             val repos = buildList {
-                add(if (variant.id == "resukisu") CI_REPO else variant.repo)
+                // Официальный ksud weishu/KernelSU не имеет insmod/late-load
+                // (фичи форков), а его модуль требует kallsyms-резолва —
+                // для обычного KernelSU первым берём CI-ksud (проверено
+                // живьём: грузит kernelsu.ko, su u:r:ksu:s0)
+                add(
+                    when (variant.id) {
+                        "resukisu", "kernelsu" -> CI_REPO
+                        else -> variant.repo
+                    },
+                )
                 if (family && variant.id != "resukisu") add(CI_REPO)
+                if (variant.id == "kernelsu") add(variant.repo)
             }
             val url = repos.firstNotNullOfOrNull { repo ->
                 findAssetUrl(repo, "ksud")
@@ -630,6 +640,7 @@ class KsuInstaller(
             koPatchedPath: String,
             managerPkg: String,
             ksudPaths: List<String>,
+            magicaFirst: Boolean = false,
         ): Pair<Boolean, String> {
             suspend fun loaded(): Boolean {
                 val viaExec = Transport.exec(ctx, "grep -i kernelsu /proc/modules 2>/dev/null").second
@@ -643,6 +654,23 @@ class KsuInstaller(
             suspend fun userspaceSetup(ksud: String) {
                 val (_, o) = Transport.su(ctx, "$ksud late-load --allow-shell --package-name $managerPkg")
                 if (o.isNotBlank()) sb.append("late-load: ").append(o.trim()).append('\n')
+            }
+
+            // 0. ОФИЦИАЛЬНЫЙ джейлбрейк-флоу ReSukiSU (для resukisu):
+            //    `ksud late-load --magica --allow-shell` — ksud сам выбирает
+            //    встроенный kernelsu.ko по KMI (бинарник содержит все сборки),
+            //    грузит kallsyms-загрузчиком и выполняет late-load скрипты.
+            //    «Use adb root to execute late-load for jailbreaking by Magica»
+            if (magicaFirst) {
+                for (ksud in ksudPaths) {
+                    val (_, o0) = Transport.su(
+                        ctx,
+                        "$ksud late-load --magica --allow-shell --package-name $managerPkg",
+                    )
+                    sb.append("ksud magica [${ksud.substringAfterLast('/')}]: ")
+                        .append(o0.trim().ifEmpty { "(нет вывода)" }).append('\n')
+                    if (loaded()) return true to sb.toString()
+                }
             }
 
             // 1. ksud insmod — грузит НЕПАТЧЕННЫЙ .ko (kallsyms-загрузчик
