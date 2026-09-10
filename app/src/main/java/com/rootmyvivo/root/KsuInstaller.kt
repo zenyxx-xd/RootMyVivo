@@ -50,7 +50,9 @@ class KsuInstaller(
             } else if (moduleLoaded) {
                 log(R.string.log_ksu_already_loaded, LogLevel.WARN)
             }
-            val managerKsud = findManagerKsud(ctx, listOf(variant.packageName, prefs.managerPackage))
+            val managerKsud =
+                if (variant.id == "sukisu") findManagerKsud(ctx, listOf(variant.packageName, prefs.managerPackage))
+                else null
             val (_, probe) = Transport.exec(
                 ctx,
                 "[ -f /data/adb/rmv/kernelsu.ko ] && echo RMV_CACHE; [ -f $REMOTE_KSUD ] && echo RMV_KSUD",
@@ -85,6 +87,11 @@ class KsuInstaller(
                 }
             } else {
                 File(koPath).delete()
+                // Старый .ko в /data/local/tmp/rmv и в кэше закрепления мог
+                // остаться от прошлых билдов (другой размер/CI-сборка) —
+                // системный insmod на нём давал Exec format error. Чистим,
+                // чтобы грузился только свежескачанный.
+                Transport.exec(ctx, "rm -f /data/local/tmp/rmv/kernelsu.ko /data/adb/rmv/kernelsu.ko")
                 progress(R.string.log_ksu_download, device.kmi)
                 if (!downloadKo(variant, koPath)) {
                     complete(false, R.string.log_ksu_download_fail)
