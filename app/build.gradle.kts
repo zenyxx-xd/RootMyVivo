@@ -12,9 +12,9 @@ android {
         applicationId = "com.rootmyvivo"
         minSdk = 31
         targetSdk = 35
-        // Схема MMmmpp: 01-мажор 00-минор 01-патчи
-        versionCode = 10001
-        versionName = "1.0.1-beta"
+        // Схема MMmmpp: 01-мажор 00-минор 02-патчи
+        versionCode = 10002
+        versionName = "1.0.2-beta"
     }
 
     signingConfigs {

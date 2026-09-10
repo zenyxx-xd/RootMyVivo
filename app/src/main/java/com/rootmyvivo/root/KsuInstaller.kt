@@ -75,6 +75,10 @@ class KsuInstaller(
 
             // ── 3. Модуль: без скачивания, если он уже в ядре и кэш на месте ──
             val koPath = File(workDir, "kernelsu_${variant.id}.ko").absolutePath
+            // Патченная копия для системного insmod и скрипта закрепления
+            // (vermagic этого ядра длиннее стандартного — патч в оригинале
+            // затирал name=kernelsu; ksud с kallsyms грузит непатченный)
+            val koPatched = File(workDir, "kernelsu_${variant.id}_patched.ko").absolutePath
             var out = ""
             if (moduleLoaded && koCached && (loadedOf.isEmpty() || loadedOf == variant.id)) {
                 // Модуль уже работает, закрепление записано — только userspace-
@@ -99,8 +103,12 @@ class KsuInstaller(
                     return@withContext KsuResult.PARTIAL
                 }
 
+                // vermagic-патч в отдельную копию: оригинал грузит ksud
+                // с kallsyms-insmod (подгоняет vermagic сам), патченную копию —
+                // системный insmod и скрипт закрепления после перезагрузки
                 progress(R.string.log_ksu_vermagic)
-                if (!patchVermagic(koPath, device.kernel)) {
+                File(koPatched).delete()
+                if (!patchVermagicTo(koPath, koPatched, device.kernel)) {
                     complete(false, R.string.log_ksu_vermagic_fail)
                     installManager(variant)
                     return@withContext KsuResult.PARTIAL
@@ -113,15 +121,19 @@ class KsuInstaller(
                     // сканер vivo /data/local/tmp прочёсывает — там .ko успевал
                     // схватить write-дескриптором (ETXTBSY) или вовсе удалить.
                     //
-                    // ksud'ы пробуем по списку: первым — из установленного менеджера
-                    // (lib/arm64/libksud.so, свежая версия с kallsyms-insmod:
-                    // модулям SukiSU нужны неэкспортируемые символы SELinux,
-                    // которые резолвит только их загрузчик), затем скачанный с GitHub
+                    // ksud'ы пробуем по списку. Для SukiSU первым — ksud из
+                    // установленного менеджера (kallsyms-загрузчик для их
+                    // неэкспортируемых SELinux-символов). Для остальных —
+                    // сначала скачанный ksud: у свежих (ReSukiSU CI) есть
+                    // insmod с kallsyms, а менеджерный libksud часто другого
+                    // CLI (unrecognized subcommand). Системный insmod —
+                    // последний фолбэк, он грузит ПАТЧЕННУЮ копию.
                     val ksudPaths = buildList {
-                        managerKsud?.let { add(it) }
+                        if (variant.id == "sukisu") managerKsud?.let { add(it) }
                         add(REMOTE_KSUD)
+                        if (variant.id != "sukisu") managerKsud?.let { add(it) }
                     }
-                    val (ok, o) = loadModule(ctx, koPath, restartPkg, ksudPaths)
+                    val (ok, o) = loadModule(ctx, koPath, koPatched, restartPkg, ksudPaths)
                     out = o
                     Log.i(TAG, "module load: loaded=$ok ${out.take(160)}")
                     if (ok) {
@@ -135,7 +147,7 @@ class KsuInstaller(
                         installManager(variant)
                         // закрепление всё равно пишем: на чистом ядре после полной
                         // перезагрузки insmod пройдёт и рут вернётся
-                        setupPersistence(koPath)
+                        setupPersistence(koPatched)
                         return@withContext KsuResult.PARTIAL
                     }
                 } else {
@@ -153,7 +165,7 @@ class KsuInstaller(
             installManager(variant)
             if (rooted) {
                 complete(true, R.string.log_ksu_active, variant.displayName)
-                setupPersistence(koPath)
+                setupPersistence(koPatched)
                 KsuResult.ACTIVE
             } else {
                 complete(true, R.string.log_ksu_soft_reboot)
@@ -495,11 +507,11 @@ class KsuInstaller(
         return ok && out.exists() && out.length() > 0
     }
 
-    /** Патч vermagic: заменить строку vermagic в .ko под текущее ядро. */
-    private fun patchVermagic(path: String, release: String): Boolean {
+    /** Патч vermagic в отдельный файл (оригинал остаётся нетронутым —
+     *  его грузит ksud с kallsyms-insmod, подгоняющий vermagic сам). */
+    private fun patchVermagicTo(srcPath: String, dstPath: String, release: String): Boolean {
         return try {
-            val f = File(path)
-            val data = f.readBytes()
+            val data = File(srcPath).readBytes()
             val needle = "vermagic=".toByteArray(Charsets.US_ASCII)
             var pos = -1
             outer@ for (i in 0..data.size - needle.size) {
@@ -524,11 +536,13 @@ class KsuInstaller(
                 java.util.Arrays.fill(out, start + new.size, end, 0)
             } else {
                 // не влезает: пишем поверх соседних записей .modinfo с нуль-терминатором.
-                // Ядро терпит обрезанные записи — ровно так патчил оригинальный скрипт
-                // (модуль с 94-символьным vermagic поверх 73-символьного успешно грузился)
+                // ВАЖНО: это может затереть name=kernelsu (у ядер с длинным
+                // vermagic она прямо за ним) — такой файл грузит ТОЛЬКО
+                // системный insmod-фолбэк; основной путь — непатченный .ko
+                // через ksud insmod с kallsyms.
                 out[start + new.size] = 0
             }
-            f.writeBytes(out)
+            File(dstPath).writeBytes(out)
             true
         } catch (e: Exception) {
             Log.e(TAG, "patchVermagic failed", e)
@@ -609,6 +623,7 @@ class KsuInstaller(
         suspend fun loadModule(
             ctx: android.content.Context,
             koPath: String,
+            koPatchedPath: String,
             managerPkg: String,
             ksudPaths: List<String>,
         ): Pair<Boolean, String> {
@@ -626,6 +641,9 @@ class KsuInstaller(
                 if (o.isNotBlank()) sb.append("late-load: ").append(o.trim()).append('\n')
             }
 
+            // 1. ksud insmod — грузит НЕПАТЧЕННЫЙ .ko (kallsyms-загрузчик
+            //    подгоняет vermagic сам); наш бинарный патч мог затереть
+            //    name=kernelsu и получить Exec format error
             for (ksud in ksudPaths) {
                 val (_, o1) = Transport.su(ctx, "$ksud insmod $koPath allow_shell=1")
                 sb.append("ksud insmod [${ksud.substringAfterLast('/')}]: ")
@@ -644,14 +662,15 @@ class KsuInstaller(
                     .append(o3.trim().ifEmpty { "(нет вывода)" }).append('\n')
                 if (loaded()) return true to sb.toString()
             }
-            // ETXTBSY («Text file busy»): у свежезаписанного файла ещё держится
-            // дескриптор на запись (файловый сканер и т.п.) — ядро отказывается
-            // грузить модуль. Пауза, затем копия в новый inode
+            // 2. Системный insmod — требует vermagic совпадающим с ядром,
+            //    грузим ПАТЧЕННУЮ копию. ETXTBSY («Text file busy»): у
+            //    свежезаписанного файла держится write-дескриптор (файловый
+            //    сканер) — пауза, затем копия в новый inode.
             val (_, o4) = Transport.su(
                 ctx,
-                "sleep 1; /system/bin/insmod $koPath allow_shell=1 || " +
-                    "{ sleep 2; cp -f $koPath $koPath.try && /system/bin/insmod $koPath.try allow_shell=1; }; " +
-                    "rm -f $koPath.try",
+                "sleep 1; /system/bin/insmod $koPatchedPath allow_shell=1 || " +
+                    "{ sleep 2; cp -f $koPatchedPath $koPatchedPath.try && /system/bin/insmod $koPatchedPath.try allow_shell=1; }; " +
+                    "rm -f $koPatchedPath.try",
             )
             sb.append("insmod: ").append(o4.trim().ifEmpty { "(нет вывода)" }).append('\n')
             if (loaded()) {

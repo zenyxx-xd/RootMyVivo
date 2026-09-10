@@ -177,18 +177,20 @@ class BootRootService : Service() {
         val pkg = prefs.managerPackage.ifEmpty {
             KsuVariant.byId(prefs.selectedKsu).packageName
         }
-        // ksud'ы по списку: из установленного менеджера (свежий, с kallsyms-
-        // insmod), затем кэшированные копии
+        // ksud'ы по списку: скачанный/кэшированный ksud первым (у свежих
+        // kallsyms-insmod), затем из установленного менеджера
         val ksudPaths = buildList {
+            if (remoteFileExists("/data/adb/rmv/ksud")) add("/data/adb/rmv/ksud")
+            if (remoteFileExists("/data/local/tmp/rmv/ksud")) add("/data/local/tmp/rmv/ksud")
             com.rootmyvivo.root.KsuInstaller
                 .findManagerKsud(this@BootRootService, listOf(pkg, KsuVariant.byId(prefs.selectedKsu).packageName))
                 ?.let { add(it) }
-            if (remoteFileExists("/data/adb/rmv/ksud")) add("/data/adb/rmv/ksud")
-            if (remoteFileExists("/data/local/tmp/rmv/ksud")) add("/data/local/tmp/rmv/ksud")
         }
         if (ksudPaths.isEmpty()) return false
         Transport.exec(this, "chmod 755 ${ksudPaths.joinToString(" ")}", timeoutSec = 15)
-        com.rootmyvivo.root.KsuInstaller.loadModule(this, ko, pkg, ksudPaths)
+        // кэш kernelsu.ko пишет setupPersistence уже ПАТЧЕННЫМ (vermagic под
+        // это ядро): ksud insmod проглотит и такой, системному insmod он нужен
+        com.rootmyvivo.root.KsuInstaller.loadModule(this, ko, ko, pkg, ksudPaths)
 
         val (_, mods2) = Transport.exec(this, "grep -i kernelsu /proc/modules 2>/dev/null")
         return mods2.isNotBlank()
