@@ -366,7 +366,9 @@ class KsuInstaller(
             return false
         }
 
-        // Скрипт: установка менеджера из-под root + запуск для дальнейшей настройки
+        // Скрипт: установка менеджера из-под root. Никаких am start:
+        // при повторной установке автозапуск активности из фонового
+        // сервиса сам открывал менеджер на экране — это лишнее.
         val script = buildString {
             appendLine("#!/system/bin/sh")
             appendLine("# RootMyVivo Neo — post-root setup")
@@ -375,8 +377,6 @@ class KsuInstaller(
             appendLine("pm install -r $remoteApk || pm install -r --no-verify $remoteApk")
             appendLine("echo PM_INSTALL_RC=\$?")
             appendLine("rm -f $remoteApk")
-            appendLine("sleep 2")
-            appendLine("am start -n com.rootmyvivo/.MainActivity")
         }
         val localScript = File(ctx.filesDir, "setup.sh")
         localScript.writeText(script)
