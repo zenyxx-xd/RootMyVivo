@@ -156,7 +156,7 @@
     <string name="log_deploy_ok">漏洞利用已部署到 /data/local/tmp/rmv</string>
     <string name="log_exploit_start">正在运行漏洞利用…</string>
     <string name="log_root_already">Root 已激活</string>
-    <string name="log_exploit_progress">正在运行漏洞利用（%1$d/%2$d）</string>
+    <string name="log_exploit_progress">漏洞利用运行中…第 %1$d 次检查</string>
     <string name="log_exploit_empty">漏洞利用无输出</string>
     <string name="log_exploit_resumed">检测到正在运行的漏洞利用 — 正在恢复观察而不是重新启动</string>
     <string name="log_exploit_counter">运行漏洞利用 · %1$d/%2$d</string>

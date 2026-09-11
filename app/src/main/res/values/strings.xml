@@ -169,7 +169,7 @@
     <string name="log_deploy_ok">Эксплойт развёрнут в /data/local/tmp/rmv</string>
     <string name="log_exploit_start">Запуск эксплойта…</string>
     <string name="log_root_already">Root уже активен</string>
-    <string name="log_exploit_progress">Запуск эксплойта (%1$d/%2$d)</string>
+    <string name="log_exploit_progress">Эксплойт работает… проверка %1$d</string>
     <string name="log_exploit_empty">Нет вывода эксплойта</string>
     <string name="log_exploit_resumed">Обнаружен работающий эксплойт — продолжаю наблюдение вместо нового запуска</string>
     <string name="log_exploit_counter">Запуск эксплойта · %1$d/%2$d</string>
