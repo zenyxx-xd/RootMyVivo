@@ -61,6 +61,8 @@ data class UiState(
     val catalogState: CatalogState = CatalogState.LOADING,
     // найденное обновление приложения (плашка на главной)
     val appUpdate: com.rootmyvivo.data.AppUpdate? = null,
+    /** Диалог обновления открыт (первый показ после нахождения) */
+    val updateDialogOpen: Boolean = false,
     /** Скачивание обновления: файл + прогресс [0..1] или null при неизвестном размере */
     val updateDownload: UpdateDownloadState? = null,
     /** Скачивание завершено, открыт системный установщик */

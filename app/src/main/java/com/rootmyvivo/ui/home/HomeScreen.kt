@@ -47,6 +47,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -227,31 +228,30 @@ fun HomeScreen(
                 }
             }
         }
-        // Плашка обновления приложения (автопоиск после запуска / «Проверить сейчас»)
-        state.appUpdate?.let { update ->
-            UpdateBanner(
-                update = update,
-                download = state.updateDownload,
-                installing = state.updateInstalling,
-                onUpdate = vm::downloadAndInstallUpdate,
-                onCancel = vm::dismissUpdate,
-            )
-        }
-        // Скачивание продолжается, даже если плашку смахнули — свой маленький индикатор
-        state.updateDownload?.takeIf { !it.done }?.let { dl ->
-            Surface(
-                modifier = Modifier.fillMaxWidth(),
-                shape = MaterialTheme.shapes.large,
-                color = MaterialTheme.colorScheme.secondaryContainer,
-            ) {
-                Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text(
-                        stringResource(R.string.update_downloading),
-                        style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.SemiBold,
-                    )
-                    UpdateProgress(dl)
-                }
+        // Плашка обновления приложения (автопоиск при запуске / «Проверить сейчас»).
+        // Компактная, одна строка; диалог при первом нахождении открыт поверх всего
+        androidx.compose.animation.AnimatedVisibility(
+            visible = state.appUpdate != null,
+            enter = androidx.compose.animation.expandVertically(
+                animationSpec = androidx.compose.animation.core.tween(
+                    320, easing = androidx.compose.animation.core.FastOutSlowInEasing,
+                ),
+            ) + androidx.compose.animation.fadeIn(
+                androidx.compose.animation.core.tween(320),
+            ),
+            exit = androidx.compose.animation.shrinkVertically(
+                animationSpec = androidx.compose.animation.core.tween(220),
+            ) + androidx.compose.animation.fadeOut(
+                androidx.compose.animation.core.tween(220),
+            ),
+        ) {
+            state.appUpdate?.let { update ->
+                CompactUpdateCard(
+                    update = update,
+                    downloading = state.updateDownload?.let { !it.done } == true,
+                    onUpdate = vm::downloadAndInstallUpdate,
+                    onCancel = vm::dismissUpdate,
+                )
             }
         }
 
@@ -491,98 +491,65 @@ private fun RootButton(state: UiState, transportOk: Boolean, onRoot: () -> Unit)
 }
 
 
-// ─────────── Плашка обновления приложения ───────────
+// ─────────── Компактная плашка обновления ───────────
 
+/** Одна строка: иконка, версия и размер, кнопка «Обновить», крестик. */
 @Composable
-fun UpdateBanner(
+private fun CompactUpdateCard(
     update: com.rootmyvivo.data.AppUpdate,
-    download: com.rootmyvivo.vm.UpdateDownloadState?,
-    installing: Boolean,
+    downloading: Boolean,
     onUpdate: () -> Unit,
     onCancel: () -> Unit,
 ) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
-        shape = MaterialTheme.shapes.extraLarge,
+        shape = MaterialTheme.shapes.large,
         color = MaterialTheme.colorScheme.primaryContainer,
     ) {
-        Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
-                Icon(
-                    Icons.Rounded.CloudDownload,
-                    null,
-                    tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(26.dp),
-                )
-                Column {
-                    Text(
-                        stringResource(R.string.update_title),
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                    )
-                    Text(
-                        stringResource(R.string.update_version, update.versionName) +
-                            if (update.apkSize > 0) {
-                                "  ·  " + stringResource(R.string.update_size, "%.1f".format(update.apkSize / 1048576.0))
-                            } else "",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-            }
-            if (download != null) {
-                UpdateProgress(download)
-                if (download.done) {
-                    Text(
-                        stringResource(R.string.update_installing),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-            }
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                OutlinedButton(
-                    onClick = onCancel,
-                    modifier = Modifier.weight(1f),
-                    enabled = download == null || download.done,
-                    shape = MaterialTheme.shapes.large,
-                ) {
-                    Text(stringResource(R.string.update_cancel))
-                }
-                Button(
-                    onClick = onUpdate,
-                    modifier = Modifier.weight(1f),
-                    // во время скачивания кнопка гаснет (отмена недоступна тоже)
-                    enabled = download == null || download.done,
-                    shape = MaterialTheme.shapes.large,
-                ) {
-                    Text(
-                        if (download != null && download.done) {
-                            stringResource(R.string.update_retry_install)
-                        } else {
-                            stringResource(R.string.update_button)
-                        },
-                    )
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun UpdateProgress(dl: com.rootmyvivo.vm.UpdateDownloadState) {
-    val mb = "%.1f / %.1f МБ".format(dl.read / 1048576.0, dl.total / 1048576.0)
-    when (val f = dl.fraction) {
-        null -> {
-            LinearProgressIndicator(Modifier.fillMaxWidth())
-            Text(mb, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        }
-        else -> {
-            LinearProgressIndicator(
-                progress = { f.coerceIn(0f, 1f) },
-                modifier = Modifier.fillMaxWidth(),
+        Row(
+            Modifier.padding(start = 14.dp, end = 4.dp, top = 4.dp, bottom = 4.dp),
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Icon(
+                Icons.Rounded.CloudDownload,
+                null,
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(20.dp),
             )
-            Text(mb, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Column(Modifier.weight(1f)) {
+                Text(
+                    stringResource(R.string.update_title),
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines = 1,
+                )
+                if (downloading) {
+                    Text(
+                        stringResource(R.string.update_downloading),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                    )
+                } else if (update.apkSize > 0) {
+                    Text(
+                        stringResource(
+                            R.string.update_version_size,
+                            update.versionName,
+                            "%.1f".format(update.apkSize / 1048576.0),
+                        ),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                    )
+                }
+            }
+            TextButton(onClick = onUpdate, enabled = !downloading) {
+                Text(stringResource(R.string.update_button))
+            }
+            TextButton(onClick = onCancel, enabled = !downloading) {
+                Text(stringResource(R.string.update_cancel))
+            }
         }
     }
 }

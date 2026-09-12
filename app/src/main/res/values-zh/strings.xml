@@ -233,6 +233,7 @@
     <string name="update_title">有可用更新</string>
     <string name="update_version">版本 %1$s</string>
     <string name="update_size">%1$s MB</string>
+    <string name="update_version_size">%1$s · %2$s MB</string>
     <string name="update_button">更新</string>
     <string name="update_cancel">取消</string>
     <string name="update_downloading">正在下载更新…</string>

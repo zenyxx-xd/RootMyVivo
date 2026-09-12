@@ -159,12 +159,20 @@ private fun PayloadRow(p: com.rootmyvivo.data.PayloadEntry, mine: Boolean) {
                 modifier = Modifier.size(20.dp),
             )
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
                     Text(
                         p.displayName,
                         style = MaterialTheme.typography.bodyMedium,
                         fontWeight = if (mine) FontWeight.Bold else FontWeight.Medium,
                         color = if (mine) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
+                        // текст не растягивает карточку: максимум 2 строки,
+                        // бейдж всегда виден рядом
+                        modifier = Modifier.weight(1f, fill = false),
+                        maxLines = 2,
+                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
                     )
                     if (mine) {
                         Surface(
@@ -184,6 +192,8 @@ private fun PayloadRow(p: com.rootmyvivo.data.PayloadEntry, mine: Boolean) {
                     p.marketNames.joinToString(" · "),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
                 )
                 Text(
                     (p.kernelVersions.joinToString(" · ").ifEmpty { "—" }) +
@@ -191,6 +201,8 @@ private fun PayloadRow(p: com.rootmyvivo.data.PayloadEntry, mine: Boolean) {
                     style = MaterialTheme.typography.bodySmall,
                     fontFamily = FontFamily.Monospace,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
                 )
                 if (!p.enabled) {
                     Text(

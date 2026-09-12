@@ -76,6 +76,18 @@ fun App(vm: MainViewModel, state: UiState) {
         logViewerOpen = false
     }
 
+    // ── Диалог обновления приложения (поверх всего) ──
+    if (state.updateDialogOpen) {
+        state.appUpdate?.let { update ->
+            com.rootmyvivo.ui.home.UpdateDialog(
+                update = update,
+                download = state.updateDownload,
+                onUpdate = vm::downloadAndInstallUpdate,
+                onCancel = vm::dismissUpdateDialog,
+            )
+        }
+    }
+
     // ── Полноэкранный процесс рута (slide up) ──
     AnimatedVisibility(
         visible = flowOpen,

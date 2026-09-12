@@ -54,6 +54,8 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         Transport.onBinderStateChanged = { refreshTransport() }
         detectDevice()
         refreshTransport()
+        // Автопоиск обновлений при каждом запуске приложения
+        if (_state.value.settings.autoUpdateCheck) checkForUpdate()
     }
 
     // ─────────── Устройство и каталог ───────────
@@ -189,7 +191,8 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
 
     /**
      * Проверить обновления в фоне (GitHub releases, стабильные только).
-     * Результат — плашка appUpdate на главной. Повторные вызовы схлопываются.
+     * Результат — диалог + компактная плашка на главной. Повторные вызовы
+     * схлопываются.
      */
     fun checkForUpdate() {
         if (updateCheckJob?.isActive == true) return
@@ -197,9 +200,17 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             val update = withContext(Dispatchers.IO) { AppUpdater.check(getApplication()) }
             // не перетираем активное скачивание предыдущей проверки
             if (_state.value.updateDownload == null) {
-                _state.value = _state.value.copy(appUpdate = update)
+                _state.value = _state.value.copy(
+                    appUpdate = update,
+                    updateDialogOpen = update != null,
+                )
             }
         }
+    }
+
+    /** Закрыть диалог — компактная плашка остаётся на главной */
+    fun dismissUpdateDialog() {
+        _state.value = _state.value.copy(updateDialogOpen = false)
     }
 
     fun dismissUpdate() {

@@ -233,6 +233,7 @@
     <string name="update_title">Update available</string>
     <string name="update_version">Version %1$s</string>
     <string name="update_size">%1$s MB</string>
+    <string name="update_version_size">%1$s · %2$s MB</string>
     <string name="update_button">Update</string>
     <string name="update_cancel">Cancel</string>
     <string name="update_downloading">Downloading update…</string>

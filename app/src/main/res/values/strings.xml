@@ -246,6 +246,7 @@
     <string name="update_title">Доступно обновление</string>
     <string name="update_version">Версия %1$s</string>
     <string name="update_size">%1$s МБ</string>
+    <string name="update_version_size">%1$s · %2$s МБ</string>
     <string name="update_button">Обновить</string>
     <string name="update_cancel">Отмена</string>
     <string name="update_downloading">Скачивание обновления…</string>
