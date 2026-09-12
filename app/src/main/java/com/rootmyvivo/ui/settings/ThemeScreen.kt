@@ -1,5 +1,11 @@
 package com.rootmyvivo.ui.settings
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -14,7 +20,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -22,7 +27,7 @@ import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
 import androidx.compose.material.icons.rounded.BrightnessAuto
 import androidx.compose.material.icons.rounded.Check
-import androidx.compose.material.icons.rounded.Gesture
+import androidx.compose.material.icons.rounded.Lock
 import androidx.compose.material.icons.rounded.Palette
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -39,6 +44,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
@@ -56,7 +62,8 @@ import com.rootmyvivo.ui.common.SettingsRow
 import com.rootmyvivo.vm.MainViewModel
 import com.rootmyvivo.vm.UiState
 
-/** Экран «Тема»: выбор оформления, режим светлое/тёмное, динамика, жесты. */
+/** Экран «Тема»: Monet (рабочая), OriginOS (заготовка, некликабельна)
+ *  + режим светлое/тёмное + динамические цвета. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ThemeScreen(vm: MainViewModel, state: UiState, onClose: () -> Unit) {
@@ -80,40 +87,27 @@ fun ThemeScreen(vm: MainViewModel, state: UiState, onClose: () -> Unit) {
                 .fillMaxSize()
                 .padding(padding)
                 .verticalScroll(rememberScrollState())
-                .padding(horizontal = 20.dp),
-            verticalArrangement = Arrangement.spacedBy(14.dp),
+                .padding(horizontal = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(18.dp),
         ) {
             Spacer(Modifier.height(4.dp))
 
-            // ── Оформление ──
             SettingsGroup(title = stringResource(R.string.theme_screen_style)) {
-                // превью — не цвета (они у Monet/Old одинаковые), а стиль строки
                 ThemeCard(
                     name = stringResource(R.string.theme_name_monet),
-                    description = stringResource(R.string.theme_name_monet_desc),
-                    iconShape = RoundedCornerShape(13.dp),
                     selected = state.settings.appTheme == AppThemeName.MONET,
+                    enabled = true,
                     onClick = { vm.updateSettings { it.copy(appTheme = AppThemeName.MONET) } },
                 )
                 SettingsDivider()
                 ThemeCard(
-                    name = stringResource(R.string.theme_name_monet_old),
-                    description = stringResource(R.string.theme_name_monet_old_desc),
-                    iconShape = androidx.compose.foundation.shape.CircleShape,
-                    selected = state.settings.appTheme == AppThemeName.MONET_OLD,
-                    onClick = { vm.updateSettings { it.copy(appTheme = AppThemeName.MONET_OLD) } },
-                )
-                SettingsDivider()
-                ThemeCard(
                     name = stringResource(R.string.theme_name_originos),
-                    description = stringResource(R.string.theme_name_originos_desc),
-                    iconShape = RoundedCornerShape(6.dp),
-                    selected = state.settings.appTheme == AppThemeName.ORIGIN_OS,
-                    onClick = { vm.updateSettings { it.copy(appTheme = AppThemeName.ORIGIN_OS) } },
+                    selected = false,
+                    enabled = false,
+                    onClick = {},
                 )
             }
 
-            // ── Режим и цвета ──
             SettingsGroup {
                 SettingsRow(
                     title = stringResource(R.string.settings_theme),
@@ -136,21 +130,6 @@ fun ThemeScreen(vm: MainViewModel, state: UiState, onClose: () -> Unit) {
                         Switch(
                             checked = state.settings.dynamicColors,
                             onCheckedChange = { v -> vm.updateSettings { it.copy(dynamicColors = v) } },
-                        )
-                    },
-                )
-            }
-
-            // ── Жесты ──
-            SettingsGroup {
-                SettingsRow(
-                    title = stringResource(R.string.settings_predictive_back),
-                    description = stringResource(R.string.settings_predictive_back_desc),
-                    icon = Icons.Rounded.Gesture,
-                    trailing = {
-                        Switch(
-                            checked = state.settings.predictiveBack,
-                            onCheckedChange = { v -> vm.updateSettings { it.copy(predictiveBack = v) } },
                         )
                     },
                 )
@@ -184,72 +163,62 @@ private fun themeModeName(mode: ThemeMode): String = when (mode) {
     ThemeMode.DARK -> stringResource(R.string.theme_dark)
 }
 
-/** Карточка темы: мини-макет строки настройки (форма иконки), название, галочка. */
+/** Карточка темы без описания; enabled=false — заготовка (замок).
+ *  Галочка выбора появляется/исчезает с пружинной анимацией. */
 @Composable
 private fun ThemeCard(
     name: String,
-    description: String,
-    iconShape: androidx.compose.ui.graphics.Shape,
     selected: Boolean,
+    enabled: Boolean,
     onClick: () -> Unit,
 ) {
     val haptic = LocalHapticFeedback.current
-
     Row(
         Modifier
             .fillMaxWidth()
-            .clickable {
-                haptic.performHapticFeedback(HapticFeedbackType.ContextClick)
-                onClick()
-            }
-            .padding(horizontal = 14.dp, vertical = 12.dp),
+            .alpha(if (enabled) 1f else 0.5f)
+            .then(
+                if (enabled) {
+                    Modifier.clickable {
+                        haptic.performHapticFeedback(HapticFeedbackType.ContextClick)
+                        onClick()
+                    }
+                } else {
+                    Modifier
+                },
+            )
+            .padding(horizontal = 14.dp, vertical = 14.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        // превью стиля: строка настройки — контейнер иконки + две строки текста
-        Row(
+        Box(
             Modifier
-                .size(width = 56.dp, height = 40.dp)
-                .clip(RoundedCornerShape(12.dp))
-                .background(MaterialTheme.colorScheme.surfaceContainerHigh)
-                .padding(horizontal = 6.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                .size(40.dp)
+                .clip(RoundedCornerShape(20.dp))
+                .background(MaterialTheme.colorScheme.primaryContainer),
+            contentAlignment = Alignment.Center,
         ) {
-            Box(
-                Modifier
-                    .size(18.dp)
-                    .clip(iconShape)
-                    .background(MaterialTheme.colorScheme.primaryContainer),
-            )
-            Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                Box(
-                    Modifier
-                        .size(width = 22.dp, height = 4.dp)
-                        .clip(RoundedCornerShape(2.dp))
-                        .background(MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)),
-                )
-                Box(
-                    Modifier
-                        .size(width = 14.dp, height = 4.dp)
-                        .clip(RoundedCornerShape(2.dp))
-                        .background(MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f)),
-                )
-            }
-        }
-        Spacer(Modifier.width(14.dp))
-        Column(Modifier.weight(1f)) {
-            Text(
-                name,
-                style = MaterialTheme.typography.bodyLarge,
-                fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
-            )
-            Text(
-                description,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            Icon(
+                if (enabled) Icons.Rounded.Palette else Icons.Rounded.Lock,
+                null,
+                tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                modifier = Modifier.size(20.dp),
             )
         }
-        if (selected) {
+        Spacer(Modifier.width(16.dp))
+        Text(
+            name,
+            style = MaterialTheme.typography.bodyLarge,
+            fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
+            modifier = Modifier.weight(1f),
+        )
+        AnimatedVisibility(
+            visible = selected,
+            enter = scaleIn(
+                animationSpec = tween(220),
+                initialScale = 0.5f,
+            ) + fadeIn(tween(220)),
+            exit = scaleOut(tween(150)) + fadeOut(tween(150)),
+        ) {
             Icon(
                 Icons.Rounded.Check, null,
                 tint = MaterialTheme.colorScheme.primary,

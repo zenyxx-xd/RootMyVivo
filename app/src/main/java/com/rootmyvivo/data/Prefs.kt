@@ -4,13 +4,10 @@ import android.content.Context
 
 enum class ThemeMode { AUTO, LIGHT, DARK }
 
-/** Тема оформления приложения. */
+/** Тема оформления: стиль поведения, цвета не меняет. */
 enum class AppThemeName(val id: String) {
-    /** Прежний вид — не трогаем. */
-    MONET_OLD("monet_old"),
-    /** Новая: Material 3 Expressive в духе ReSukiSU. */
     MONET("monet"),
-    /** Серая заготовка под OriginOS. */
+    /** Заготовка — в списке тем показана, но некликабельна. */
     ORIGIN_OS("originos");
 
     companion object {
@@ -24,7 +21,6 @@ data class Settings(
     val themeMode: ThemeMode = ThemeMode.AUTO,
     val appTheme: AppThemeName = AppThemeName.MONET,
     val dynamicColors: Boolean = true,
-    val predictiveBack: Boolean = true,
     val catalogUrl: String = Catalog.DEFAULT_URL,
     val warnDismissed: Boolean = false,
     val softRebootConfirmDismissed: Boolean = false,
@@ -46,7 +42,6 @@ class Prefs(context: Context) {
         }.getOrDefault(ThemeMode.AUTO),
         dynamicColors = sp.getBoolean(KEY_DYNAMIC, true),
         appTheme = AppThemeName.byId(sp.getString(KEY_APP_THEME, null)),
-        predictiveBack = sp.getBoolean(KEY_PREDICTIVE, true),
         catalogUrl = sp.getString(KEY_CATALOG, null)
             ?.takeIf { it.startsWith("https://") } ?: Catalog.DEFAULT_URL,
         warnDismissed = sp.getBoolean(KEY_WARN_DISMISSED, false),
@@ -62,7 +57,6 @@ class Prefs(context: Context) {
             .putString(KEY_THEME, s.themeMode.name)
             .putBoolean(KEY_DYNAMIC, s.dynamicColors)
             .putString(KEY_APP_THEME, s.appTheme.id)
-            .putBoolean(KEY_PREDICTIVE, s.predictiveBack)
             .putString(KEY_CATALOG, s.catalogUrl)
             .putBoolean(KEY_WARN_DISMISSED, s.warnDismissed)
             .putBoolean(KEY_SR_CONFIRM, s.softRebootConfirmDismissed)
@@ -166,7 +160,6 @@ class Prefs(context: Context) {
         const val KEY_THEME = "theme"
         const val KEY_DYNAMIC = "dynamicColors"
         const val KEY_APP_THEME = "appTheme"
-        const val KEY_PREDICTIVE = "predictiveBack"
         const val KEY_CATALOG = "catalogUrl"
         const val KEY_WARN_DISMISSED = "warnDismissed"
         const val KEY_SR_CONFIRM = "softRebootConfirmDismissed"

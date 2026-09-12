@@ -49,9 +49,8 @@ import com.rootmyvivo.vm.UiState
 import kotlinx.coroutines.launch
 
 /**
- * «Другое»: демо-флоу успеха (как выглядит процесс) и редактор каталога
- * пейлоадов. Без перезапуска эксплойта и списка пейлоадов — это есть
- * на главной.
+ * «Другое»: перезапуск эксплойта, демонстрация процесса и редактор
+ * каталога пейлоадов.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -102,19 +101,30 @@ fun DevScreen(vm: MainViewModel, state: UiState, onClose: () -> Unit, onRootStar
         ) {
             Spacer(Modifier.height(4.dp))
 
-            // ── Демо ──
-            SettingsGroup(title = stringResource(R.string.other_demo)) {
-                OutlinedButton(
-                    onClick = { runDemo(scope) { demoState = it } },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 12.dp, vertical = 4.dp),
-                    shape = MaterialTheme.shapes.large,
-                ) {
-                    Icon(Icons.Rounded.PlayArrow, null, modifier = Modifier.size(18.dp))
-                    Spacer(Modifier.width(6.dp))
-                    Text(stringResource(R.string.dev_demo_success))
-                }
+            // ── Перезапуск эксплойта (залитая, сверху) ──
+            Button(
+                onClick = {
+                    vm.startRoot()
+                    onRootStarted()
+                },
+                modifier = Modifier.fillMaxWidth(),
+                shape = MaterialTheme.shapes.large,
+                enabled = state.payload != null && !state.flowRunning,
+            ) {
+                Icon(Icons.Rounded.Bolt, null, modifier = Modifier.size(18.dp))
+                Spacer(Modifier.width(6.dp))
+                Text(stringResource(R.string.home_restart_exploit))
+            }
+
+            // ── Демонстрация эксплоита (контурная, без подложки) ──
+            OutlinedButton(
+                onClick = { runDemo(scope) { demoState = it } },
+                modifier = Modifier.fillMaxWidth(),
+                shape = MaterialTheme.shapes.large,
+            ) {
+                Icon(Icons.Rounded.PlayArrow, null, modifier = Modifier.size(18.dp))
+                Spacer(Modifier.width(6.dp))
+                Text(stringResource(R.string.other_demo_run))
             }
 
             // ── Каталог пейлоадов ──

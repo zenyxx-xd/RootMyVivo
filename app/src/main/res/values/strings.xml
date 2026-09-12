@@ -284,4 +284,6 @@
     <string name="theme_name_originos_desc">Серая база — в разработке</string>
     <string name="settings_predictive_back">Предиктивные жесты</string>
     <string name="settings_predictive_back_desc">Окно сжимается вслед за свайпом «назад»</string>
+    <string name="other_demo_run">Демонстрация эксплоита</string>
+    <string name="settings_root">Рут</string>
 </resources>

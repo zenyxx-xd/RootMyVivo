@@ -12,7 +12,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.pager.HorizontalPager
-import androidx.compose.foundation.pager.PagerDefaults
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Home
@@ -34,9 +33,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
-import androidx.navigationevent.NavigationEventInfo
-import androidx.navigationevent.compose.NavigationBackHandler
-import androidx.navigationevent.compose.rememberNavigationEventState
 import com.rootmyvivo.R
 import com.rootmyvivo.ui.dev.DevScreen
 import com.rootmyvivo.ui.flow.FlowScreen
@@ -44,8 +40,6 @@ import com.rootmyvivo.ui.home.HomeScreen
 import com.rootmyvivo.ui.logs.LogHistoryScreen
 import com.rootmyvivo.ui.settings.AboutScreen
 import com.rootmyvivo.ui.settings.SettingsScreen
-import com.rootmyvivo.ui.settings.ThemeScreen
-import com.rootmyvivo.ui.theme.LocalAppStyle
 import com.rootmyvivo.vm.MainViewModel
 import com.rootmyvivo.vm.UiState
 import kotlinx.coroutines.launch
@@ -56,7 +50,6 @@ import top.yukonga.miuix.kmp.nav.core.NavDisplayEffects
 import top.yukonga.miuix.kmp.nav.core.rememberNavController
 import top.yukonga.miuix.kmp.nav.transition.NavSwipeDirection
 import top.yukonga.miuix.kmp.nav.transition.NavTransition
-import top.yukonga.miuix.kmp.nav.transition.NavTransitions
 import top.yukonga.miuix.kmp.nav.transition.navGraphicsTransition
 import kotlin.math.roundToInt
 
@@ -73,13 +66,31 @@ private sealed interface RmvRoute : top.yukonga.miuix.kmp.nav.core.NavKey {
 }
 
 /**
- * Переход новой темы: окно выезжает справа на полной непрозрачности
- * (пиксель-снап против мерцания скруглённой кромки), нижний слой уезжает
- * влево на четверть ширины и притухает; затемнение добавляет scrim из
- * NavDisplayEffects. Отображение линейно по depth → свайп «назад»
- * следует за пальцем 1:1 (предиктивный жест из коробки).
+ * Переход окон: окно выезжает справа на полной непрозрачности, нижний слой
+ * уезжает влево на четверть ширины и притухает; затемнение — scrim из
+ * NavDisplayEffects. Отображение линейно по depth → жест «назад» следует
+ * за пальцем 1:1. Быстрое во всех фазах: открытие 280мс, закрытие —
+ * жест/кнопка «назад» 200мс, отмена жеста — резкая пружина.
  */
-private val SideTransition: NavTransition = navGraphicsTransition(opaqueDepth = 1f) { scope ->
+private val SideTransition: NavTransition = navGraphicsTransition(
+    opaqueDepth = 1f,
+    motion = top.yukonga.miuix.kmp.nav.transition.NavMotion(
+        // закрытие: жест «назад» доведён до конца / кнопка назад
+        commit = top.yukonga.miuix.kmp.nav.transition.NavSettleSpec.Tween(
+            durationMillis = 200,
+            easing = FastOutSlowInEasing,
+        ),
+        // жест «назад» отменён — окно резким щелчком возвращается
+        cancel = top.yukonga.miuix.kmp.nav.transition.NavSettleSpec.Spring(
+            stiffness = 1500f,
+        ),
+        // программные открытие/закрытие (тап по пункту)
+        programmatic = top.yukonga.miuix.kmp.nav.transition.NavSettleSpec.Tween(
+            durationMillis = 280,
+            easing = FastOutSlowInEasing,
+        ),
+    ),
+) { scope ->
     val width = scope.layoutSize.width.toFloat()
     val d = scope.relativeDepth
     val rtl = scope.layoutDirection == LayoutDirection.Rtl
@@ -96,54 +107,57 @@ private val SideTransition: NavTransition = navGraphicsTransition(opaqueDepth = 
 
 @Composable
 fun App(vm: MainViewModel, state: UiState) {
-    val style = LocalAppStyle.current
     val nav = rememberNavController<RmvRoute>(RmvRoute.Main)
     val onBack: () -> Unit = remember(nav) { { nav.pop(); Unit } }
     var flowOpen by rememberSaveable { mutableStateOf(false) }
 
+    // Быстрый двойной тап по пункту дважды пушит один и тот же ключ —
+    // miuix-nav на дубликатах в стеке падает. Дебаунс 350мс + запрет
+    // дублей: пока экран уже в стеке, повторный push игнорируется.
+    val lastPushAt = remember { androidx.compose.runtime.mutableLongStateOf(0L) }
+    val pushRoute: (RmvRoute) -> Unit = remember(nav) {
+        { route ->
+            val now = System.currentTimeMillis()
+            if (now - lastPushAt.longValue > 350 && nav.backStack.none { it == route }) {
+                lastPushAt.longValue = now
+                nav.push(route)
+            }
+        }
+    }
+
     Box(Modifier.fillMaxSize()) {
-        val transition = if (style.isLegacy) NavTransitions.Modal else SideTransition
-        val effects = if (style.isLegacy) {
-            NavDisplayEffects(dimAmount = 0f, enableCornerClip = false)
-        } else {
-            NavDisplayEffects(
+        NavDisplay(
+            navController = nav,
+            onBack = onBack,
+            transition = SideTransition,
+            effects = NavDisplayEffects(
                 enableCornerClip = true,
                 cornerClipRadius = 28.dp,
                 cornerClipMode = NavCornerClipMode.Leading,
                 dimAmount = 0.5f,
                 backdropColor = MaterialTheme.colorScheme.surfaceContainer,
                 blockInputDuringTransition = false,
-            )
-        }
-
-        NavDisplay(
-            navController = nav,
-            onBack = onBack,
-            transition = transition,
-            effects = effects,
+            ),
         ) {
             entry<RmvRoute.Main>(swipeDismiss = NavSwipeDirection.None) {
                 MainScaffold(
                     vm = vm,
                     state = state,
                     onRootStarted = { flowOpen = true },
-                    onOpenSupported = { nav.push(RmvRoute.Supported) },
-                    onOpenLastLog = { nav.push(RmvRoute.LogHistory) },
-                    onOpenTheme = { nav.push(RmvRoute.Theme) },
-                    onOpenAbout = { nav.push(RmvRoute.About) },
-                    onOpenOther = { nav.push(RmvRoute.Other) },
+                    onOpenSupported = { pushRoute(RmvRoute.Supported) },
+                    onOpenLastLog = { pushRoute(RmvRoute.LogHistory) },
+                    onOpenTheme = { pushRoute(RmvRoute.Theme) },
+                    onOpenAbout = { pushRoute(RmvRoute.About) },
+                    onOpenOther = { pushRoute(RmvRoute.Other) },
                 )
             }
             entry<RmvRoute.Theme>(swipeDismiss = NavSwipeDirection.LeftToRight) {
-                BackInterceptor(active = !style.predictiveBack, onBack = onBack)
-                ThemeScreen(vm = vm, state = state, onClose = onBack)
+                com.rootmyvivo.ui.settings.ThemeScreen(vm = vm, state = state, onClose = onBack)
             }
             entry<RmvRoute.About>(swipeDismiss = NavSwipeDirection.LeftToRight) {
-                BackInterceptor(active = !style.predictiveBack, onBack = onBack)
                 AboutScreen(vm = vm, state = state, onClose = onBack)
             }
             entry<RmvRoute.Supported>(swipeDismiss = NavSwipeDirection.LeftToRight) {
-                BackInterceptor(active = !style.predictiveBack, onBack = onBack)
                 com.rootmyvivo.ui.home.SupportedDevicesScreen(
                     state = state,
                     catalogUrl = state.settings.catalogUrl,
@@ -151,7 +165,6 @@ fun App(vm: MainViewModel, state: UiState) {
                 )
             }
             entry<RmvRoute.Other>(swipeDismiss = NavSwipeDirection.LeftToRight) {
-                BackInterceptor(active = !style.predictiveBack, onBack = onBack)
                 DevScreen(
                     vm = vm,
                     state = state,
@@ -160,19 +173,17 @@ fun App(vm: MainViewModel, state: UiState) {
                 )
             }
             entry<RmvRoute.LogHistory>(swipeDismiss = NavSwipeDirection.LeftToRight) {
-                BackInterceptor(active = !style.predictiveBack, onBack = onBack)
                 LogHistoryScreen(
                     runs = state.logHistory,
                     onOpen = { run ->
                         vm.openLogRun(run)
                         nav.pop()
-                        nav.push(RmvRoute.LogViewer)
+                        pushRoute(RmvRoute.LogViewer)
                     },
                     onClose = onBack,
                 )
             }
             entry<RmvRoute.LogViewer>(swipeDismiss = NavSwipeDirection.LeftToRight) {
-                BackInterceptor(active = !style.predictiveBack, onBack = onBack)
                 FlowScreen(
                     state = state.copy(
                         log = state.lastLog,
@@ -197,8 +208,20 @@ fun App(vm: MainViewModel, state: UiState) {
             }
         }
 
+    // ── Диалог обновления приложения (поверх всего) ──
+    if (state.updateDialogOpen) {
+        state.appUpdate?.let { update ->
+            com.rootmyvivo.ui.home.UpdateDialog(
+                update = update,
+                download = state.updateDownload,
+                onUpdate = vm::updateAction,
+                onCancel = vm::dismissUpdateDialog,
+            )
+        }
+    }
+
         // Процесс рута — полноэкранный оверлей поверх всей навигации
-        androidx.compose.animation.AnimatedVisibility(
+        AnimatedVisibility(
             visible = flowOpen,
             enter = slideInVertically(
                 animationSpec = tween(350, easing = FastOutSlowInEasing),
@@ -227,23 +250,7 @@ fun App(vm: MainViewModel, state: UiState) {
     }
 }
 
-/**
- * Когда предиктивные жесты выключены — перехватываем системный «назад»
- * и закрываем окно программно, без анимации жеста (как interceptPredictiveBack
- * в ReSukiSU). Иначе(miuix-nav сам ведёт жест 1:1.
- */
-@Composable
-private fun BackInterceptor(active: Boolean, onBack: () -> Unit) {
-    if (!active) return
-    val navEventState = rememberNavigationEventState(NavigationEventInfo.None)
-    NavigationBackHandler(
-        state = navEventState,
-        isBackEnabled = true,
-        onBackCompleted = onBack,
-    )
-}
-
-/** Главная вкладка-хост: нижняя навигация + свайп-пейджер. */
+/** Главная вкладка-хост: нижняя навигация + свайп-пейджер (медленный снап). */
 @Composable
 private fun MainScaffold(
     vm: MainViewModel,
@@ -255,17 +262,8 @@ private fun MainScaffold(
     onOpenAbout: () -> Unit,
     onOpenOther: () -> Unit,
 ) {
-    val style = LocalAppStyle.current
     val scope = rememberCoroutineScope()
     val pagerState = rememberPagerState(initialPage = 0) { 2 }
-    val fling = if (style.slowPager) {
-        PagerDefaults.flingBehavior(
-            pagerState,
-            snapAnimationSpec = tween(550, easing = FastOutSlowInEasing),
-        )
-    } else {
-        PagerDefaults.flingBehavior(pagerState)
-    }
 
     Scaffold(
         bottomBar = {
@@ -290,7 +288,6 @@ private fun MainScaffold(
                 state = pagerState,
                 modifier = Modifier.fillMaxSize(),
                 beyondViewportPageCount = 1,
-                flingBehavior = fling,
             ) { page ->
                 when (page) {
                     0 -> HomeScreen(

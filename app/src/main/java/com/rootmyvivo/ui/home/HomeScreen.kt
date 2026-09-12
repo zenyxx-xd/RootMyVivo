@@ -11,12 +11,13 @@ import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -25,44 +26,36 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
+import androidx.compose.material.icons.rounded.Bolt
+import androidx.compose.material.icons.rounded.CheckCircle
+import androidx.compose.material.icons.rounded.CloudDownload
+import androidx.compose.material.icons.rounded.Description
+import androidx.compose.material.icons.rounded.LinkOff
+import androidx.compose.material.icons.rounded.PhoneAndroid
+import androidx.compose.material.icons.rounded.Search
+import androidx.compose.material.icons.rounded.Security
+import androidx.compose.material.icons.rounded.Usb
+import androidx.compose.material.icons.rounded.Verified
+import androidx.compose.material3.Button
 import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material.icons.rounded.RestartAlt
-import androidx.compose.material.icons.twotone.Bolt
-import androidx.compose.material.icons.twotone.Block
-import androidx.compose.material.icons.twotone.CheckCircle
-import androidx.compose.material.icons.twotone.CloudDownload
-import androidx.compose.material.icons.twotone.Description
-import androidx.compose.material.icons.twotone.DevicesOther
-import androidx.compose.material.icons.twotone.LinkOff
-import androidx.compose.material.icons.twotone.Memory
-import androidx.compose.material.icons.twotone.Security
-import androidx.compose.material.icons.twotone.TaskAlt
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
-import androidx.compose.material3.Checkbox
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
-import androidx.compose.material3.LargeFlexibleTopAppBar
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBarDefaults
-import androidx.compose.material3.rememberTopAppBarState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -76,18 +69,12 @@ import com.rootmyvivo.ui.common.SettingsDivider
 import com.rootmyvivo.ui.common.SettingsGroup
 import com.rootmyvivo.ui.common.SettingsRow
 import com.rootmyvivo.ui.common.TrailingValue
-import com.rootmyvivo.ui.theme.LocalAppStyle
 import com.rootmyvivo.vm.CatalogState
 import com.rootmyvivo.vm.MainViewModel
 import com.rootmyvivo.vm.RootState
 import com.rootmyvivo.vm.UiState
-import androidx.compose.foundation.shape.RoundedCornerShape
 
-/**
- * Главный экран. Новая тема — в стиле ReSukiSU: большая сворачиваемая
- * шапка, статус-карточка, группы из отдельных карточек. Monet Old —
- * прежний вид.
- */
+/** Главный экран: статус → транспорт/пейлоад/менеджер → устройство. */
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun HomeScreen(
@@ -97,416 +84,29 @@ fun HomeScreen(
     onOpenLastLog: () -> Unit = {},
     onOpenSupported: () -> Unit = {},
 ) {
-    val style = LocalAppStyle.current
-    if (style.isLegacy) {
-        LegacyHomeScreen(vm, state, onRootStarted, onOpenLastLog, onOpenSupported)
-    } else {
-        ExpressiveHomeScreen(vm, state, onRootStarted, onOpenLastLog, onOpenSupported)
-    }
-}
-
-// ─────────── Новая тема ───────────
-
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
-@Composable
-private fun ExpressiveHomeScreen(
-    vm: MainViewModel,
-    state: UiState,
-    onRootStarted: () -> Unit,
-    onOpenLastLog: () -> Unit,
-    onOpenSupported: () -> Unit,
-) {
     var ksuDialog by remember { mutableStateOf(false) }
     var warnDialog by remember { mutableStateOf(false) }
     var confirmAction by remember { mutableStateOf(false) }
+    // Чекеры «больше не показывать» — локальные: фиксируются только кнопкой
+    // действия. Отмена оставляет настройку нетронутой
     var warnDontShow by remember { mutableStateOf(false) }
     var rebootDontShow by remember { mutableStateOf(false) }
     val warnDismissed = state.settings.warnDismissed
 
+    // Предупреждение перед запуском (или сразу запуск если скрыто)
     if (warnDialog && warnDismissed) {
         warnDialog = false
     }
 
-    val topBarState = rememberTopAppBarState()
-    val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior(topBarState)
-    val scrollState = rememberScrollState()
-
-    fun startRoot() {
-        if (state.settings.warnDismissed) {
-            vm.startRoot()
-            onRootStarted()
-        } else {
-            warnDialog = true
-        }
-    }
-
-    Scaffold(
-        containerColor = MaterialTheme.colorScheme.background,
-        topBar = {
-            LargeFlexibleTopAppBar(
-                title = { Text(stringResource(R.string.app_name)) },
-                scrollBehavior = scrollBehavior,
-            )
-        },
-    ) { padding ->
-        Column(
-            Modifier
-                .fillMaxSize()
-                .padding(padding)
-                .nestedScroll(scrollBehavior.nestedScrollConnection)
-                .verticalScroll(scrollState)
-                .padding(horizontal = 16.dp),
-        ) {
-            // Плашка обновления
-            state.appUpdate?.let { update ->
-                CompactUpdateCard(
-                    update = update,
-                    downloadDone = state.updateDownload?.done == true,
-                    downloading = state.updateDownload?.let { !it.done } == true,
-                    onUpdate = vm::updateAction,
-                )
-                Spacer(Modifier.height(10.dp))
-            }
-
-            // Статус-карточка
-            StatusCard(state, onStartRoot = { startRoot() })
-            Spacer(Modifier.height(10.dp))
-
-            // Кнопки при живом руте
-            if (state.rootState == RootState.ROOTED) {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    OutlinedButton(
-                        onClick = {
-                            if (state.settings.restartConfirmDismissed) {
-                                vm.startRoot()
-                                onRootStarted()
-                            } else {
-                                confirmAction = true
-                            }
-                        },
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = MaterialTheme.shapes.large,
-                    ) {
-                        Icon(Icons.Rounded.RestartAlt, null, modifier = Modifier.size(16.dp))
-                        Spacer(Modifier.width(6.dp))
-                        Text(stringResource(R.string.home_restart_exploit), maxLines = 1)
-                    }
-                    Button(
-                        onClick = {
-                            if (state.settings.softRebootConfirmDismissed) {
-                                vm.performSoftReboot()
-                            } else {
-                                confirmAction = true
-                            }
-                        },
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = MaterialTheme.shapes.large,
-                    ) {
-                        Icon(Icons.Rounded.Refresh, null, modifier = Modifier.size(16.dp))
-                        Spacer(Modifier.width(6.dp))
-                        Text(stringResource(R.string.home_softreboot), maxLines = 1)
-                    }
-                }
-                Spacer(Modifier.height(10.dp))
-            }
-
-            // Транспорт — только при проблеме
-            when (state.transport) {
-                TransportState.None, TransportState.ShizukuNeedsPermission -> {
-                    TransportCard(state, vm)
-                    Spacer(Modifier.height(10.dp))
-                }
-                else -> {}
-            }
-
-            // Статус: пейлоад / менеджер / история / устройства
-            SettingsGroup {
-                SettingsRow(
-                    title = stringResource(R.string.status_payload),
-                    description = when {
-                        state.payload != null -> state.payload!!.displayName
-                        state.catalogState == CatalogState.ERROR -> stringResource(R.string.catalog_error)
-                        else -> stringResource(R.string.payload_short_searching)
-                    },
-                    icon = if (state.payload != null) Icons.TwoTone.CheckCircle else Icons.TwoTone.CloudDownload,
-                )
-                SettingsDivider()
-                SettingsRow(
-                    title = stringResource(R.string.ksu_title),
-                    description = state.selectedKsu.displayName,
-                    icon = Icons.TwoTone.Security,
-                    onClick = { ksuDialog = true },
-                    trailing = { Chevron() },
-                )
-                SettingsDivider()
-                SettingsRow(
-                    title = stringResource(R.string.home_lastlog),
-                    icon = Icons.TwoTone.Description,
-                    onClick = onOpenLastLog,
-                    trailing = { Chevron() },
-                )
-                SettingsDivider()
-                SettingsRow(
-                    title = stringResource(R.string.home_supported_devices),
-                    icon = Icons.TwoTone.DevicesOther,
-                    onClick = onOpenSupported,
-                    trailing = { Chevron() },
-                )
-            }
-            Spacer(Modifier.height(10.dp))
-
-            // Устройство
-            DeviceGroup(state)
-            Spacer(Modifier.height(28.dp))
-        }
-    }
-
-    // ── Диалоги (общие с легаси) ──
-    SharedDialogs(
-        state = state,
-        vm = vm,
-        warnDialog = warnDialog,
-        onWarnDialog = { warnDialog = it },
-        warnDontShow = warnDontShow,
-        onWarnDontShow = { warnDontShow = it },
-        confirmAction = confirmAction,
-        onConfirmAction = { confirmAction = it },
-        rebootDontShow = rebootDontShow,
-        onRebootDontShow = { rebootDontShow = it },
-        onRootStarted = onRootStarted,
-        ksuDialog = ksuDialog,
-        onKsuDialog = { ksuDialog = it },
-    )
-}
-
-/** Цветная статус-карточка в стиле ReSukiSU StatusCard. */
-@Composable
-private fun StatusCard(state: UiState, onStartRoot: () -> Unit) {
-    when (state.rootState) {
-        RootState.ROOTED -> SettingsRow(
-            icon = Icons.TwoTone.TaskAlt,
-            title = stringResource(R.string.status_rooted),
-            description = stringResource(R.string.status_rooted_desc),
-            containerColor = MaterialTheme.colorScheme.primaryContainer,
-        )
-        RootState.CHECKING -> SettingsRow(
-            icon = Icons.TwoTone.Memory,
-            title = stringResource(R.string.status_checking),
-            containerColor = MaterialTheme.colorScheme.secondaryContainer,
-        )
-        else -> {
-            val ready = state.payload != null
-            val transportOk = state.transport == TransportState.Adb || state.transport == TransportState.Shizuku
-            if (ready) {
-                SettingsRow(
-                    icon = Icons.TwoTone.Bolt,
-                    title = stringResource(R.string.status_not_rooted),
-                    description = state.payload!!.displayName,
-                    containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                    below = {
-                        Spacer(Modifier.height(8.dp))
-                        Button(
-                            onClick = onStartRoot,
-                            enabled = transportOk && !state.flowRunning,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .heightIn(min = 56.dp),
-                            shape = MaterialTheme.shapes.large,
-                        ) {
-                            Icon(Icons.TwoTone.Bolt, null, modifier = Modifier.size(22.dp))
-                            Spacer(Modifier.width(10.dp))
-                            Text(
-                                stringResource(R.string.action_root),
-                                style = MaterialTheme.typography.titleMedium,
-                            )
-                        }
-                    },
-                )
-            } else {
-                SettingsRow(
-                    icon = Icons.TwoTone.Block,
-                    isError = true,
-                    title = when (state.catalogState) {
-                        CatalogState.ERROR -> stringResource(R.string.catalog_error)
-                        CatalogState.LOADING -> stringResource(R.string.catalog_loading)
-                        else -> stringResource(R.string.status_unsupported)
-                    },
-                    description = stringResource(R.string.status_not_rooted_desc),
-                    containerColor = MaterialTheme.colorScheme.errorContainer,
-                )
-            }
-        }
-    }
-}
-
-// ─────────── Общие компоненты ───────────
-
-@Composable
-private fun Chevron() {
-    Icon(
-        Icons.AutoMirrored.Rounded.KeyboardArrowRight, null,
-        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-    )
-}
-
-@Composable
-private fun TransportCard(state: UiState, vm: MainViewModel) {
-    SettingsRow(
-        icon = Icons.TwoTone.LinkOff,
-        isError = true,
-        title = when (state.transport) {
-            TransportState.ShizukuNeedsPermission -> stringResource(R.string.transport_shizuku_perm)
-            else -> stringResource(R.string.transport_none)
-        },
-        description = when (state.transport) {
-            TransportState.ShizukuNeedsPermission -> stringResource(R.string.transport_shizuku_perm_desc)
-            else -> stringResource(R.string.transport_none_desc)
-        },
-        containerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.6f),
-        onClick = {
-            if (state.transport == TransportState.ShizukuNeedsPermission) {
-                vm.requestShizukuPermission()
-            } else {
-                vm.openShizukuApp()
-            }
-        },
-    )
-}
-
-@Composable
-private fun DeviceGroup(state: UiState) {
-    SettingsGroup(title = stringResource(R.string.device_title)) {
-        val d = state.device
-        if (d == null) {
-            Row(Modifier.padding(16.dp)) {
-                LinearProgressIndicator(Modifier.fillMaxWidth())
-            }
-        } else {
-            SettingsRow(
-                title = stringResource(R.string.device_model),
-                icon = Icons.TwoTone.DevicesOther,
-                trailing = { TrailingValue("${d.marketName} (${d.model})", maxLines = 3) },
-            )
-            SettingsDivider()
-            DeviceRow(stringResource(R.string.device_rom), d.rom)
-            SettingsDivider()
-            DeviceRow(stringResource(R.string.device_kernel), d.kernelShort)
-            SettingsDivider()
-            DeviceRow(stringResource(R.string.device_kmi), d.kmi.ifEmpty { "—" })
-            SettingsDivider()
-            DeviceRow(stringResource(R.string.device_patch), d.securityPatch)
-            SettingsDivider()
-            DeviceRow(stringResource(R.string.device_soc), d.soc)
-        }
-    }
-}
-
-@Composable
-private fun DeviceRow(title: String, value: String) {
-    SettingsRow(
-        title = title,
-        trailing = { TrailingValue(value, mono = true, maxLines = 3) },
-    )
-}
-
-// ─────────── Компактная плашка обновления ───────────
-
-/** Одна строка: иконка, версия и размер, кнопка «Обновить»/«Установить». */
-@Composable
-fun CompactUpdateCard(
-    update: com.rootmyvivo.data.AppUpdate,
-    downloadDone: Boolean,
-    downloading: Boolean,
-    onUpdate: () -> Unit,
-) {
-    val style = LocalAppStyle.current
-    Surface(
-        modifier = Modifier.fillMaxWidth(),
-        shape = if (style.isLegacy) MaterialTheme.shapes.large else RoundedCornerShape(16.dp),
-        color = if (style.isLegacy) {
-            MaterialTheme.colorScheme.surfaceContainerLow
-        } else {
-            MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)
-        },
-    ) {
-        Row(
-            Modifier.padding(start = 14.dp, end = 6.dp, top = 6.dp, bottom = 6.dp),
-            horizontalArrangement = Arrangement.spacedBy(10.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Icon(
-                Icons.TwoTone.CloudDownload,
-                null,
-                tint = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.size(20.dp),
-            )
-            Column(Modifier.weight(1f)) {
-                Text(
-                    stringResource(R.string.update_title),
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.SemiBold,
-                    maxLines = 1,
-                )
-                if (downloading) {
-                    Text(
-                        stringResource(R.string.update_downloading),
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 1,
-                    )
-                } else if (update.apkSize > 0) {
-                    Text(
-                        stringResource(
-                            R.string.update_version_size,
-                            update.versionName,
-                            "%.1f".format(update.apkSize / 1048576.0),
-                        ),
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 1,
-                    )
-                }
-            }
-            Button(onClick = onUpdate, enabled = !downloading) {
-                Text(
-                    if (downloadDone) {
-                        stringResource(R.string.update_retry_install)
-                    } else {
-                        stringResource(R.string.update_button)
-                    },
-                )
-            }
-        }
-    }
-}
-
-// ─────────── Диалоги, общие для обеих тем ───────────
-
-@Composable
-private fun SharedDialogs(
-    state: UiState,
-    vm: MainViewModel,
-    warnDialog: Boolean,
-    onWarnDialog: (Boolean) -> Unit,
-    warnDontShow: Boolean,
-    onWarnDontShow: (Boolean) -> Unit,
-    confirmAction: Boolean,
-    onConfirmAction: (Boolean) -> Unit,
-    rebootDontShow: Boolean,
-    onRebootDontShow: (Boolean) -> Unit,
-    onRootStarted: () -> Unit,
-    ksuDialog: Boolean,
-    onKsuDialog: (Boolean) -> Unit,
-) {
-    // Предупреждение перед запуском
-    if (warnDialog && !state.settings.warnDismissed) {
-        AlertDialog(
-            onDismissRequest = { onWarnDialog(false) },
+    // Предупреждение перед запуском: паники, не выходить, перезапуск
+    if (warnDialog && !warnDismissed) {
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = { warnDialog = false },
             title = { Text(stringResource(R.string.warn_title), fontWeight = FontWeight.Bold) },
             confirmButton = {
                 Button(onClick = {
                     if (warnDontShow) vm.updateSettings { it.copy(warnDismissed = true) }
-                    onWarnDialog(false)
+                    warnDialog = false
                     vm.startRoot()
                     onRootStarted()
                 }) {
@@ -515,142 +115,60 @@ private fun SharedDialogs(
             },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    WarningRow(Icons.TwoTone.Bolt, stringResource(R.string.warn_panics))
-                    WarningRow(Icons.TwoTone.CheckCircle, stringResource(R.string.warn_stay))
-                    WarningRow(Icons.Rounded.Refresh, stringResource(R.string.warn_retry))
-                    Spacer(Modifier.height(4.dp))
-                    DontShowRow(warnDontShow, onWarnDontShow)
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { onWarnDialog(false) }) {
-                    Text(stringResource(R.string.warn_cancel))
-                }
-            },
-            shape = MaterialTheme.shapes.extraLarge,
-        )
-    }
-
-    // Подтверждение перезагрузки userspace / рестарта
-    if (confirmAction) {
-        AlertDialog(
-            onDismissRequest = { onConfirmAction(false) },
-            title = {
-                Text(
-                    stringResource(R.string.confirm_softreboot_title),
-                    fontWeight = FontWeight.Bold,
-                )
-            },
-            text = {
-                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Text(
-                        stringResource(R.string.confirm_softreboot_text),
-                        style = MaterialTheme.typography.bodyMedium,
-                    )
-                    DontShowRow(rebootDontShow, onRebootDontShow)
-                }
-            },
-            confirmButton = {
-                Button(onClick = {
-                    if (rebootDontShow) {
-                        vm.updateSettings { it.copy(softRebootConfirmDismissed = true) }
+                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        Icon(
+                            Icons.Rounded.Bolt, null,
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(20.dp),
+                        )
+                        Text(stringResource(R.string.warn_panics), style = MaterialTheme.typography.bodyMedium)
                     }
-                    onConfirmAction(false)
-                    vm.performSoftReboot()
-                }) {
-                    Text(stringResource(R.string.warn_go))
+                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        Icon(
+                            Icons.Rounded.CheckCircle, null,
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(20.dp),
+                        )
+                        Text(stringResource(R.string.warn_stay), style = MaterialTheme.typography.bodyMedium)
+                    }
+                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        Icon(
+                            Icons.Rounded.Refresh, null,
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(20.dp),
+                        )
+                        Text(stringResource(R.string.warn_retry), style = MaterialTheme.typography.bodyMedium)
+                    }
+                    // Чекбокс "больше не показывать" — кликабельна вся строка;
+                    // фиксируется только при подтверждении, отмена не меняет настройку
+                    Spacer(Modifier.height(4.dp))
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier
+                            .padding(start = 8.dp)
+                            .fillMaxWidth()
+                            .clip(androidx.compose.foundation.shape.RoundedCornerShape(12.dp))
+                            .clickable { warnDontShow = !warnDontShow },
+                    ) {
+                        androidx.compose.material3.Checkbox(
+                            checked = warnDontShow,
+                            onCheckedChange = { warnDontShow = it },
+                        )
+                        Text(
+                            stringResource(R.string.warn_dont_show),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
                 }
             },
             dismissButton = {
-                TextButton(onClick = { onConfirmAction(false) }) {
+                androidx.compose.material3.TextButton(onClick = { warnDialog = false }) {
                     Text(stringResource(R.string.warn_cancel))
                 }
             },
             shape = MaterialTheme.shapes.extraLarge,
         )
-    }
-
-    // Меню выбора рут-менеджера
-    if (ksuDialog) {
-        ChoiceDialog(
-            title = stringResource(R.string.ksu_title),
-            closeLabel = stringResource(R.string.action_close),
-            onDismiss = { onKsuDialog(false) },
-            items = KsuVariant.entries.map { v ->
-                ChoiceDialogItem(
-                    label = v.displayName,
-                    description = "${v.repo} · ${stringResource(ksuDescription(v))}",
-                    selected = state.selectedKsu == v,
-                )
-            },
-            onSelect = { vm.selectKsu(KsuVariant.entries[it]) },
-            closeOnSelect = false,
-        )
-    }
-}
-
-@Composable
-private fun WarningRow(icon: androidx.compose.ui.graphics.vector.ImageVector, text: String) {
-    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-        Icon(
-            icon, null,
-            tint = MaterialTheme.colorScheme.primary,
-            modifier = Modifier.size(20.dp),
-        )
-        Text(text, style = MaterialTheme.typography.bodyMedium)
-    }
-}
-
-@Composable
-private fun DontShowRow(checked: Boolean, onChange: (Boolean) -> Unit) {
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier
-            .padding(start = 8.dp)
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(12.dp))
-            .clickable { onChange(!checked) },
-    ) {
-        Checkbox(
-            checked = checked,
-            onCheckedChange = { onChange(it) },
-        )
-        Text(
-            stringResource(R.string.warn_dont_show),
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-    }
-}
-
-@Composable
-private fun ksuDescription(v: KsuVariant): Int = when (v.id) {
-    KsuVariant.KERNELSU.id -> R.string.ksu_desc_kernelsu
-    KsuVariant.KSU_NEXT.id -> R.string.ksu_desc_ksunext
-    KsuVariant.SUKISU.id -> R.string.ksu_desc_sukisu
-    else -> R.string.ksu_desc_resukisu
-}
-
-// ─────────── Monet Old: прежний экран ───────────
-
-@OptIn(ExperimentalMaterial3ExpressiveApi::class)
-@Composable
-private fun LegacyHomeScreen(
-    vm: MainViewModel,
-    state: UiState,
-    onRootStarted: () -> Unit,
-    onOpenLastLog: () -> Unit,
-    onOpenSupported: () -> Unit,
-) {
-    var ksuDialog by remember { mutableStateOf(false) }
-    var warnDialog by remember { mutableStateOf(false) }
-    var confirmAction by remember { mutableStateOf(false) }
-    var warnDontShow by remember { mutableStateOf(false) }
-    var rebootDontShow by remember { mutableStateOf(false) }
-    val warnDismissed = state.settings.warnDismissed
-
-    if (warnDialog && warnDismissed) {
-        warnDialog = false
     }
 
     Column(
@@ -661,34 +179,24 @@ private fun LegacyHomeScreen(
         verticalArrangement = Arrangement.spacedBy(14.dp),
     ) {
         Spacer(Modifier.height(20.dp))
-        Text(
-            stringResource(R.string.app_name),
-            style = MaterialTheme.typography.headlineLarge,
-            fontWeight = FontWeight.Bold,
-            modifier = Modifier.padding(start = 12.dp),
-        )
-
-        // Плашка обновления
-        state.appUpdate?.let { update ->
-            CompactUpdateCard(
-                update = update,
-                downloadDone = state.updateDownload?.done == true,
-                downloading = state.updateDownload?.let { !it.done } == true,
-                onUpdate = vm::updateAction,
-            )
-        }
-
-        HeroCardLegacy(state) {
-            if (warnDismissed) {
+        Header()
+        HeroCard(state, onRoot = {
+            if (state.settings.warnDismissed) {
                 vm.startRoot()
                 onRootStarted()
             } else {
                 warnDialog = true
             }
-        }
+        })
 
+        // Действие при активном руте: перезагрузка userspace (как на iOS),
+        // с подтверждением против мискликов + перезапуск эксплойта,
+        // если рут жив, но KSU не встал (soft reboot не нужен — только
+        // повторный прогон цепочки поверх живого рута)
         if (state.rootState == RootState.ROOTED) {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                // Перезапуск эксплойта — контурная: это вторичное действие,
+                // заливку оставляем перезагрузке userspace
                 OutlinedButton(
                     onClick = {
                         if (state.settings.restartConfirmDismissed) {
@@ -722,72 +230,132 @@ private fun LegacyHomeScreen(
                 }
             }
         }
+        // Плашка обновления приложения (автопоиск при запуске / «Проверить сейчас»).
+        // Компактная, одна строка; диалог при первом нахождении открыт поверх всего
+        androidx.compose.animation.AnimatedVisibility(
+            visible = state.appUpdate != null,
+            enter = androidx.compose.animation.expandVertically(
+                animationSpec = androidx.compose.animation.core.tween(
+                    320, easing = androidx.compose.animation.core.FastOutSlowInEasing,
+                ),
+            ) + androidx.compose.animation.fadeIn(
+                androidx.compose.animation.core.tween(320),
+            ),
+            exit = androidx.compose.animation.shrinkVertically(
+                animationSpec = androidx.compose.animation.core.tween(220),
+            ) + androidx.compose.animation.fadeOut(
+                androidx.compose.animation.core.tween(220),
+            ),
+        ) {
+            state.appUpdate?.let { update ->
+                CompactUpdateCard(
+                    update = update,
+                    downloadDone = state.updateDownload?.done == true,
+                    download = state.updateDownload,
+                    onUpdate = vm::updateAction,
+                )
+            }
+        }
 
+        // Карточка транспорта — только когда есть проблема (нет Shizuku / нет разрешения)
         when (state.transport) {
             TransportState.None, TransportState.ShizukuNeedsPermission ->
-                TransportCardLegacy(state, vm)
+                TransportCard(state, onPermission = vm::requestShizukuPermission, onOpenShizuku = vm::openShizukuApp)
             else -> {}
         }
-
-        // Статус
-        SettingsGroup {
-            SettingsRow(
-                title = stringResource(R.string.status_payload),
-                description = when {
-                    state.payload != null -> state.payload!!.displayName
-                    state.catalogState == CatalogState.ERROR -> stringResource(R.string.catalog_error)
-                    else -> stringResource(R.string.payload_short_searching)
-                },
-                icon = if (state.payload != null) Icons.TwoTone.CheckCircle else Icons.TwoTone.CloudDownload,
-            )
-            SettingsDivider()
-            SettingsRow(
-                title = stringResource(R.string.home_supported_devices),
-                icon = Icons.TwoTone.DevicesOther,
-                onClick = onOpenSupported,
-                trailing = { Chevron() },
-            )
-            SettingsDivider()
-            SettingsRow(
-                title = stringResource(R.string.ksu_title),
-                description = state.selectedKsu.displayName,
-                icon = Icons.TwoTone.Security,
-                onClick = { ksuDialog = true },
-                trailing = { Chevron() },
-            )
-            SettingsDivider()
-            SettingsRow(
-                title = stringResource(R.string.home_lastlog),
-                icon = Icons.TwoTone.Description,
-                onClick = onOpenLastLog,
-                trailing = { Chevron() },
-            )
-        }
+        StatusGroup(state, onKsuClick = { ksuDialog = true }, onOpenLastLog = onOpenLastLog, onOpenSupported = onOpenSupported)
         DeviceGroup(state)
         Spacer(Modifier.height(28.dp))
     }
 
-    SharedDialogs(
-        state = state,
-        vm = vm,
-        warnDialog = warnDialog,
-        onWarnDialog = { warnDialog = it },
-        warnDontShow = warnDontShow,
-        onWarnDontShow = { warnDontShow = it },
-        confirmAction = confirmAction,
-        onConfirmAction = { confirmAction = it },
-        rebootDontShow = rebootDontShow,
-        onRebootDontShow = { rebootDontShow = it },
-        onRootStarted = onRootStarted,
-        ksuDialog = ksuDialog,
-        onKsuDialog = { ksuDialog = it },
+    // Подтверждение перезагрузки userspace — анти-мисклик
+    if (confirmAction) {
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = { confirmAction = false },
+            title = {
+                Text(
+                    stringResource(R.string.confirm_softreboot_title),
+                    fontWeight = FontWeight.Bold,
+                )
+            },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Text(
+                        stringResource(R.string.confirm_softreboot_text),
+                        style = MaterialTheme.typography.bodyMedium,
+                    )
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.padding(start = 8.dp),
+                    ) {
+                        androidx.compose.material3.Checkbox(
+                            checked = rebootDontShow,
+                            onCheckedChange = { rebootDontShow = it },
+                        )
+                        Text(
+                            stringResource(R.string.warn_dont_show),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
+            },
+            confirmButton = {
+                Button(onClick = {
+                    if (rebootDontShow) {
+                        vm.updateSettings { it.copy(softRebootConfirmDismissed = true) }
+                    }
+                    confirmAction = false
+                    vm.performSoftReboot()
+                }) {
+                    Text(stringResource(R.string.warn_go))
+                }
+            },
+            dismissButton = {
+                androidx.compose.material3.TextButton(onClick = { confirmAction = false }) {
+                    Text(stringResource(R.string.warn_cancel))
+                }
+            },
+            shape = MaterialTheme.shapes.extraLarge,
+        )
+    }
+
+    // Меню выбора рут-менеджера — как в настройках, без закрытия после выбора
+    if (ksuDialog) {
+        ChoiceDialog(
+            title = stringResource(R.string.ksu_title),
+            closeLabel = stringResource(R.string.action_close),
+            onDismiss = { ksuDialog = false },
+            items = KsuVariant.entries.map { v ->
+                ChoiceDialogItem(
+                    label = v.displayName,
+                    description = "${v.repo} · ${stringResource(ksuDescription(v))}",
+                    selected = state.selectedKsu == v,
+                )
+            },
+            onSelect = { vm.selectKsu(KsuVariant.entries[it]) },
+            closeOnSelect = false,
+        )
+    }
+}
+
+// ─────────── Заголовок ───────────
+
+@Composable
+private fun Header() {
+    Text(
+        stringResource(R.string.app_name),
+        style = MaterialTheme.typography.headlineLarge,
+        fontWeight = FontWeight.Bold,
+        modifier = Modifier.padding(start = 12.dp),
     )
 }
 
-/** Прежняя hero-карточка Monet Old. */
+// ─────────── Hero: статус + кнопка ROOT ───────────
+
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-private fun HeroCardLegacy(state: UiState, onRoot: () -> Unit) {
+private fun HeroCard(state: UiState, onRoot: () -> Unit) {
     val rooted = state.rootState == RootState.ROOTED
     val transportOk = state.transport == TransportState.Adb || state.transport == TransportState.Shizuku
     Surface(
@@ -796,6 +364,7 @@ private fun HeroCardLegacy(state: UiState, onRoot: () -> Unit) {
         color = if (rooted) MaterialTheme.colorScheme.primaryContainer
         else MaterialTheme.colorScheme.secondaryContainer,
     ) {
+        // Плавная смена содержимого (проверка → результат)
         AnimatedContent(
             targetState = state.rootState,
             transitionSpec = {
@@ -822,7 +391,7 @@ private fun HeroCardLegacy(state: UiState, onRoot: () -> Unit) {
                 when (rootState) {
                     RootState.ROOTED -> {
                         Icon(
-                            Icons.TwoTone.CheckCircle, null,
+                            Icons.Rounded.CheckCircle, null,
                             modifier = Modifier.size(64.dp),
                             tint = MaterialTheme.colorScheme.primary,
                         )
@@ -846,7 +415,7 @@ private fun HeroCardLegacy(state: UiState, onRoot: () -> Unit) {
                     }
                     else -> {
                         Icon(
-                            Icons.TwoTone.Bolt, null,
+                            Icons.Rounded.Bolt, null,
                             modifier = Modifier.size(56.dp),
                             tint = MaterialTheme.colorScheme.primary,
                         )
@@ -863,28 +432,31 @@ private fun HeroCardLegacy(state: UiState, onRoot: () -> Unit) {
                             textAlign = TextAlign.Center,
                         )
                         Spacer(Modifier.height(16.dp))
-                        val ready = state.payload != null
-                        Button(
-                            onClick = onRoot,
-                            enabled = ready && transportOk && !state.flowRunning,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(62.dp),
-                            shape = MaterialTheme.shapes.extraLarge,
-                        ) {
-                            Icon(Icons.TwoTone.Bolt, null, modifier = Modifier.size(24.dp))
-                            Spacer(Modifier.width(10.dp))
-                            Text(
-                                when {
-                                    !ready && state.catalogState == CatalogState.LOADING ->
-                                        stringResource(R.string.catalog_loading)
-                                    !ready && state.catalogState == CatalogState.ERROR ->
-                                        stringResource(R.string.catalog_retry)
-                                    !ready -> stringResource(R.string.status_unsupported)
-                                    else -> stringResource(R.string.action_root)
-                                },
-                                style = MaterialTheme.typography.titleMedium,
-                            )
+                        RootButton(state, transportOk, onRoot)
+                        if (transportOk) {
+                            Spacer(Modifier.height(10.dp))
+                            Row(
+                                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                Icon(
+                                    when (state.transport) {
+                                        TransportState.Adb -> Icons.Rounded.Usb
+                                        else -> Icons.Rounded.Security
+                                    },
+                                    null,
+                                    modifier = Modifier.size(14.dp),
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                                Text(
+                                    when (state.transport) {
+                                        TransportState.Adb -> stringResource(R.string.transport_via_adb)
+                                        else -> stringResource(R.string.transport_via_shizuku)
+                                    },
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
                         }
                     }
                 }
@@ -894,7 +466,127 @@ private fun HeroCardLegacy(state: UiState, onRoot: () -> Unit) {
 }
 
 @Composable
-private fun TransportCardLegacy(state: UiState, vm: MainViewModel) {
+private fun RootButton(state: UiState, transportOk: Boolean, onRoot: () -> Unit) {
+    val ready = state.payload != null
+    Button(
+        onClick = onRoot,
+        enabled = ready && transportOk && !state.flowRunning,
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(62.dp),
+        shape = MaterialTheme.shapes.extraLarge,
+    ) {
+        Icon(Icons.Rounded.Bolt, null, modifier = Modifier.size(24.dp))
+        Spacer(Modifier.width(10.dp))
+        Text(
+            when {
+                !ready && state.catalogState == CatalogState.LOADING ->
+                    stringResource(R.string.catalog_loading)
+                !ready && state.catalogState == CatalogState.ERROR ->
+                    stringResource(R.string.catalog_retry)
+                !ready -> stringResource(R.string.status_unsupported)
+                else -> stringResource(R.string.action_root)
+            },
+            style = MaterialTheme.typography.titleMedium,
+        )
+    }
+}
+
+
+// ─────────── Компактная плашка обновления ───────────
+
+/** Одна строка: иконка, версия и размер, кнопка «Обновить»/«Установить».
+ *  При скачивании — живой прогресс-бар с мегабайтами. */
+@Composable
+private fun CompactUpdateCard(
+    update: com.rootmyvivo.data.AppUpdate,
+    downloadDone: Boolean,
+    download: com.rootmyvivo.vm.UpdateDownloadState?,
+    onUpdate: () -> Unit,
+) {
+    val downloading = download != null && !download.done
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = MaterialTheme.shapes.large,
+        color = MaterialTheme.colorScheme.surfaceContainerLow,
+    ) {
+        Row(
+            Modifier.padding(start = 14.dp, end = 6.dp, top = 6.dp, bottom = 6.dp),
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Icon(
+                Icons.Rounded.CloudDownload,
+                null,
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(20.dp),
+            )
+            Column(Modifier.weight(1f)) {
+                Text(
+                    stringResource(R.string.update_title),
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines = 1,
+                )
+                if (downloading) {
+                    Text(
+                        stringResource(R.string.update_downloading),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                    )
+                } else if (update.apkSize > 0) {
+                    Text(
+                        stringResource(
+                            R.string.update_version_size,
+                            update.versionName,
+                            "%.1f".format(update.apkSize / 1048576.0),
+                        ),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                    )
+                }
+                if (downloading && download != null) {
+                    val mb = "%.1f / %.1f МБ".format(
+                        download.read / 1048576.0,
+                        download.total / 1048576.0,
+                    )
+                    when (val f = download.fraction) {
+                        null -> LinearProgressIndicator(Modifier.fillMaxWidth())
+                        else -> LinearProgressIndicator(
+                            progress = { f.coerceIn(0f, 1f) },
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                    }
+                    Text(
+                        mb,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+            Button(onClick = onUpdate, enabled = !downloading) {
+                Text(
+                    if (downloadDone) {
+                        stringResource(R.string.update_retry_install)
+                    } else {
+                        stringResource(R.string.update_button)
+                    },
+                )
+            }
+        }
+    }
+}
+
+// ─────────── Карточка транспорта (только при проблемах) ───────────
+
+@Composable
+private fun TransportCard(
+    state: UiState,
+    onPermission: () -> Unit,
+    onOpenShizuku: () -> Unit,
+) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
         shape = MaterialTheme.shapes.large,
@@ -906,7 +598,11 @@ private fun TransportCardLegacy(state: UiState, vm: MainViewModel) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
                 Icon(
-                    Icons.TwoTone.LinkOff, null,
+                    when (state.transport) {
+                        TransportState.ShizukuNeedsPermission -> Icons.Rounded.Security
+                        else -> Icons.Rounded.LinkOff
+                    },
+                    null,
                     tint = MaterialTheme.colorScheme.onErrorContainer,
                     modifier = Modifier.size(20.dp),
                 )
@@ -930,11 +626,7 @@ private fun TransportCardLegacy(state: UiState, vm: MainViewModel) {
                 }
             }
             OutlinedButton(
-                onClick = if (state.transport == TransportState.ShizukuNeedsPermission) {
-                    vm::requestShizukuPermission
-                } else {
-                    vm::openShizukuApp
-                },
+                onClick = if (state.transport == TransportState.ShizukuNeedsPermission) onPermission else onOpenShizuku,
                 modifier = Modifier.fillMaxWidth(),
             ) {
                 Text(
@@ -947,4 +639,120 @@ private fun TransportCardLegacy(state: UiState, vm: MainViewModel) {
             }
         }
     }
+}
+
+// ─────────── Статус: транспорт + пейлоад + рут-менеджер (компактно) ───────────
+
+@Composable
+private fun StatusGroup(
+    state: UiState,
+    onKsuClick: () -> Unit,
+    onOpenLastLog: () -> Unit,
+    onOpenSupported: () -> Unit,
+) {
+    SettingsGroup {
+        // Пейлоад
+        SettingsRow(
+            title = stringResource(R.string.status_payload),
+            description = when {
+                state.payload != null -> state.payload!!.displayName
+                state.catalogState == CatalogState.ERROR -> stringResource(R.string.catalog_error)
+                else -> stringResource(R.string.payload_short_searching)
+            },
+            icon = if (state.payload != null) Icons.Rounded.Verified else Icons.Rounded.Search,
+        )
+        SettingsDivider()
+        // Поддерживаемые устройства — карточка всех пейлоадов каталога
+        SettingsRow(
+            title = stringResource(R.string.home_supported_devices),
+            icon = Icons.Rounded.PhoneAndroid,
+            onClick = onOpenSupported,
+            trailing = {
+                Icon(
+                    Icons.AutoMirrored.Rounded.KeyboardArrowRight, null,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            },
+        )
+        SettingsDivider()
+        // Рут-менеджер
+        SettingsRow(
+            title = stringResource(R.string.ksu_title),
+            description = state.selectedKsu.displayName,
+            icon = Icons.Rounded.Security,
+            onClick = onKsuClick,
+            trailing = {
+                Icon(
+                    Icons.AutoMirrored.Rounded.KeyboardArrowRight, null,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            },
+        )
+        // История запусков — всегда видима: на свежей установке это
+        // единственная точка входа к логам, пустая история не повод её прятать
+        SettingsDivider()
+        SettingsRow(
+            title = stringResource(R.string.home_lastlog),
+            icon = Icons.Rounded.Description,
+            onClick = onOpenLastLog,
+            trailing = {
+                Icon(
+                    Icons.AutoMirrored.Rounded.KeyboardArrowRight, null,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            },
+        )
+    }
+}
+
+// ─────────── Устройство ───────────
+
+@Composable
+private fun DeviceGroup(state: UiState) {
+    SettingsGroup(title = stringResource(R.string.device_title)) {
+        val d = state.device
+        if (d == null) {
+            Row(Modifier.padding(16.dp)) {
+                LinearProgressIndicator(Modifier.fillMaxWidth())
+            }
+        } else {
+            SettingsRow(
+                title = stringResource(R.string.device_model),
+                trailing = { TrailingValue("${d.marketName} (${d.model})", maxLines = 3) },
+            )
+            SettingsDivider(indentIcon = false)
+            SettingsRow(
+                title = stringResource(R.string.device_rom),
+                trailing = { TrailingValue(d.rom, mono = true, maxLines = 3) },
+            )
+            SettingsDivider(indentIcon = false)
+            SettingsRow(
+                title = stringResource(R.string.device_kernel),
+                trailing = { TrailingValue(d.kernelShort, mono = true, maxLines = 3) },
+            )
+            SettingsDivider(indentIcon = false)
+            SettingsRow(
+                title = stringResource(R.string.device_kmi),
+                trailing = { TrailingValue(d.kmi.ifEmpty { "—" }, mono = true, maxLines = 3) },
+            )
+            SettingsDivider(indentIcon = false)
+            SettingsRow(
+                title = stringResource(R.string.device_patch),
+                trailing = { TrailingValue(d.securityPatch, mono = true, maxLines = 3) },
+            )
+            SettingsDivider(indentIcon = false)
+            SettingsRow(
+                title = stringResource(R.string.device_soc),
+                trailing = { TrailingValue(d.soc, maxLines = 3) },
+            )
+        }
+    }
+}
+
+@Composable
+private fun ksuDescription(v: KsuVariant): Int = when (v.id) {
+    KsuVariant.KERNELSU.id -> R.string.ksu_desc_kernelsu
+    KsuVariant.KSU_NEXT.id -> R.string.ksu_desc_ksunext
+    KsuVariant.SUKISU.id -> R.string.ksu_desc_sukisu
+    else -> R.string.ksu_desc_resukisu
 }

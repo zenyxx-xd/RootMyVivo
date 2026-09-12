@@ -8,6 +8,7 @@ import android.os.IBinder
 import android.util.Log
 import com.rootmyvivo.data.Prefs
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 import rikka.shizuku.Shizuku
 import java.io.File
@@ -264,18 +265,23 @@ object Transport {
      * Пост-root закрепление: persist-порт + свой ключ в adb_keys —
      * бесшерстная авторизация после любых перезагрузок.
      *
-     * ВАЖНО: setprop из контекста su-демона vivo блокирует property
-     * service («Failed to set property … See dmesg») — пропишем порт из
-     * shell-домена через транспорт (Shizuku/adb), это разрешено. adb_keys
-     * пишем через su (файловые операции из демона работают), после чего
-     * перезапускаем adbd, чтобы он поднял TCP-порт.
+     * Порт пробуем двумя путями: shell-домен (Shizuku/AdbWire — основной) и
+     * su-демон эксплойта (фолбэк: на части прошивок property service пускает
+     * и его контекст, а транспорт после soft reboot бывает мёртв). adbd
+     * перечитывает persist-порт только на старте — рестарим и ждём, пока
+     * порт 5555 реально начнёт слушаться.
      */
     suspend fun persistAfterRoot(ctx: Context): Boolean = withContext(Dispatchers.IO) {
-        // 1. persist-порт из shell-домена
+        // 1. persist-порт: shell-домен, затем su-демон
         exec(ctx, "setprop persist.adb.tcp.port 5555", timeoutSec = 15)
-        val (_, portNow) = exec(ctx, "getprop persist.adb.tcp.port", timeoutSec = 10)
-        val portOk = portNow.trim() == "5555"
-        Log.i(TAG, "persist port: $portNow ($portOk)")
+        var port = exec(ctx, "getprop persist.adb.tcp.port", timeoutSec = 10).second.trim()
+        if (port != "5555") {
+            Log.i(TAG, "setprop via transport failed (port=$port), trying su daemon")
+            su(ctx, "setprop persist.adb.tcp.port 5555", timeoutSec = 15)
+            port = su(ctx, "getprop persist.adb.tcp.port", timeoutSec = 10).second.trim()
+        }
+        val portOk = port == "5555"
+        Log.i(TAG, "persist port: $port ($portOk)")
         // 2. ключ в adb_keys (su: файловые операции из демона работают)
         AdbWire.publicKeyAndroid(ctx)?.let { key ->
             val (kc, kout) = su(ctx, "echo \"$key rootmyvivo\" >> /data/misc/adb/adb_keys")
@@ -285,6 +291,27 @@ object Transport {
         // (init перезапустит его; на транспорте Shizuku это безопасно)
         if (portOk) {
             su(ctx, "pkill -x adbd", timeoutSec = 10)
+            // init поднимает adbd не мгновенно: ждём и проверяем живой порт,
+            // при необходимости дёргаем ещё раз (первый pkill мог прийтись
+            // на момент, когда persist-свойство ещё не долетело до adbd)
+            repeat(4) { attempt ->
+                delay(1500)
+                if (adbAlive(ctx)) {
+                    Log.i(TAG, "adbd listening on 5555 after restart (attempt ${attempt + 1})")
+                    return@withContext true
+                }
+            }
+            // порт не поднялся — перепроверяем свойство и рестартим ещё раз
+            val recheck = su(ctx, "getprop persist.adb.tcp.port", timeoutSec = 10).second.trim()
+            if (recheck == "5555") {
+                su(ctx, "pkill -x adbd", timeoutSec = 10)
+                delay(3000)
+                if (adbAlive(ctx)) {
+                    Log.i(TAG, "adbd listening on 5555 after second restart")
+                    return@withContext true
+                }
+            }
+            Log.w(TAG, "adbd did not come up on 5555 (port prop=$recheck)")
         }
         portOk
     }

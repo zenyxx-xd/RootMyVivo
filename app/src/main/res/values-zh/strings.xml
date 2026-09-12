@@ -271,4 +271,6 @@
     <string name="theme_name_originos_desc">灰色底子——开发中</string>
     <string name="settings_predictive_back">预测性手势</string>
     <string name="settings_predictive_back_desc">窗口随手势返回一起缩小</string>
+    <string name="other_demo_run">漏洞利用演示</string>
+    <string name="settings_root">Root</string>
 </resources>

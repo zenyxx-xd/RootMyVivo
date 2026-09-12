@@ -271,4 +271,6 @@
     <string name="theme_name_originos_desc">Gray base — work in progress</string>
     <string name="settings_predictive_back">Predictive gestures</string>
     <string name="settings_predictive_back_desc">The window shrinks along with the back swipe</string>
+    <string name="other_demo_run">Exploit demonstration</string>
+    <string name="settings_root">Root</string>
 </resources>
