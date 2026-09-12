@@ -83,15 +83,28 @@ class Catalog(var url: String = DEFAULT_URL) {
         val byModel = catalog.payloads.filter {
             it.enabled && (it.models.contains(info.model) || it.marketNames.contains(info.marketName))
         }
-        // сначала точное совпадение модели + ядро, потом модель без проверки ядра
-        return byModel.firstOrNull { matchesKernel(it.kernelVersions, info.kernelShort) }
+        // сначала точное совпадение модели + ядро (полная строка uname, если
+        // запись задаёт полный паттерн), потом модель без проверки ядра
+        return byModel.firstOrNull { matchesKernel(it.kernelVersions, info.kernelShort, info.kernel) }
             ?: byModel.firstOrNull()
     }
 
-    private fun matchesKernel(supported: List<String>, actual: String): Boolean {
+    /**
+     * Паттерны ядра: короткий «6.6.89» сравнивается с короткой версией,
+     * полный «6.6.89-android15-8-gb57af212129c» — подстрокой uname release
+     * (различает сборки ядра одной модели: Neo10 Pro gf2… vs b57…),
+     * суффикс «.*» — префикс полной строки.
+     */
+    private fun matchesKernel(supported: List<String>, actualShort: String, actualFull: String): Boolean {
         if (supported.isEmpty()) return true
         return supported.any { pattern ->
-            if (pattern.endsWith(".*")) actual.startsWith(pattern.removeSuffix("*")) else actual == pattern
+            when {
+                pattern.endsWith(".*") ->
+                    actualFull.startsWith(pattern.removeSuffix("*")) ||
+                        actualShort.startsWith(pattern.removeSuffix("*"))
+                pattern.count { it == '.' } > 2 -> actualFull.contains(pattern)
+                else -> actualShort == pattern
+            }
         }
     }
 
