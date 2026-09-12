@@ -192,9 +192,9 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     /**
      * Проверить обновления в фоне (GitHub releases, стабильные только).
      * Результат — диалог + компактная плашка на главной. Повторные вызовы
-     * схлопываются.
+     * схлопываются. manual=true — по кнопке: без обновлений показывает тост.
      */
-    fun checkForUpdate() {
+    fun checkForUpdate(manual: Boolean = false) {
         if (updateCheckJob?.isActive == true) return
         updateCheckJob = viewModelScope.launch {
             val update = withContext(Dispatchers.IO) { AppUpdater.check(getApplication()) }
@@ -204,7 +204,29 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                     appUpdate = update,
                     updateDialogOpen = update != null,
                 )
+                if (manual && update == null) {
+                    val ctx = getApplication<Application>()
+                    android.os.Handler(android.os.Looper.getMainLooper()).post {
+                        android.widget.Toast.makeText(
+                            ctx,
+                            ctx.getString(R.string.update_none_found),
+                            android.widget.Toast.LENGTH_SHORT,
+                        ).show()
+                    }
+                }
             }
+        }
+    }
+
+    /**
+     * Универсальное действие кнопки обновления: до скачивания — скачать и
+     * установить, после — переоткрыть системный установщик.
+     */
+    fun updateAction() {
+        if (_state.value.updateDownload?.done == true) {
+            retryInstallDownloaded()
+        } else {
+            downloadAndInstallUpdate()
         }
     }
 
@@ -238,10 +260,11 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                 val started = AppUpdater.install(apk, ctx)
                 if (!started) {
                     _state.value = _state.value.copy(updateInstalling = false)
+                } else {
+                    // установщик открыт — закрываем диалог, карточка остаётся
+                    // с кнопкой «Установить» на случай возврата назад
+                    _state.value = _state.value.copy(updateDialogOpen = false)
                 }
-                // установщик открыт: плашку убираем, скачивание остаётся
-                // (пользователь может вернуться назад и повторить установку)
-                _state.value = _state.value.copy(appUpdate = null)
             } catch (e: Exception) {
                 Log.w(TAG, "update download failed: ${e.message}")
                 _state.value = _state.value.copy(

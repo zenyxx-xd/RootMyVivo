@@ -1,5 +1,6 @@
 package com.rootmyvivo.ui.home
 
+import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -59,7 +60,11 @@ fun UpdateDialog(
             }
         },
         text = {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            // плавное «сужение» при смене содержимого (чейнджлог → прогресс)
+            Column(
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier.animateContentSize(),
+            ) {
                 Text(
                     stringResource(R.string.update_version, update.versionName) +
                         if (update.apkSize > 0) {

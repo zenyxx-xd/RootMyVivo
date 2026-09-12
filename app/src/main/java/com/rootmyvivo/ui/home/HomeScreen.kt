@@ -250,9 +250,9 @@ fun HomeScreen(
             state.appUpdate?.let { update ->
                 CompactUpdateCard(
                     update = update,
+                    downloadDone = state.updateDownload?.done == true,
                     downloading = state.updateDownload?.let { !it.done } == true,
-                    onUpdate = vm::downloadAndInstallUpdate,
-                    onCancel = vm::dismissUpdate,
+                    onUpdate = vm::updateAction,
                 )
             }
         }
@@ -495,21 +495,21 @@ private fun RootButton(state: UiState, transportOk: Boolean, onRoot: () -> Unit)
 
 // ─────────── Компактная плашка обновления ───────────
 
-/** Одна строка: иконка, версия и размер, кнопка «Обновить», крестик. */
+/** Одна строка: иконка, версия и размер, кнопка «Обновить»/«Установить». */
 @Composable
 private fun CompactUpdateCard(
     update: com.rootmyvivo.data.AppUpdate,
+    downloadDone: Boolean,
     downloading: Boolean,
     onUpdate: () -> Unit,
-    onCancel: () -> Unit,
 ) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
         shape = MaterialTheme.shapes.large,
-        color = MaterialTheme.colorScheme.primaryContainer,
+        color = MaterialTheme.colorScheme.surfaceContainerLow,
     ) {
         Row(
-            Modifier.padding(start = 14.dp, end = 4.dp, top = 4.dp, bottom = 4.dp),
+            Modifier.padding(start = 14.dp, end = 6.dp, top = 6.dp, bottom = 6.dp),
             horizontalArrangement = Arrangement.spacedBy(10.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
@@ -546,11 +546,14 @@ private fun CompactUpdateCard(
                     )
                 }
             }
-            TextButton(onClick = onUpdate, enabled = !downloading) {
-                Text(stringResource(R.string.update_button))
-            }
-            TextButton(onClick = onCancel, enabled = !downloading) {
-                Text(stringResource(R.string.update_cancel))
+            Button(onClick = onUpdate, enabled = !downloading) {
+                Text(
+                    if (downloadDone) {
+                        stringResource(R.string.update_retry_install)
+                    } else {
+                        stringResource(R.string.update_button)
+                    },
+                )
             }
         }
     }

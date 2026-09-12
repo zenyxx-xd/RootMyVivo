@@ -251,4 +251,11 @@
     <string name="supported_count">%1$d payloads · %2$d devices</string>
     <string name="supported_your">Your device</string>
     <string name="supported_disabled">Not enabled</string>
+    <string name="update_none_found">No updates available</string>
+    <string name="link_open_failed">Couldn\'t open the link</string>
+    <string name="about_title">About</string>
+    <string name="about_repositories">Repositories</string>
+    <string name="about_repo_app">App</string>
+    <string name="about_repo_payloads">Payloads</string>
+    <string name="about_repo_exploit">Exploit</string>
 </resources>

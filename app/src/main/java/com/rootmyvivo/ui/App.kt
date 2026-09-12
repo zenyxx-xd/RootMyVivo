@@ -49,6 +49,7 @@ fun App(vm: MainViewModel, state: UiState) {
     var logHistoryOpen by rememberSaveable { mutableStateOf(false) }
     var logViewerOpen by rememberSaveable { mutableStateOf(false) }
     var supportedOpen by rememberSaveable { mutableStateOf(false) }
+    var aboutOpen by rememberSaveable { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
 
     // Системное «назад» на экране процесса: закрывает его, но не во время выполнения
@@ -59,6 +60,11 @@ fun App(vm: MainViewModel, state: UiState) {
     // Системное «назад» в карточке поддерживаемых устройств
     BackHandler(enabled = supportedOpen && !flowOpen) {
         supportedOpen = false
+    }
+
+    // Системное «назад» в «О приложении»
+    BackHandler(enabled = aboutOpen && !flowOpen && !supportedOpen) {
+        aboutOpen = false
     }
 
     // Системное «назад» на экране разработчика
@@ -82,7 +88,7 @@ fun App(vm: MainViewModel, state: UiState) {
             com.rootmyvivo.ui.home.UpdateDialog(
                 update = update,
                 download = state.updateDownload,
-                onUpdate = vm::downloadAndInstallUpdate,
+                onUpdate = vm::updateAction,
                 onCancel = vm::dismissUpdateDialog,
             )
         }
@@ -147,11 +153,35 @@ fun App(vm: MainViewModel, state: UiState) {
                             onOpenLastLog = { logHistoryOpen = true },
                             onOpenSupported = { supportedOpen = true },
                         )
-                        else -> SettingsScreen(vm, state, onDevOpen = { devOpen = true })
+                        else -> SettingsScreen(
+                            vm = vm,
+                            state = state,
+                            onDevOpen = { devOpen = true },
+                            onAboutOpen = { aboutOpen = true },
+                        )
                     }
                 }
             }
         }
+    }
+
+    // ── Экран «О приложении» (обновления, репозитории, версия) ──
+    AnimatedVisibility(
+        visible = aboutOpen && !flowOpen && !supportedOpen,
+        enter = slideInVertically(
+            animationSpec = tween(350, easing = FastOutSlowInEasing),
+            initialOffsetY = { it },
+        ) + fadeIn(tween(350)),
+        exit = slideOutVertically(
+            animationSpec = tween(280, easing = FastOutSlowInEasing),
+            targetOffsetY = { it },
+        ) + fadeOut(),
+    ) {
+        com.rootmyvivo.ui.settings.AboutScreen(
+            vm = vm,
+            state = state,
+            onClose = { aboutOpen = false },
+        )
     }
 
     // ── Карточка поддерживаемых устройств (все пейлоады каталога) ──
@@ -175,7 +205,7 @@ fun App(vm: MainViewModel, state: UiState) {
 
     // ── Экран разработчика (демо-флоу, пейлоады, логи) ──
     AnimatedVisibility(
-        visible = devOpen && !flowOpen && !supportedOpen,
+        visible = devOpen && !flowOpen && !supportedOpen && !aboutOpen,
         enter = slideInVertically(
             animationSpec = tween(350, easing = FastOutSlowInEasing),
             initialOffsetY = { it },
@@ -198,7 +228,7 @@ fun App(vm: MainViewModel, state: UiState) {
 
     // ── История запусков: карточки последних логов ──
     AnimatedVisibility(
-        visible = logHistoryOpen && !flowOpen && !devOpen && !supportedOpen,
+        visible = logHistoryOpen && !flowOpen && !devOpen && !supportedOpen && !aboutOpen,
         enter = slideInVertically(
             animationSpec = tween(350, easing = FastOutSlowInEasing),
             initialOffsetY = { it },
@@ -223,7 +253,7 @@ fun App(vm: MainViewModel, state: UiState) {
 
     // ── Просмотр лога из истории (без тумана) ──
     AnimatedVisibility(
-        visible = logViewerOpen && !flowOpen && !devOpen && !logHistoryOpen && !supportedOpen,
+        visible = logViewerOpen && !flowOpen && !devOpen && !logHistoryOpen && !supportedOpen && !aboutOpen,
         enter = slideInVertically(
             animationSpec = tween(350, easing = FastOutSlowInEasing),
             initialOffsetY = { it },

@@ -251,4 +251,11 @@
     <string name="supported_count">%1$d 个载荷 · %2$d 台设备</string>
     <string name="supported_your">你的设备</string>
     <string name="supported_disabled">未启用</string>
+    <string name="update_none_found">暂无更新</string>
+    <string name="link_open_failed">无法打开链接</string>
+    <string name="about_title">关于</string>
+    <string name="about_repositories">代码仓库</string>
+    <string name="about_repo_app">应用</string>
+    <string name="about_repo_payloads">载荷</string>
+    <string name="about_repo_exploit">漏洞利用</string>
 </resources>

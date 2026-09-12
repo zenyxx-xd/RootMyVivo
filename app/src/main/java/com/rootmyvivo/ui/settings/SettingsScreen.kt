@@ -1,10 +1,7 @@
 package com.rootmyvivo.ui.settings
 
-import android.content.Intent
-import android.net.Uri
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -19,21 +16,17 @@ import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
 import androidx.compose.material.icons.rounded.BrightnessAuto
 import androidx.compose.material.icons.rounded.BugReport
 import androidx.compose.material.icons.rounded.Check
-import androidx.compose.material.icons.rounded.CloudSync
+import androidx.compose.material.icons.rounded.Info
 import androidx.compose.material.icons.rounded.Language
-import androidx.compose.material.icons.rounded.OpenInNew
 import androidx.compose.material.icons.rounded.Palette
 import androidx.compose.material.icons.rounded.RestartAlt
 import androidx.compose.material.icons.rounded.Restore
 import androidx.compose.material.icons.rounded.Security
-import androidx.compose.material.icons.rounded.SystemUpdate
-import androidx.compose.material.icons.rounded.Warning
 import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -41,14 +34,12 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.rootmyvivo.BuildConfig
 import com.rootmyvivo.R
 import com.rootmyvivo.data.Catalog
 import com.rootmyvivo.data.ThemeMode
@@ -62,10 +53,8 @@ import com.rootmyvivo.ui.common.TrailingValue
 import com.rootmyvivo.vm.MainViewModel
 import com.rootmyvivo.vm.UiState
 
-private const val SOURCE_URL = "https://github.com/zenyxx-xd/RootMyVivo"
-
 @Composable
-fun SettingsScreen(vm: MainViewModel, state: UiState, onDevOpen: () -> Unit = {}) {
+fun SettingsScreen(vm: MainViewModel, state: UiState, onDevOpen: () -> Unit = {}, onAboutOpen: () -> Unit = {}) {
     var langDialog by remember { mutableStateOf(false) }
     var themeDialog by remember { mutableStateOf(false) }
     var ksuDialog by remember { mutableStateOf(false) }
@@ -75,7 +64,6 @@ fun SettingsScreen(vm: MainViewModel, state: UiState, onDevOpen: () -> Unit = {}
     // в «О приложении» (как easter egg в системных настройках)
     val prefs = remember { com.rootmyvivo.data.Prefs(context) }
     var devUnlocked by remember { mutableStateOf(prefs.devUnlocked) }
-    var versionTaps by remember { mutableStateOf(0) }
 
     Column(
         Modifier
@@ -159,27 +147,12 @@ fun SettingsScreen(vm: MainViewModel, state: UiState, onDevOpen: () -> Unit = {}
             }
         }
 
-        // ── Обновления ──
-        SettingsGroup(title = stringResource(R.string.settings_updates)) {
+        // ── О приложении (обновления, репозитории, версия — на отдельном экране) ──
+        SettingsGroup {
             SettingsRow(
-                title = stringResource(R.string.settings_autoupdate),
-                description = stringResource(R.string.settings_autoupdate_desc),
-                icon = Icons.Rounded.CloudSync,
-                trailing = {
-                    Switch(
-                        checked = state.settings.autoUpdateCheck,
-                        onCheckedChange = { v -> vm.updateSettings { it.copy(autoUpdateCheck = v) } },
-                    )
-                },
-            )
-            SettingsDivider()
-            SettingsRow(
-                title = stringResource(R.string.settings_check_update),
-                description = state.appUpdate?.let {
-                    stringResource(R.string.update_version, it.versionName)
-                },
-                icon = Icons.Rounded.SystemUpdate,
-                onClick = { vm.checkForUpdate() },
+                title = stringResource(R.string.about_title),
+                icon = Icons.Rounded.Info,
+                onClick = onAboutOpen,
                 trailing = { Chevron() },
             )
         }
@@ -212,77 +185,6 @@ fun SettingsScreen(vm: MainViewModel, state: UiState, onDevOpen: () -> Unit = {}
                     Icon(Icons.Rounded.Check, null, modifier = Modifier.size(18.dp))
                     Spacer(Modifier.width(6.dp))
                     Text(stringResource(R.string.action_save))
-                }
-            }
-        }
-
-        // ── О приложении ──
-        SettingsGroup(title = stringResource(R.string.settings_about)) {
-            SettingsRow(
-                title = stringResource(R.string.about_version),
-                onClick = {
-                    if (!devUnlocked) {
-                        versionTaps++
-                        if (versionTaps >= 7) {
-                            devUnlocked = true
-                            prefs.devUnlocked = true
-                            android.widget.Toast.makeText(
-                                context,
-                                context.getString(R.string.settings_dev_unlocked),
-                                android.widget.Toast.LENGTH_SHORT,
-                            ).show()
-                        }
-                    }
-                },
-                trailing = { TrailingValue(BuildConfig.VERSION_NAME, mono = true) },
-            )
-            SettingsDivider()
-            SettingsRow(
-                title = stringResource(R.string.about_author),
-                trailing = { TrailingValue("@zenyxx-xd") },
-            )
-            SettingsDivider()
-            SettingsRow(
-                title = stringResource(R.string.about_source),
-                description = "github.com/zenyxx-xd/RootMyVivo",
-                onClick = {
-                    context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(SOURCE_URL)))
-                },
-                trailing = {
-                    Icon(
-                        Icons.Rounded.OpenInNew, null,
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.size(18.dp),
-                    )
-                },
-            )
-            SettingsDivider()
-            SettingsRow(
-                title = stringResource(R.string.about_exploit),
-                trailing = { TrailingValue("CVE-2026-43499", mono = true) },
-            )
-        }
-
-        // ── Дисклеймер ──
-        Surface(
-            modifier = Modifier.fillMaxWidth(),
-            shape = MaterialTheme.shapes.large,
-            color = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.5f),
-        ) {
-            Row(Modifier.padding(16.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                Icon(Icons.Rounded.Warning, null, tint = MaterialTheme.colorScheme.onErrorContainer)
-                Column {
-                    Text(
-                        stringResource(R.string.disclaimer_title),
-                        style = MaterialTheme.typography.titleSmall,
-                        color = MaterialTheme.colorScheme.onErrorContainer,
-                    )
-                    Spacer(Modifier.height(4.dp))
-                    Text(
-                        stringResource(R.string.disclaimer_text),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onErrorContainer.copy(alpha = 0.85f),
-                    )
                 }
             }
         }
