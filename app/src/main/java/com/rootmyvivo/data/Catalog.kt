@@ -10,7 +10,15 @@ import java.net.HttpURLConnection
 import java.net.URL
 import java.security.MessageDigest
 
-data class FileEntry(val url: String, val sha256: String?, val size: Long)
+data class FileEntry(
+    val url: String,
+    val sha256: String?,
+    val size: Long,
+    /** Зеркала: пробуются по очереди, если основной URL недоступен
+     *  (GitHub release assets живут на release-assets.githubusercontent.com,
+     *  который у части пользователей заблокирован, когда сам GitHub работает). */
+    val mirrors: List<String> = emptyList(),
+)
 
 data class PayloadEntry(
     val id: String,
@@ -108,62 +116,76 @@ class Catalog(var url: String = DEFAULT_URL) {
         }
     }
 
-    /** Скачивание файла пейлоада: редиректы, проверка размера и SHA-256, атомарная запись. */
+    /** Скачивание файла пейлоада: основной URL, затем зеркала (если заданы);
+     *  редиректы, проверка размера и SHA-256, атомарная запись. */
     suspend fun downloadFile(
         entry: FileEntry,
         dest: File,
         onProgress: suspend (read: Long, total: Long) -> Unit = { _, _ -> },
     ): Result<Unit> = withContext(Dispatchers.IO) {
+        val urls = listOf(entry.url) + entry.mirrors
+        var lastError: Throwable? = null
+        for (u in urls) {
+            val res = downloadFrom(u, entry, dest, onProgress)
+            if (res.isSuccess) return@withContext res
+            lastError = res.exceptionOrNull()
+            Log.w(TAG, "download ${dest.name} from ${u.substringBefore('/' + dest.name)} failed: ${lastError?.message}")
+        }
+        Result.failure(lastError ?: IOException("all sources failed"))
+    }
+
+    private suspend fun downloadFrom(
+        url: String,
+        entry: FileEntry,
+        dest: File,
+        onProgress: suspend (read: Long, total: Long) -> Unit,
+    ): Result<Unit> = try {
         val tmp = File(dest.absolutePath + ".part")
-        try {
-            dest.parentFile?.mkdirs()
-            tmp.delete()
+        dest.parentFile?.mkdirs()
+        tmp.delete()
 
-            var conn = open(entry.url)
-            var code = conn.responseCode
-            var hops = 0
-            while (hops < 5 && code in 301..308) {
-                val loc = conn.getHeaderField("Location")
-                    ?: throw IOException("HTTP $code without Location")
-                conn.disconnect()
-                conn = open(URL(URL(entry.url), loc).toString())
-                code = conn.responseCode
-                hops++
-            }
-            if (code !in 200..299) throw IOException("HTTP $code")
+        var conn = open(url)
+        var code = conn.responseCode
+        var hops = 0
+        while (hops < 5 && code in 301..308) {
+            val loc = conn.getHeaderField("Location")
+                ?: throw IOException("HTTP $code without Location")
+            conn.disconnect()
+            conn = open(URL(URL(url), loc).toString())
+            code = conn.responseCode
+            hops++
+        }
+        if (code !in 200..299) throw IOException("HTTP $code")
 
-            val total = conn.contentLengthLong.takeIf { it > 0 } ?: entry.size
-            conn.inputStream.use { input ->
-                tmp.outputStream().use { output ->
-                    val buf = ByteArray(65536)
-                    var read = 0L
-                    while (true) {
-                        val n = input.read(buf)
-                        if (n < 0) break
-                        output.write(buf, 0, n)
-                        read += n
-                        onProgress(read, total)
-                    }
+        val total = conn.contentLengthLong.takeIf { it > 0 } ?: entry.size
+        conn.inputStream.use { input ->
+            tmp.outputStream().use { output ->
+                val buf = ByteArray(65536)
+                var read = 0L
+                while (true) {
+                    val n = input.read(buf)
+                    if (n < 0) break
+                    output.write(buf, 0, n)
+                    read += n
+                    onProgress(read, total)
                 }
             }
-
-            if (tmp.length() == 0L) throw IOException("empty response")
-            if (entry.size > 0L && tmp.length() != entry.size) {
-                throw IOException("incomplete: ${tmp.length()} of ${entry.size} bytes")
-            }
-            entry.sha256?.let { expected ->
-                val actual = sha256(tmp)
-                if (!actual.equals(expected, ignoreCase = true)) throw IOException("sha256 mismatch: $actual")
-            }
-            if (!tmp.renameTo(dest)) throw IOException("rename failed")
-            dest.setReadable(true, false)
-            Result.success(Unit)
-        } catch (e: Exception) {
-            tmp.delete()
-            dest.delete()
-            Log.e(TAG, "download ${dest.name} failed: ${e.message}")
-            Result.failure(e)
         }
+
+        if (tmp.length() == 0L) throw IOException("empty response")
+        if (entry.size > 0L && tmp.length() != entry.size) {
+            throw IOException("incomplete: ${tmp.length()} of ${entry.size} bytes")
+        }
+        entry.sha256?.let { expected ->
+            val actual = sha256(tmp)
+            if (!actual.equals(expected, ignoreCase = true)) throw IOException("sha256 mismatch: $actual")
+        }
+        if (!tmp.renameTo(dest)) throw IOException("rename failed")
+        dest.setReadable(true, false)
+        Result.success(Unit)
+    } catch (e: Exception) {
+        File(dest.absolutePath + ".part").delete()
+        Result.failure(e)
     }
 
     private fun open(url: String): HttpURLConnection {
@@ -201,7 +223,8 @@ class Catalog(var url: String = DEFAULT_URL) {
                     val f = fo.optJSONObject(key) ?: return@forEach
                     val u = f.optString("url", "")
                     if (u.startsWith("http")) {
-                        files[key] = FileEntry(u, f.optString("sha256", null), f.optLong("size", 0))
+                        val mirrors = f.optJSONArray("mirrors").strings().filter { it.startsWith("http") }
+                        files[key] = FileEntry(u, f.optString("sha256", null), f.optLong("size", 0), mirrors)
                     }
                 }
             }
