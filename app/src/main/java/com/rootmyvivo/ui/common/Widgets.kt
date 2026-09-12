@@ -3,6 +3,7 @@ package com.rootmyvivo.ui.common
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.offset
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.background
@@ -31,16 +32,16 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.Immutable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.boundsInParent
 import androidx.compose.ui.graphics.Color
@@ -159,10 +160,16 @@ fun SettingsRow(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             if (icon != null) {
+                // новая тема: скруглённый квадрат вместо круга
+                val iconShape = if (com.rootmyvivo.ui.theme.LocalAppStyle.current.tintedSquareIcons) {
+                    RoundedCornerShape(14.dp)
+                } else {
+                    CircleShape
+                }
                 Box(
                     Modifier
                         .size(40.dp)
-                        .clip(CircleShape)
+                        .clip(iconShape)
                         .background(MaterialTheme.colorScheme.primaryContainer),
                     contentAlignment = Alignment.Center,
                 ) {
@@ -251,11 +258,38 @@ fun ChoiceDialog(
     val density = androidx.compose.ui.platform.LocalDensity.current
     val rowBounds = remember { mutableStateMapOf<Int, Rect>() }
     val selectedIndex = items.indexOfFirst { it.selected }
+    val style = com.rootmyvivo.ui.theme.LocalAppStyle.current
+
+    // новая тема: диалог вырастает из 92% с мягкой пружиной
+    var appeared by remember { androidx.compose.runtime.mutableStateOf(false) }
+    androidx.compose.runtime.LaunchedEffect(Unit) { appeared = true }
+    val dialogScale by androidx.compose.animation.core.animateFloatAsState(
+        targetValue = if (appeared) 1f else 0.92f,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioLowBouncy,
+            stiffness = Spring.StiffnessMediumLow,
+        ),
+        label = "dialogScale",
+    )
+    val dialogAlpha by androidx.compose.animation.core.animateFloatAsState(
+        targetValue = if (appeared) 1f else 0f,
+        animationSpec = tween(180),
+        label = "dialogAlpha",
+    )
 
     Dialog(onDismissRequest = onDismiss) {
         Surface(
             shape = MaterialTheme.shapes.extraLarge,
             color = MaterialTheme.colorScheme.surfaceContainerHigh,
+            modifier = if (style.expressiveDialogs) {
+                Modifier.graphicsLayer {
+                    scaleX = dialogScale
+                    scaleY = dialogScale
+                    alpha = dialogAlpha
+                }
+            } else {
+                Modifier
+            },
         ) {
             Column(Modifier.padding(vertical = 10.dp)) {
                 Text(

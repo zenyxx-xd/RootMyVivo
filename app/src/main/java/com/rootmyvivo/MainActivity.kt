@@ -64,6 +64,8 @@ class MainActivity : ComponentActivity() {
                 NeoTheme(
                     themeMode = state.settings.themeMode,
                     dynamicColors = state.settings.dynamicColors,
+                    appTheme = state.settings.appTheme,
+                    predictiveBack = state.settings.predictiveBack,
                 ) {
                     App(vm, state)
                 }

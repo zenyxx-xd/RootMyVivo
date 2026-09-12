@@ -5,6 +5,7 @@ import android.content.Intent
 import android.net.Uri
 import android.widget.Toast
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -44,6 +45,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -83,8 +85,6 @@ private fun openUrl(context: Context, url: String) {
 @Composable
 fun AboutScreen(vm: MainViewModel, state: UiState, onClose: () -> Unit) {
     val context = LocalContext.current
-    val prefs = remember { Prefs(context) }
-    var versionTaps by remember { mutableStateOf(0) }
 
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
@@ -119,10 +119,16 @@ fun AboutScreen(vm: MainViewModel, state: UiState, onClose: () -> Unit) {
                     Modifier.padding(22.dp),
                     horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
+                    // mipmap adaptive-icon не грузится через painterResource —
+                    // берём векторный foreground
                     Image(
-                        painter = painterResource(R.mipmap.ic_launcher),
+                        painter = painterResource(R.drawable.ic_launcher_foreground),
                         contentDescription = null,
-                        modifier = Modifier.size(72.dp),
+                        modifier = Modifier
+                            .size(96.dp)
+                            .clip(MaterialTheme.shapes.extraLarge)
+                            .background(MaterialTheme.colorScheme.surfaceContainerHigh)
+                            .padding(10.dp),
                     )
                     Spacer(Modifier.height(10.dp))
                     Text(
@@ -130,25 +136,12 @@ fun AboutScreen(vm: MainViewModel, state: UiState, onClose: () -> Unit) {
                         style = MaterialTheme.typography.headlineSmall,
                         fontWeight = FontWeight.Bold,
                     )
-                    // тап по версии: easter egg на 7 тапов — меню разработчика
                     Text(
                         "v${BuildConfig.VERSION_NAME}",
                         style = MaterialTheme.typography.bodyMedium,
                         fontFamily = FontFamily.Monospace,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier
-                            .padding(top = 2.dp)
-                            .clickableNoIndicator {
-                                versionTaps++
-                                if (versionTaps >= 7 && !prefs.devUnlocked) {
-                                    prefs.devUnlocked = true
-                                    Toast.makeText(
-                                        context,
-                                        context.getString(R.string.settings_dev_unlocked),
-                                        Toast.LENGTH_SHORT,
-                                    ).show()
-                                }
-                            },
+                        modifier = Modifier.padding(top = 2.dp),
                     )
                     Text(
                         stringResource(R.string.about_author),
@@ -257,10 +250,3 @@ private fun RepoRow(title: String, url: String, icon: androidx.compose.ui.graphi
         },
     )
 }
-
-/** Кликабельность без визуальной ряби — для easter egg по версии. */
-private fun Modifier.clickableNoIndicator(onClick: () -> Unit): Modifier = this.clickable(
-    interactionSource = androidx.compose.foundation.interaction.MutableInteractionSource(),
-    indication = null,
-    onClick = onClick,
-)

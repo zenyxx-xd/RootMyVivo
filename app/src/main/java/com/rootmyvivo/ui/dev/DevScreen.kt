@@ -1,14 +1,7 @@
 package com.rootmyvivo.ui.dev
 
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.animation.core.tween
-import androidx.compose.animation.expandVertically
-import androidx.compose.animation.fadeIn
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -17,74 +10,53 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.Bolt
-import androidx.compose.material.icons.rounded.BugReport
-import androidx.compose.material.icons.rounded.Cancel
-import androidx.compose.material.icons.rounded.CheckCircle
-import androidx.compose.material.icons.rounded.Description
-import androidx.compose.material.icons.rounded.Folder
-import androidx.compose.material.icons.rounded.Refresh
-import androidx.compose.material.icons.rounded.RestartAlt
-import androidx.compose.material3.AlertDialog
+import androidx.compose.material.icons.rounded.Check
+import androidx.compose.material.icons.rounded.PlayArrow
+import androidx.compose.material.icons.rounded.Restore
 import androidx.compose.material3.Button
-import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.rootmyvivo.R
 import com.rootmyvivo.data.Catalog
-import com.rootmyvivo.data.PayloadCatalog
-import com.rootmyvivo.root.LogLevel
-import com.rootmyvivo.root.Phase
+import com.rootmyvivo.ui.common.SettingsGroup
 import com.rootmyvivo.ui.flow.FlowScreen
 import com.rootmyvivo.vm.LogEntry
 import com.rootmyvivo.vm.LogKind
 import com.rootmyvivo.vm.MainViewModel
 import com.rootmyvivo.vm.UiState
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
-/** Режим демо-флоу: что показывает заглушка вместо эксплойта. */
-enum class DemoVariant { SUCCESS, FAILURE, SYSTEM_BROKEN, INFINITE }
-
 /**
- * Экран разработчика: демо-флоу с заглушкой эксплойта, перезапуск настоящего
- * эксплойта, все пейлоады каталога по всем моделям и лог последнего запуска.
- * Секции появляются каскадом (expand + fade со сдвигом фазы).
+ * «Другое»: демо-флоу успеха (как выглядит процесс) и редактор каталога
+ * пейлоадов. Без перезапуска эксплойта и списка пейлоадов — это есть
+ * на главной.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DevScreen(vm: MainViewModel, state: UiState, onClose: () -> Unit, onRootStarted: () -> Unit) {
     var demoState by remember { mutableStateOf<UiState?>(null) }
-    var warnDialog by remember { mutableStateOf(false) }
-    // Чекер «больше не показывать» — локальный, фиксируется только подтверждением
-    var warnDontShow by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
     val ctx = LocalContext.current
     demoContext = ctx.applicationContext
@@ -93,14 +65,13 @@ fun DevScreen(vm: MainViewModel, state: UiState, onClose: () -> Unit, onRootStar
         demoState = null
     }
 
-    // Демо-флоу рендерится тем же экраном процесса — с настоящим туманом,
-    // морфингом иконок и аккордеоном живого лога
+    // Демо-флоу рендерится тем же экраном процесса
     demoState?.let { demo ->
         FlowScreen(
             state = demo,
             canClose = true,
             onClose = closeDemo,
-            onRetry = { runDemo(DemoVariant.SUCCESS, scope) { demoState = it } },
+            onRetry = { runDemo(scope) { demoState = it } },
             onSoftReboot = { closeDemo() },
             onDismissSoftReboot = { demoState = demo.copy(softRebootPrompt = false) },
             onFullReboot = { closeDemo() },
@@ -108,106 +79,11 @@ fun DevScreen(vm: MainViewModel, state: UiState, onClose: () -> Unit, onRootStar
         return
     }
 
-    // Перезапуск эксплойта — то же действие, что кнопка на главной:
-    // с предупреждением о паниках и чекером, если не скрыто ранее
-    fun startExploit() {
-        if (state.settings.warnDismissed) {
-            vm.startRoot()
-            onRootStarted()
-        } else {
-            warnDialog = true
-        }
-    }
-
-    if (warnDialog && state.settings.warnDismissed) {
-        warnDialog = false
-    }
-
-    if (warnDialog && !state.settings.warnDismissed) {
-        AlertDialog(
-            onDismissRequest = { warnDialog = false },
-            title = { Text(stringResource(R.string.warn_title), fontWeight = FontWeight.Bold) },
-            confirmButton = {
-                Button(onClick = {
-                    if (warnDontShow) vm.updateSettings { it.copy(warnDismissed = true) }
-                    warnDialog = false
-                    vm.startRoot()
-                    onRootStarted()
-                }) {
-                    Text(stringResource(R.string.warn_go))
-                }
-            },
-            text = {
-                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                        Icon(
-                            Icons.Rounded.Bolt, null,
-                            tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(20.dp),
-                        )
-                        Text(stringResource(R.string.warn_panics), style = MaterialTheme.typography.bodyMedium)
-                    }
-                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                        Icon(
-                            Icons.Rounded.CheckCircle, null,
-                            tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(20.dp),
-                        )
-                        Text(stringResource(R.string.warn_stay), style = MaterialTheme.typography.bodyMedium)
-                    }
-                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                        Icon(
-                            Icons.Rounded.Refresh, null,
-                            tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(20.dp),
-                        )
-                        Text(stringResource(R.string.warn_retry), style = MaterialTheme.typography.bodyMedium)
-                    }
-                    Spacer(Modifier.height(4.dp))
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier
-                            .padding(start = 8.dp)
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(12.dp))
-                            .clickable { warnDontShow = !warnDontShow },
-                    ) {
-                        Checkbox(
-                            checked = warnDontShow,
-                            onCheckedChange = { warnDontShow = it },
-                        )
-                        Text(
-                            stringResource(R.string.warn_dont_show),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { warnDialog = false }) {
-                    Text(stringResource(R.string.warn_cancel))
-                }
-            },
-            shape = MaterialTheme.shapes.extraLarge,
-        )
-    }
-
-    // Каталог пейлоадов: все модели, всё, что есть в репозитории
-    var catalog by remember { mutableStateOf<PayloadCatalog?>(null) }
-    var catalogFailed by remember { mutableStateOf(false) }
-    val catalogClient = remember(state.settings.catalogUrl) { Catalog(state.settings.catalogUrl) }
-    LaunchedEffect(catalogClient) {
-        catalogClient.fetch()
-            .onSuccess { catalog = it }
-            .onFailure { catalogFailed = true }
-    }
-
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
         topBar = {
             TopAppBar(
-                title = { Text(stringResource(R.string.dev_title)) },
+                title = { Text(stringResource(R.string.settings_other)) },
                 navigationIcon = {
                     IconButton(onClick = onClose) {
                         Icon(Icons.AutoMirrored.Rounded.ArrowBack, stringResource(R.string.action_back))
@@ -226,172 +102,65 @@ fun DevScreen(vm: MainViewModel, state: UiState, onClose: () -> Unit, onRootStar
         ) {
             Spacer(Modifier.height(4.dp))
 
-            // ── Перезапуск настоящего эксплойта ──
-            AnimatedSection(0) {
-                Button(
-                    onClick = { startExploit() },
-                    modifier = Modifier.fillMaxWidth(),
+            // ── Демо ──
+            SettingsGroup(title = stringResource(R.string.other_demo)) {
+                OutlinedButton(
+                    onClick = { runDemo(scope) { demoState = it } },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 12.dp, vertical = 4.dp),
                     shape = MaterialTheme.shapes.large,
                 ) {
-                    Icon(Icons.Rounded.RestartAlt, null, modifier = Modifier.size(16.dp))
+                    Icon(Icons.Rounded.PlayArrow, null, modifier = Modifier.size(18.dp))
                     Spacer(Modifier.width(6.dp))
-                    Text(stringResource(R.string.dev_restart_exploit))
+                    Text(stringResource(R.string.dev_demo_success))
                 }
             }
 
-            // ── Демо-флоу ──
-            AnimatedSection(1) {
-                Text(
-                    stringResource(R.string.dev_demo_title),
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold,
-                )
-                Spacer(Modifier.height(10.dp))
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    OutlinedButton(
-                        onClick = { runDemo(DemoVariant.SUCCESS, scope) { demoState = it } },
-                        modifier = Modifier.weight(1f),
-                    ) { Text(stringResource(R.string.dev_demo_success)) }
-                    OutlinedButton(
-                        onClick = { runDemo(DemoVariant.FAILURE, scope) { demoState = it } },
-                        modifier = Modifier.weight(1f),
-                    ) { Text(stringResource(R.string.dev_demo_failure)) }
-                }
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    OutlinedButton(
-                        onClick = { runDemo(DemoVariant.SYSTEM_BROKEN, scope) { demoState = it } },
-                        modifier = Modifier.weight(1f),
-                    ) { Text(stringResource(R.string.dev_demo_broken)) }
-                    OutlinedButton(
-                        onClick = { runDemo(DemoVariant.INFINITE, scope) { demoState = it } },
-                        modifier = Modifier.weight(1f),
-                    ) { Text(stringResource(R.string.dev_demo_infinite)) }
-                }
-            }
-
-            // ── Все пейлоады каталога (все модели) ──
-            AnimatedSection(2) {
-                Surface(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = MaterialTheme.shapes.large,
-                    color = MaterialTheme.colorScheme.surfaceContainerLow,
-                ) {
-                    Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                        Row(
-                            horizontalArrangement = Arrangement.spacedBy(10.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            Icon(
-                                Icons.Rounded.Folder, null,
-                                tint = MaterialTheme.colorScheme.secondary,
-                                modifier = Modifier.size(20.dp),
-                            )
-                            Text(
-                                stringResource(R.string.dev_payloads),
-                                style = MaterialTheme.typography.titleSmall,
-                                fontWeight = FontWeight.SemiBold,
-                            )
-                        }
-                        when {
-                            catalogFailed -> Text(
-                                stringResource(R.string.dev_catalog_error),
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                            catalog == null -> Text(
-                                stringResource(R.string.dev_catalog_loading),
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                            catalog!!.payloads.isEmpty() -> Text(
-                                stringResource(R.string.dev_payloads_empty),
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                            else -> catalog!!.payloads.forEach { p ->
-                                val selected = state.payload?.id == p.id
-                                Row(
-                                    horizontalArrangement = Arrangement.spacedBy(10.dp),
-                                    verticalAlignment = Alignment.CenterVertically,
-                                ) {
-                                    Icon(
-                                        if (p.enabled) Icons.Rounded.CheckCircle else Icons.Rounded.Cancel,
-                                        null,
-                                        tint = if (p.enabled) {
-                                            MaterialTheme.colorScheme.primary
-                                        } else {
-                                            MaterialTheme.colorScheme.error
-                                        },
-                                        modifier = Modifier.size(18.dp),
-                                    )
-                                    Column(Modifier.weight(1f)) {
-                                        Text(
-                                            p.displayName,
-                                            style = MaterialTheme.typography.bodyMedium,
-                                            fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
-                                            color = if (selected) {
-                                                MaterialTheme.colorScheme.primary
-                                            } else {
-                                                MaterialTheme.colorScheme.onSurface
-                                            },
-                                        )
-                                        Text(
-                                            p.marketNames.joinToString(" · "),
-                                            style = MaterialTheme.typography.bodySmall,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        )
-                                        Text(
-                                            p.kernelVersions.joinToString(" · ") + "  ·  " +
-                                                fmtSize(p.files.values.sumOf { it.size }),
-                                            style = MaterialTheme.typography.bodySmall,
-                                            fontFamily = FontFamily.Monospace,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        )
-                                    }
+            // ── Каталог пейлоадов ──
+            SettingsGroup(title = stringResource(R.string.settings_catalog)) {
+                var url by remember(state.settings.catalogUrl) { mutableStateOf(state.settings.catalogUrl) }
+                Column(Modifier.padding(horizontal = 16.dp, vertical = 10.dp)) {
+                    OutlinedTextField(
+                        value = url,
+                        onValueChange = { url = it },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = MaterialTheme.shapes.medium,
+                        textStyle = MaterialTheme.typography.bodySmall,
+                        trailingIcon = {
+                            if (url != Catalog.DEFAULT_URL) {
+                                IconButton(onClick = {
+                                    vm.setCatalogUrl(Catalog.DEFAULT_URL)
+                                }) {
+                                    Icon(Icons.Rounded.Restore, null, tint = MaterialTheme.colorScheme.primary)
                                 }
                             }
-                        }
+                        },
+                    )
+                    Spacer(Modifier.height(10.dp))
+                    Button(
+                        onClick = { vm.setCatalogUrl(url) },
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = MaterialTheme.shapes.large,
+                    ) {
+                        Icon(Icons.Rounded.Check, null, modifier = Modifier.size(18.dp))
+                        Spacer(Modifier.width(6.dp))
+                        Text(stringResource(R.string.action_save))
                     }
                 }
             }
 
-            Spacer(Modifier.height(28.dp))
+            Spacer(Modifier.height(24.dp))
         }
     }
 }
 
-/** Секция с каскадным появлением: расширение высоты + растворение. */
-@Composable
-private fun AnimatedSection(index: Int, content: @Composable () -> Unit) {
-    var visible by remember { mutableStateOf(false) }
-    LaunchedEffect(Unit) {
-        delay(index * 90L)
-        visible = true
-    }
-    AnimatedVisibility(
-        visible = visible,
-        enter = expandVertically(
-            animationSpec = tween(360, easing = FastOutSlowInEasing),
-        ) + fadeIn(tween(360, easing = FastOutSlowInEasing)),
-    ) {
-        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) { content() }
-    }
-}
-
-private fun fmtSize(bytes: Long): String = when {
-    bytes >= 1024 * 1024 -> "%.1f МБ".format(bytes / 1048576.0)
-    bytes >= 1024 -> "%.1f КБ".format(bytes / 1024.0)
-    else -> "$bytes Б"
-}
-
 /**
- * Демо-флоу: точная копия настоящего процесса — те же события, те же строки,
- * тот же редьюсер (Progress закрывает предыдущие шаги, Complete мутирует
- * спиннер в галку, ExploitLive кормит аккордеон). Единственное отличие —
- * живой лог эксплойта пишет заглушка.
+ * Демо-флоу успеха: копия реального процесса, живой лог пишет заглушка.
+ * Единственный вариант — успех.
  */
 private fun runDemo(
-    variant: DemoVariant,
     scope: kotlinx.coroutines.CoroutineScope,
     update: (UiState) -> Unit,
 ) {
@@ -401,7 +170,6 @@ private fun runDemo(
         var idCounter = 0L
         var s = UiState(flowRunning = true)
 
-        // ── редьюсер: 1-в-1 как в MainViewModel.applyFlowEvent ──
         suspend fun apply(event: com.rootmyvivo.root.FlowEvent) {
             s = when (event) {
                 is com.rootmyvivo.root.FlowEvent.Step -> s.copy(
@@ -442,7 +210,6 @@ private fun runDemo(
                     } else {
                         appCtx.getString(R.string.log_exploit_start)
                     }
-                    // как в MainViewModel: накапливаем с устойчивыми id
                     val prev = s.exploitLive.lines
                     val incoming = event.lines
                     fun knownPrefix(k: Int): Boolean {
@@ -488,28 +255,28 @@ private fun runDemo(
             update(s)
         }
 
-        // ═══ Точная последовательность ExploitEngine.run() ═══
+        // ═══ Точная последовательность успешного ExploitEngine.run() ═══
         apply(com.rootmyvivo.root.FlowEvent.Log(appCtx.getString(R.string.log_started)))
 
         apply(com.rootmyvivo.root.FlowEvent.Step(Phase.CATALOG, 1, 6))
-        delay(600)
+        kotlinx.coroutines.delay(600)
 
         apply(com.rootmyvivo.root.FlowEvent.Step(Phase.PAYLOAD, 2, 6))
-        apply(com.rootmyvivo.root.FlowEvent.Log(appCtx.getString(R.string.log_payload, "GhostLock PD2520-A16"), LogLevel.OK))
-        delay(400)
+        apply(com.rootmyvivo.root.FlowEvent.Log(appCtx.getString(R.string.log_payload, "iQOO Neo 11 | SM8750"), LogLevel.OK))
+        kotlinx.coroutines.delay(400)
 
         apply(com.rootmyvivo.root.FlowEvent.Step(Phase.DOWNLOAD, 3, 6))
         apply(com.rootmyvivo.root.FlowEvent.Progress(appCtx.getString(R.string.log_download_start, "preload-rmv.so", 137)))
         for (p in 1..6) {
-            delay(160)
+            kotlinx.coroutines.delay(160)
             apply(com.rootmyvivo.root.FlowEvent.Download("preload-rmv.so", p.toLong(), 6L))
         }
         apply(com.rootmyvivo.root.FlowEvent.Complete(true, appCtx.getString(R.string.log_download_ok, "preload-rmv.so")))
 
         apply(com.rootmyvivo.root.FlowEvent.Step(Phase.DEPLOY, 4, 6))
-        delay(500)
+        kotlinx.coroutines.delay(500)
 
-        // ── Эксплойт: заглушка с настоящим живым логом ──
+        // ── Эксплойт: живой лог ──
         apply(com.rootmyvivo.root.FlowEvent.Step(Phase.EXPLOIT, 5, 6))
         apply(com.rootmyvivo.root.FlowEvent.Progress(appCtx.getString(R.string.log_exploit_start), exploit = true))
 
@@ -525,68 +292,51 @@ private fun runDemo(
             "[*] quiesce: loadavg=2.31",
         )
         val lines = boot.toMutableList()
-        apply(
-            com.rootmyvivo.root.FlowEvent.ExploitLive(attempt = null, max = null, lines = lines.toList()),
-        )
-        delay(900)
+        apply(com.rootmyvivo.root.FlowEvent.ExploitLive(attempt = null, max = null, lines = lines.toList()))
+        kotlinx.coroutines.delay(900)
 
-        for (step in 1..24) {
-            if (variant == DemoVariant.INFINITE && step > 24) break
-            delay(if (variant == DemoVariant.INFINITE) 500 else 170)
-            lines += when {
-                step % 3 == 0 -> "[*] pselect returned attempt=$step/24 ret=6 errno=0 success=1 delay=50000"
-                step % 3 == 1 -> "[*] pselect cfi miss attempt=$step/24 step=4 errno=0; refreshing FOPS page"
-                else -> "[*] cfi write ret=35 errno=0 (attempt=$step/24)"
-            }
+        // счётчик — главные попытки (как в реальном логе после фикса)
+        for (step in 1..8) {
+            kotlinx.coroutines.delay(170)
+            lines += "[*] pselect cfi attempt=$step/24 ret=6 errno=0"
             apply(
-                com.rootmyvivo.root.FlowEvent.ExploitLive(attempt = step, max = 24, lines = lines.takeLast(30)),
+                com.rootmyvivo.root.FlowEvent.ExploitLive(attempt = 1, max = 3, lines = lines.takeLast(30)),
             )
         }
-        if (variant == DemoVariant.INFINITE) return@launch
 
         lines += "[+] phys step pipe probe found=1 pipebuf=ffffff8881fd0000 idx=40 scan=1/1/1"
         lines += "[+] cred patched pid=20713"
         lines += "[+] posture done"
-        apply(com.rootmyvivo.root.FlowEvent.ExploitLive(attempt = 24, max = 24, lines = lines.takeLast(30)))
-        delay(500)
-
-        if (variant == DemoVariant.FAILURE) {
-            apply(com.rootmyvivo.root.FlowEvent.Complete(false))
-            apply(com.rootmyvivo.root.FlowEvent.Failure(com.rootmyvivo.root.FlowEvent.Reason.EXPLOIT))
-            return@launch
-        }
-        if (variant == DemoVariant.SYSTEM_BROKEN) {
-            apply(com.rootmyvivo.root.FlowEvent.Failure(com.rootmyvivo.root.FlowEvent.Reason.SYSTEM_BROKEN))
-            return@launch
-        }
+        apply(com.rootmyvivo.root.FlowEvent.ExploitLive(attempt = 1, max = 3, lines = lines.takeLast(30)))
+        kotlinx.coroutines.delay(500)
 
         apply(com.rootmyvivo.root.FlowEvent.Complete(true))
-        delay(300)
+        kotlinx.coroutines.delay(300)
         apply(com.rootmyvivo.root.FlowEvent.Log(appCtx.getString(R.string.log_root_obtained, 42), LogLevel.OK))
 
         // ═══ finishRoot ═══
         apply(com.rootmyvivo.root.FlowEvent.Log(appCtx.getString(R.string.log_verify, "uid=0(root) gid=0(root) context=u:r:kernel:s0"), LogLevel.OK))
         apply(com.rootmyvivo.root.FlowEvent.Step(Phase.KSU, 6, 6))
         apply(com.rootmyvivo.root.FlowEvent.Progress(appCtx.getString(R.string.log_persist_start)))
-        delay(700)
+        kotlinx.coroutines.delay(700)
         apply(com.rootmyvivo.root.FlowEvent.Complete(true, appCtx.getString(R.string.log_persist_ok)))
 
         apply(com.rootmyvivo.root.FlowEvent.Progress(appCtx.getString(R.string.log_ksud_download)))
-        delay(600)
+        kotlinx.coroutines.delay(600)
         apply(com.rootmyvivo.root.FlowEvent.Complete(true))
         apply(com.rootmyvivo.root.FlowEvent.Progress(appCtx.getString(R.string.log_ksu_download, "android15-6.6")))
-        delay(600)
+        kotlinx.coroutines.delay(600)
         apply(com.rootmyvivo.root.FlowEvent.Progress(appCtx.getString(R.string.log_ksu_vermagic)))
-        delay(500)
+        kotlinx.coroutines.delay(500)
         apply(com.rootmyvivo.root.FlowEvent.Progress(appCtx.getString(R.string.log_ksu_load)))
-        delay(700)
+        kotlinx.coroutines.delay(700)
         apply(com.rootmyvivo.root.FlowEvent.Log(appCtx.getString(R.string.log_ksu_verify)))
-        delay(500)
+        kotlinx.coroutines.delay(500)
 
         apply(com.rootmyvivo.root.FlowEvent.Progress(appCtx.getString(R.string.log_manager_download, "ReSukiSU")))
-        delay(600)
+        kotlinx.coroutines.delay(600)
         apply(com.rootmyvivo.root.FlowEvent.Log(appCtx.getString(R.string.log_manager_already, "ReSukiSU"), LogLevel.OK))
-        delay(400)
+        kotlinx.coroutines.delay(400)
         apply(com.rootmyvivo.root.FlowEvent.Complete(true, appCtx.getString(R.string.log_ksu_active, "ReSukiSU")))
 
         apply(com.rootmyvivo.root.FlowEvent.Success(softRebootRecommended = true))
@@ -595,3 +345,6 @@ private fun runDemo(
 
 /** Контекст приложения для строк в демо-корутине. */
 private var demoContext: android.content.Context? = null
+
+private typealias Phase = com.rootmyvivo.root.Phase
+private typealias LogLevel = com.rootmyvivo.root.LogLevel

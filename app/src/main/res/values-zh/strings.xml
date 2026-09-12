@@ -258,4 +258,17 @@
     <string name="about_repo_app">应用</string>
     <string name="about_repo_payloads">载荷</string>
     <string name="about_repo_exploit">漏洞利用</string>
+    <string name="settings_other">其他</string>
+    <string name="settings_other_desc">演示流程和载荷目录</string>
+    <string name="other_demo">演示</string>
+    <string name="theme_screen_title">主题</string>
+    <string name="theme_screen_style">外观</string>
+    <string name="theme_name_monet">Monet</string>
+    <string name="theme_name_monet_desc">Material 3 Expressive：侧滑窗口、预测性手势、平滑对话框</string>
+    <string name="theme_name_monet_old">Monet Old</string>
+    <string name="theme_name_monet_old_desc">原来的样子，不做行为改动</string>
+    <string name="theme_name_originos">OriginOS</string>
+    <string name="theme_name_originos_desc">灰色底子——开发中</string>
+    <string name="settings_predictive_back">预测性手势</string>
+    <string name="settings_predictive_back_desc">窗口随手势返回一起缩小</string>
 </resources>

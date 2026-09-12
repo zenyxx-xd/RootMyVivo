@@ -54,16 +54,15 @@ import com.rootmyvivo.vm.MainViewModel
 import com.rootmyvivo.vm.UiState
 
 @Composable
-fun SettingsScreen(vm: MainViewModel, state: UiState, onDevOpen: () -> Unit = {}, onAboutOpen: () -> Unit = {}) {
+fun SettingsScreen(
+    vm: MainViewModel,
+    state: UiState,
+    onDevOpen: () -> Unit = {},
+    onAboutOpen: () -> Unit = {},
+    onThemeOpen: () -> Unit = {},
+) {
     var langDialog by remember { mutableStateOf(false) }
-    var themeDialog by remember { mutableStateOf(false) }
     var ksuDialog by remember { mutableStateOf(false) }
-    val context = LocalContext.current
-
-    // Меню разработчика скрыто: разблокируется семью тапами по версии
-    // в «О приложении» (как easter egg в системных настройках)
-    val prefs = remember { com.rootmyvivo.data.Prefs(context) }
-    var devUnlocked by remember { mutableStateOf(prefs.devUnlocked) }
 
     Column(
         Modifier
@@ -91,23 +90,11 @@ fun SettingsScreen(vm: MainViewModel, state: UiState, onDevOpen: () -> Unit = {}
             )
             SettingsDivider()
             SettingsRow(
-                title = stringResource(R.string.settings_theme),
+                title = stringResource(R.string.theme_screen_title),
                 description = themeName(state.settings.themeMode),
                 icon = Icons.Rounded.Palette,
-                onClick = { themeDialog = true },
+                onClick = onThemeOpen,
                 trailing = { Chevron() },
-            )
-            SettingsDivider()
-            SettingsRow(
-                title = stringResource(R.string.dynamic_colors),
-                description = stringResource(R.string.dynamic_colors_desc),
-                icon = Icons.Rounded.BrightnessAuto,
-                trailing = {
-                    Switch(
-                        checked = state.settings.dynamicColors,
-                        onCheckedChange = { v -> vm.updateSettings { it.copy(dynamicColors = v) } },
-                    )
-                },
             )
         }
 
@@ -134,17 +121,15 @@ fun SettingsScreen(vm: MainViewModel, state: UiState, onDevOpen: () -> Unit = {}
             )
         }
 
-        // ── Разработчику (скрыто до разблокировки тапами по версии) ──
-        if (devUnlocked) {
-            SettingsGroup {
-                SettingsRow(
-                    title = stringResource(R.string.settings_dev),
-                    description = stringResource(R.string.settings_dev_desc),
-                    icon = Icons.Rounded.BugReport,
-                    onClick = onDevOpen,
-                    trailing = { Chevron() },
-                )
-            }
+        // ── Другое ──
+        SettingsGroup {
+            SettingsRow(
+                title = stringResource(R.string.settings_other),
+                description = stringResource(R.string.settings_other_desc),
+                icon = Icons.Rounded.BugReport,
+                onClick = onDevOpen,
+                trailing = { Chevron() },
+            )
         }
 
         // ── О приложении (обновления, репозитории, версия — на отдельном экране) ──
@@ -155,38 +140,6 @@ fun SettingsScreen(vm: MainViewModel, state: UiState, onDevOpen: () -> Unit = {}
                 onClick = onAboutOpen,
                 trailing = { Chevron() },
             )
-        }
-
-        // ── Каталог ──
-        SettingsGroup(title = stringResource(R.string.settings_catalog)) {
-            var url by remember(state.settings.catalogUrl) { mutableStateOf(state.settings.catalogUrl) }
-            Column(Modifier.padding(horizontal = 16.dp, vertical = 10.dp)) {
-                OutlinedTextField(
-                    value = url,
-                    onValueChange = { url = it },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = MaterialTheme.shapes.medium,
-                    textStyle = MaterialTheme.typography.bodySmall,
-                    trailingIcon = {
-                        if (url != Catalog.DEFAULT_URL) {
-                            IconButton(onClick = { vm.setCatalogUrl(Catalog.DEFAULT_URL) }) {
-                                Icon(Icons.Rounded.Restore, null, tint = MaterialTheme.colorScheme.primary)
-                            }
-                        }
-                    },
-                )
-                Spacer(Modifier.height(10.dp))
-                Button(
-                    onClick = { vm.setCatalogUrl(url) },
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = MaterialTheme.shapes.large,
-                ) {
-                    Icon(Icons.Rounded.Check, null, modifier = Modifier.size(18.dp))
-                    Spacer(Modifier.width(6.dp))
-                    Text(stringResource(R.string.action_save))
-                }
-            }
         }
 
         Spacer(Modifier.height(24.dp))
@@ -208,23 +161,6 @@ fun SettingsScreen(vm: MainViewModel, state: UiState, onDevOpen: () -> Unit = {}
             ),
             onSelect = { i ->
                 vm.updateSettings { it.copy(language = listOf("", "ru", "en", "zh")[i]) }
-            },
-        )
-    }
-
-    // ── Диалог выбора темы ──
-    if (themeDialog) {
-        ChoiceDialog(
-            title = stringResource(R.string.settings_theme),
-            closeLabel = closeLabel,
-            onDismiss = { themeDialog = false },
-            items = listOf(
-                ChoiceDialogItem(stringResource(R.string.theme_auto), selected = state.settings.themeMode == ThemeMode.AUTO),
-                ChoiceDialogItem(stringResource(R.string.theme_light), selected = state.settings.themeMode == ThemeMode.LIGHT),
-                ChoiceDialogItem(stringResource(R.string.theme_dark), selected = state.settings.themeMode == ThemeMode.DARK),
-            ),
-            onSelect = { i ->
-                vm.updateSettings { it.copy(themeMode = ThemeMode.entries[i]) }
             },
         )
     }

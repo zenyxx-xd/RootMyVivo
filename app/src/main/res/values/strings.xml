@@ -271,4 +271,17 @@
     <string name="about_repo_app">Приложение</string>
     <string name="about_repo_payloads">Пейлоады</string>
     <string name="about_repo_exploit">Эксплойт</string>
+    <string name="settings_other">Другое</string>
+    <string name="settings_other_desc">Демо-флоу и каталог пейлоадов</string>
+    <string name="other_demo">Демо</string>
+    <string name="theme_screen_title">Тема</string>
+    <string name="theme_screen_style">Оформление</string>
+    <string name="theme_name_monet">Monet</string>
+    <string name="theme_name_monet_desc">Material 3 Expressive: боковые окна, предиктивные жесты, плавные диалоги</string>
+    <string name="theme_name_monet_old">Monet Old</string>
+    <string name="theme_name_monet_old_desc">Прежний вид, без behavioural-обновлений</string>
+    <string name="theme_name_originos">OriginOS</string>
+    <string name="theme_name_originos_desc">Серая база — в разработке</string>
+    <string name="settings_predictive_back">Предиктивные жесты</string>
+    <string name="settings_predictive_back_desc">Окно сжимается вслед за свайпом «назад»</string>
 </resources>
