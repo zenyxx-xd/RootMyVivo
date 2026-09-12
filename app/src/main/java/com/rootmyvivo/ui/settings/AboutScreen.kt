@@ -119,16 +119,10 @@ fun AboutScreen(vm: MainViewModel, state: UiState, onClose: () -> Unit) {
                     Modifier.padding(22.dp),
                     horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
-                    // mipmap adaptive-icon не грузится через painterResource —
-                    // берём векторный foreground
                     Image(
                         painter = painterResource(R.drawable.ic_launcher_foreground),
                         contentDescription = null,
-                        modifier = Modifier
-                            .size(96.dp)
-                            .clip(MaterialTheme.shapes.extraLarge)
-                            .background(MaterialTheme.colorScheme.surfaceContainerHigh)
-                            .padding(10.dp),
+                        modifier = Modifier.size(72.dp),
                     )
                     Spacer(Modifier.height(10.dp))
                     Text(
@@ -144,7 +138,7 @@ fun AboutScreen(vm: MainViewModel, state: UiState, onClose: () -> Unit) {
                         modifier = Modifier.padding(top = 2.dp),
                     )
                     Text(
-                        stringResource(R.string.about_author),
+                        "@zenyxx-xd",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(top = 6.dp),

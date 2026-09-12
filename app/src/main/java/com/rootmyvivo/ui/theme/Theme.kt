@@ -200,13 +200,21 @@ fun NeoTheme(
                 secondary = BrandTeal,
             )
         }
+        // цвета у Monet те же, что у Monet Old — тема меняет только стиль
         AppThemeName.MONET -> when {
             dynamicColors && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
                 val context = androidx.compose.ui.platform.LocalContext.current
                 if (dark) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
             }
-            dark -> monetDark()
-            else -> monetLight()
+            dark -> darkColorScheme(
+                primary = BrandVioletDim,
+                onPrimary = Color(0xFF151022),
+                secondary = BrandTealDim,
+            )
+            else -> expressiveLightColorScheme().copy(
+                primary = BrandViolet,
+                secondary = BrandTeal,
+            )
         }
         AppThemeName.ORIGIN_OS -> if (dark) originGrayDark() else originGrayLight()
     }

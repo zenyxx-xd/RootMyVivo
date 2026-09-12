@@ -87,14 +87,11 @@ fun ThemeScreen(vm: MainViewModel, state: UiState, onClose: () -> Unit) {
 
             // ── Оформление ──
             SettingsGroup(title = stringResource(R.string.theme_screen_style)) {
+                // превью — не цвета (они у Monet/Old одинаковые), а стиль строки
                 ThemeCard(
                     name = stringResource(R.string.theme_name_monet),
                     description = stringResource(R.string.theme_name_monet_desc),
-                    swatches = listOf(
-                        MaterialTheme.colorScheme.primary,
-                        MaterialTheme.colorScheme.secondaryContainer,
-                        MaterialTheme.colorScheme.surfaceContainerHigh,
-                    ),
+                    iconShape = RoundedCornerShape(13.dp),
                     selected = state.settings.appTheme == AppThemeName.MONET,
                     onClick = { vm.updateSettings { it.copy(appTheme = AppThemeName.MONET) } },
                 )
@@ -102,11 +99,7 @@ fun ThemeScreen(vm: MainViewModel, state: UiState, onClose: () -> Unit) {
                 ThemeCard(
                     name = stringResource(R.string.theme_name_monet_old),
                     description = stringResource(R.string.theme_name_monet_old_desc),
-                    swatches = listOf(
-                        androidx.compose.ui.graphics.Color(0xFF7C4DFF),
-                        androidx.compose.ui.graphics.Color(0xFF00BFA5),
-                        androidx.compose.ui.graphics.Color(0xFFEDEDF4),
-                    ),
+                    iconShape = androidx.compose.foundation.shape.CircleShape,
                     selected = state.settings.appTheme == AppThemeName.MONET_OLD,
                     onClick = { vm.updateSettings { it.copy(appTheme = AppThemeName.MONET_OLD) } },
                 )
@@ -114,11 +107,7 @@ fun ThemeScreen(vm: MainViewModel, state: UiState, onClose: () -> Unit) {
                 ThemeCard(
                     name = stringResource(R.string.theme_name_originos),
                     description = stringResource(R.string.theme_name_originos_desc),
-                    swatches = listOf(
-                        androidx.compose.ui.graphics.Color(0xFF5C6470),
-                        androidx.compose.ui.graphics.Color(0xFFDFE3EB),
-                        androidx.compose.ui.graphics.Color(0xFFF3F3F6),
-                    ),
+                    iconShape = RoundedCornerShape(6.dp),
                     selected = state.settings.appTheme == AppThemeName.ORIGIN_OS,
                     onClick = { vm.updateSettings { it.copy(appTheme = AppThemeName.ORIGIN_OS) } },
                 )
@@ -195,12 +184,12 @@ private fun themeModeName(mode: ThemeMode): String = when (mode) {
     ThemeMode.DARK -> stringResource(R.string.theme_dark)
 }
 
-/** Карточка темы: превью-палитра, название, описание, галочка выбора. */
+/** Карточка темы: мини-макет строки настройки (форма иконки), название, галочка. */
 @Composable
 private fun ThemeCard(
     name: String,
     description: String,
-    swatches: List<androidx.compose.ui.graphics.Color>,
+    iconShape: androidx.compose.ui.graphics.Shape,
     selected: Boolean,
     onClick: () -> Unit,
 ) {
@@ -216,19 +205,34 @@ private fun ThemeCard(
             .padding(horizontal = 14.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        // превью: три полоски палитры в скруглённом прямоугольнике
+        // превью стиля: строка настройки — контейнер иконки + две строки текста
         Row(
             Modifier
-                .size(width = 52.dp, height = 40.dp)
+                .size(width = 56.dp, height = 40.dp)
                 .clip(RoundedCornerShape(12.dp))
-                .background(MaterialTheme.colorScheme.surfaceContainerHigh),
+                .background(MaterialTheme.colorScheme.surfaceContainerHigh)
+                .padding(horizontal = 6.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
         ) {
-            swatches.forEach { c ->
+            Box(
+                Modifier
+                    .size(18.dp)
+                    .clip(iconShape)
+                    .background(MaterialTheme.colorScheme.primaryContainer),
+            )
+            Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
                 Box(
                     Modifier
-                        .weight(1f)
-                        .fillMaxSize()
-                        .background(c),
+                        .size(width = 22.dp, height = 4.dp)
+                        .clip(RoundedCornerShape(2.dp))
+                        .background(MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)),
+                )
+                Box(
+                    Modifier
+                        .size(width = 14.dp, height = 4.dp)
+                        .clip(RoundedCornerShape(2.dp))
+                        .background(MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f)),
                 )
             }
         }
