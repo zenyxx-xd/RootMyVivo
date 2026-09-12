@@ -26,6 +26,7 @@ import androidx.compose.material.icons.rounded.Palette
 import androidx.compose.material.icons.rounded.RestartAlt
 import androidx.compose.material.icons.rounded.Restore
 import androidx.compose.material.icons.rounded.Security
+import androidx.compose.material.icons.rounded.SystemUpdate
 import androidx.compose.material.icons.rounded.Warning
 import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
@@ -156,6 +157,31 @@ fun SettingsScreen(vm: MainViewModel, state: UiState, onDevOpen: () -> Unit = {}
                     trailing = { Chevron() },
                 )
             }
+        }
+
+        // ── Обновления ──
+        SettingsGroup(title = stringResource(R.string.settings_updates)) {
+            SettingsRow(
+                title = stringResource(R.string.settings_autoupdate),
+                description = stringResource(R.string.settings_autoupdate_desc),
+                icon = Icons.Rounded.CloudSync,
+                trailing = {
+                    Switch(
+                        checked = state.settings.autoUpdateCheck,
+                        onCheckedChange = { v -> vm.updateSettings { it.copy(autoUpdateCheck = v) } },
+                    )
+                },
+            )
+            SettingsDivider()
+            SettingsRow(
+                title = stringResource(R.string.settings_check_update),
+                description = state.appUpdate?.let {
+                    stringResource(R.string.update_version, it.versionName)
+                },
+                icon = Icons.Rounded.SystemUpdate,
+                onClick = { vm.checkForUpdate() },
+                trailing = { Chevron() },
+            )
         }
 
         // ── Каталог ──

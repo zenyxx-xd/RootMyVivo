@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<paths>
+    <!-- APK обновлений лежат в externalCacheDir -->
+    <external-cache-path name="updates" path="." />
+    <cache-path name="cache" path="." />
+</paths>

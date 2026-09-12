@@ -28,8 +28,10 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
 import androidx.compose.material.icons.rounded.Bolt
 import androidx.compose.material.icons.rounded.CheckCircle
+import androidx.compose.material.icons.rounded.CloudDownload
 import androidx.compose.material.icons.rounded.Description
 import androidx.compose.material.icons.rounded.LinkOff
+import androidx.compose.material.icons.rounded.PhoneAndroid
 import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material.icons.rounded.Security
 import androidx.compose.material.icons.rounded.Usb
@@ -74,7 +76,13 @@ import com.rootmyvivo.vm.UiState
 /** Главный экран: статус → транспорт/пейлоад/менеджер → устройство. */
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-fun HomeScreen(vm: MainViewModel, state: UiState, onRootStarted: () -> Unit, onOpenLastLog: () -> Unit = {}) {
+fun HomeScreen(
+    vm: MainViewModel,
+    state: UiState,
+    onRootStarted: () -> Unit,
+    onOpenLastLog: () -> Unit = {},
+    onOpenSupported: () -> Unit = {},
+) {
     var ksuDialog by remember { mutableStateOf(false) }
     var warnDialog by remember { mutableStateOf(false) }
     var confirmAction by remember { mutableStateOf(false) }
@@ -181,35 +189,79 @@ fun HomeScreen(vm: MainViewModel, state: UiState, onRootStarted: () -> Unit, onO
         })
 
         // Действие при активном руте: перезагрузка userspace (как на iOS),
-        // с подтверждением против мискликов
+        // с подтверждением против мискликов + перезапуск эксплойта,
+        // если рут жив, но KSU не встал (soft reboot не нужен — только
+        // повторный прогон цепочки поверх живого рута)
         if (state.rootState == RootState.ROOTED) {
-            Button(
-                onClick = {
-                    if (state.settings.softRebootConfirmDismissed) {
-                        vm.performSoftReboot()
-                    } else {
-                        confirmAction = true
-                    }
-                },
-                modifier = Modifier.fillMaxWidth(),
-                shape = MaterialTheme.shapes.large,
-            ) {
-                Icon(Icons.Rounded.Refresh, null, modifier = Modifier.size(16.dp))
-                Spacer(Modifier.width(6.dp))
-                Text(
-                    stringResource(R.string.home_softreboot),
-                    maxLines = 2,
-                    textAlign = TextAlign.Center,
-                )
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Button(
+                    onClick = {
+                        if (state.settings.restartConfirmDismissed) {
+                            vm.startRoot()
+                            onRootStarted()
+                        } else {
+                            confirmAction = true
+                        }
+                    },
+                    modifier = Modifier.weight(1f),
+                    shape = MaterialTheme.shapes.large,
+                ) {
+                    Icon(Icons.Rounded.RestartAlt, null, modifier = Modifier.size(16.dp))
+                    Spacer(Modifier.width(6.dp))
+                    Text(stringResource(R.string.home_restart_exploit), maxLines = 2)
+                }
+                Button(
+                    onClick = {
+                        if (state.settings.softRebootConfirmDismissed) {
+                            vm.performSoftReboot()
+                        } else {
+                            confirmAction = true
+                        }
+                    },
+                    modifier = Modifier.weight(1f),
+                    shape = MaterialTheme.shapes.large,
+                ) {
+                    Icon(Icons.Rounded.Refresh, null, modifier = Modifier.size(16.dp))
+                    Spacer(Modifier.width(6.dp))
+                    Text(stringResource(R.string.home_softreboot), maxLines = 2)
+                }
             }
         }
+        // Плашка обновления приложения (автопоиск после запуска / «Проверить сейчас»)
+        state.appUpdate?.let { update ->
+            UpdateBanner(
+                update = update,
+                download = state.updateDownload,
+                installing = state.updateInstalling,
+                onUpdate = vm::downloadAndInstallUpdate,
+                onCancel = vm::dismissUpdate,
+            )
+        }
+        // Скачивание продолжается, даже если плашку смахнули — свой маленький индикатор
+        state.updateDownload?.takeIf { !it.done }?.let { dl ->
+            Surface(
+                modifier = Modifier.fillMaxWidth(),
+                shape = MaterialTheme.shapes.large,
+                color = MaterialTheme.colorScheme.secondaryContainer,
+            ) {
+                Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(
+                        stringResource(R.string.update_downloading),
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.SemiBold,
+                    )
+                    UpdateProgress(dl)
+                }
+            }
+        }
+
         // Карточка транспорта — только когда есть проблема (нет Shizuku / нет разрешения)
         when (state.transport) {
             TransportState.None, TransportState.ShizukuNeedsPermission ->
                 TransportCard(state, onPermission = vm::requestShizukuPermission, onOpenShizuku = vm::openShizukuApp)
             else -> {}
         }
-        StatusGroup(state, onKsuClick = { ksuDialog = true }, onOpenLastLog = onOpenLastLog)
+        StatusGroup(state, onKsuClick = { ksuDialog = true }, onOpenLastLog = onOpenLastLog, onOpenSupported = onOpenSupported)
         DeviceGroup(state)
         Spacer(Modifier.height(28.dp))
     }
@@ -439,6 +491,102 @@ private fun RootButton(state: UiState, transportOk: Boolean, onRoot: () -> Unit)
 }
 
 
+// ─────────── Плашка обновления приложения ───────────
+
+@Composable
+fun UpdateBanner(
+    update: com.rootmyvivo.data.AppUpdate,
+    download: com.rootmyvivo.vm.UpdateDownloadState?,
+    installing: Boolean,
+    onUpdate: () -> Unit,
+    onCancel: () -> Unit,
+) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = MaterialTheme.shapes.extraLarge,
+        color = MaterialTheme.colorScheme.primaryContainer,
+    ) {
+        Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    Icons.Rounded.CloudDownload,
+                    null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(26.dp),
+                )
+                Column {
+                    Text(
+                        stringResource(R.string.update_title),
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                    )
+                    Text(
+                        stringResource(R.string.update_version, update.versionName) +
+                            if (update.apkSize > 0) {
+                                "  ·  " + stringResource(R.string.update_size, "%.1f".format(update.apkSize / 1048576.0))
+                            } else "",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+            if (download != null) {
+                UpdateProgress(download)
+                if (download.done) {
+                    Text(
+                        stringResource(R.string.update_installing),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedButton(
+                    onClick = onCancel,
+                    modifier = Modifier.weight(1f),
+                    enabled = download == null || download.done,
+                    shape = MaterialTheme.shapes.large,
+                ) {
+                    Text(stringResource(R.string.update_cancel))
+                }
+                Button(
+                    onClick = onUpdate,
+                    modifier = Modifier.weight(1f),
+                    // во время скачивания кнопка гаснет (отмена недоступна тоже)
+                    enabled = download == null || download.done,
+                    shape = MaterialTheme.shapes.large,
+                ) {
+                    Text(
+                        if (download != null && download.done) {
+                            stringResource(R.string.update_retry_install)
+                        } else {
+                            stringResource(R.string.update_button)
+                        },
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun UpdateProgress(dl: com.rootmyvivo.vm.UpdateDownloadState) {
+    val mb = "%.1f / %.1f МБ".format(dl.read / 1048576.0, dl.total / 1048576.0)
+    when (val f = dl.fraction) {
+        null -> {
+            LinearProgressIndicator(Modifier.fillMaxWidth())
+            Text(mb, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+        else -> {
+            LinearProgressIndicator(
+                progress = { f.coerceIn(0f, 1f) },
+                modifier = Modifier.fillMaxWidth(),
+            )
+            Text(mb, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+    }
+}
+
 // ─────────── Карточка транспорта (только при проблемах) ───────────
 
 @Composable
@@ -504,7 +652,12 @@ private fun TransportCard(
 // ─────────── Статус: транспорт + пейлоад + рут-менеджер (компактно) ───────────
 
 @Composable
-private fun StatusGroup(state: UiState, onKsuClick: () -> Unit, onOpenLastLog: () -> Unit) {
+private fun StatusGroup(
+    state: UiState,
+    onKsuClick: () -> Unit,
+    onOpenLastLog: () -> Unit,
+    onOpenSupported: () -> Unit,
+) {
     SettingsGroup {
         // Пейлоад
         SettingsRow(
@@ -515,6 +668,19 @@ private fun StatusGroup(state: UiState, onKsuClick: () -> Unit, onOpenLastLog: (
                 else -> stringResource(R.string.payload_short_searching)
             },
             icon = if (state.payload != null) Icons.Rounded.Verified else Icons.Rounded.Search,
+        )
+        SettingsDivider()
+        // Поддерживаемые устройства — карточка всех пейлоадов каталога
+        SettingsRow(
+            title = stringResource(R.string.home_supported_devices),
+            icon = Icons.Rounded.PhoneAndroid,
+            onClick = onOpenSupported,
+            trailing = {
+                Icon(
+                    Icons.AutoMirrored.Rounded.KeyboardArrowRight, null,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            },
         )
         SettingsDivider()
         // Рут-менеджер

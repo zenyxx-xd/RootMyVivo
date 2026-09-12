@@ -48,11 +48,17 @@ fun App(vm: MainViewModel, state: UiState) {
     var devOpen by rememberSaveable { mutableStateOf(false) }
     var logHistoryOpen by rememberSaveable { mutableStateOf(false) }
     var logViewerOpen by rememberSaveable { mutableStateOf(false) }
+    var supportedOpen by rememberSaveable { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
 
     // Системное «назад» на экране процесса: закрывает его, но не во время выполнения
     BackHandler(enabled = flowOpen) {
         if (!state.flowRunning) flowOpen = false
+    }
+
+    // Системное «назад» в карточке поддерживаемых устройств
+    BackHandler(enabled = supportedOpen && !flowOpen) {
+        supportedOpen = false
     }
 
     // Системное «назад» на экране разработчика
@@ -122,7 +128,13 @@ fun App(vm: MainViewModel, state: UiState) {
                     beyondViewportPageCount = 1,
                 ) { page ->
                     when (page) {
-                        0 -> HomeScreen(vm, state, onRootStarted = { flowOpen = true }, onOpenLastLog = { logHistoryOpen = true })
+                        0 -> HomeScreen(
+                            vm = vm,
+                            state = state,
+                            onRootStarted = { flowOpen = true },
+                            onOpenLastLog = { logHistoryOpen = true },
+                            onOpenSupported = { supportedOpen = true },
+                        )
                         else -> SettingsScreen(vm, state, onDevOpen = { devOpen = true })
                     }
                 }
@@ -130,9 +142,28 @@ fun App(vm: MainViewModel, state: UiState) {
         }
     }
 
+    // ── Карточка поддерживаемых устройств (все пейлоады каталога) ──
+    AnimatedVisibility(
+        visible = supportedOpen && !flowOpen,
+        enter = slideInVertically(
+            animationSpec = tween(350, easing = FastOutSlowInEasing),
+            initialOffsetY = { it },
+        ) + fadeIn(tween(350)),
+        exit = slideOutVertically(
+            animationSpec = tween(280, easing = FastOutSlowInEasing),
+            targetOffsetY = { it },
+        ) + fadeOut(),
+    ) {
+        com.rootmyvivo.ui.home.SupportedDevicesScreen(
+            state = state,
+            catalogUrl = state.settings.catalogUrl,
+            onClose = { supportedOpen = false },
+        )
+    }
+
     // ── Экран разработчика (демо-флоу, пейлоады, логи) ──
     AnimatedVisibility(
-        visible = devOpen && !flowOpen,
+        visible = devOpen && !flowOpen && !supportedOpen,
         enter = slideInVertically(
             animationSpec = tween(350, easing = FastOutSlowInEasing),
             initialOffsetY = { it },
@@ -155,7 +186,7 @@ fun App(vm: MainViewModel, state: UiState) {
 
     // ── История запусков: карточки последних логов ──
     AnimatedVisibility(
-        visible = logHistoryOpen && !flowOpen && !devOpen,
+        visible = logHistoryOpen && !flowOpen && !devOpen && !supportedOpen,
         enter = slideInVertically(
             animationSpec = tween(350, easing = FastOutSlowInEasing),
             initialOffsetY = { it },
@@ -180,7 +211,7 @@ fun App(vm: MainViewModel, state: UiState) {
 
     // ── Просмотр лога из истории (без тумана) ──
     AnimatedVisibility(
-        visible = logViewerOpen && !flowOpen && !devOpen && !logHistoryOpen,
+        visible = logViewerOpen && !flowOpen && !devOpen && !logHistoryOpen && !supportedOpen,
         enter = slideInVertically(
             animationSpec = tween(350, easing = FastOutSlowInEasing),
             initialOffsetY = { it },

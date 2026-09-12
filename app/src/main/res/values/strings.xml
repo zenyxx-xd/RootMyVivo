@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">RootMyVivo Beta</string>
+    <string name="app_name">RootMyVivo</string>
 
     <!-- Навигация -->
     <string name="tab_home">Главная</string>
@@ -105,6 +105,7 @@
     <string name="dynamic_colors_desc">Динамические цвета системы (Android 12+)</string>
     <string name="settings_root_manager">Рут-менеджер</string>
     <string name="settings_root_manager_desc">Какой KernelSU устанавливать после эксплойта</string>
+    <string name="settings_updates">Обновления</string>
     <string name="settings_catalog">Каталог пейлоадов</string>
     <string name="settings_catalog_url">URL каталога</string>
     <string name="settings_catalog_hint">JSON с описанием поддерживаемых устройств</string>
@@ -240,4 +241,26 @@
     <string name="view_last_log">Последний лог запуска</string>
     <string name="copy_log">Копировать лог</string>
     <string name="log_copied">Лог скопирован в буфер</string>
+
+    <!-- Обновление приложения -->
+    <string name="update_title">Доступно обновление</string>
+    <string name="update_version">Версия %1$s</string>
+    <string name="update_size">%1$s МБ</string>
+    <string name="update_button">Обновить</string>
+    <string name="update_cancel">Отмена</string>
+    <string name="update_downloading">Скачивание обновления…</string>
+    <string name="update_download_fail">Не удалось скачать обновление — проверьте сеть и попробуйте снова</string>
+    <string name="update_installing">Открыт установщик — завершите установку</string>
+    <string name="update_retry_install">Установить</string>
+    <string name="settings_autoupdate">Автопоиск обновлений</string>
+    <string name="settings_autoupdate_desc">Проверять обновления приложения после каждого запуска</string>
+    <string name="settings_check_update">Проверить сейчас</string>
+
+    <!-- Главная -->
+    <string name="home_restart_exploit">Перезапустить эксплойт</string>
+    <string name="home_supported_devices">Поддерживаемые устройства</string>
+    <string name="supported_title">Поддерживаемые устройства</string>
+    <string name="supported_count">%1$d пейлоадов · %2$d устройств</string>
+    <string name="supported_your">Ваше устройство</string>
+    <string name="supported_disabled">Не включено</string>
 </resources>

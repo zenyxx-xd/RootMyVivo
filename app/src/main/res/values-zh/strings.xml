@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">RootMyVivo Beta</string>
+    <string name="app_name">RootMyVivo</string>
 
     <string name="tab_home">主页</string>
     <string name="tab_settings">设置</string>
@@ -95,6 +95,7 @@
     <string name="dynamic_colors_desc">系统动态取色（Android 12+）</string>
     <string name="settings_root_manager">Root 管理器</string>
     <string name="settings_root_manager_desc">漏洞利用后安装哪个 KernelSU</string>
+    <string name="settings_updates">更新</string>
     <string name="settings_catalog">载荷目录</string>
     <string name="settings_catalog_url">目录 URL</string>
     <string name="settings_catalog_hint">描述支持设备的 JSON</string>
@@ -227,4 +228,26 @@
     <string name="view_last_log">上次运行日志</string>
     <string name="copy_log">复制日志</string>
     <string name="log_copied">日志已复制到剪贴板</string>
+
+    <!-- 应用更新 -->
+    <string name="update_title">有可用更新</string>
+    <string name="update_version">版本 %1$s</string>
+    <string name="update_size">%1$s MB</string>
+    <string name="update_button">更新</string>
+    <string name="update_cancel">取消</string>
+    <string name="update_downloading">正在下载更新…</string>
+    <string name="update_download_fail">下载失败 — 请检查网络后重试</string>
+    <string name="update_installing">已打开安装器 — 请完成安装</string>
+    <string name="update_retry_install">安装</string>
+    <string name="settings_autoupdate">自动检查更新</string>
+    <string name="settings_autoupdate_desc">每次运行后检查应用更新</string>
+    <string name="settings_check_update">立即检查</string>
+
+    <!-- 主页 -->
+    <string name="home_restart_exploit">重新运行漏洞利用</string>
+    <string name="home_supported_devices">支持的设备</string>
+    <string name="supported_title">支持的设备</string>
+    <string name="supported_count">%1$d 个载荷 · %2$d 台设备</string>
+    <string name="supported_your">你的设备</string>
+    <string name="supported_disabled">未启用</string>
 </resources>

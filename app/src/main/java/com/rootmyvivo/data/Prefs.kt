@@ -13,6 +13,8 @@ data class Settings(
     val softRebootConfirmDismissed: Boolean = false,
     val restartConfirmDismissed: Boolean = false,
     val bootRestore: Boolean = true,
+    /** Автопоиск обновлений приложения после каждого запуска */
+    val autoUpdateCheck: Boolean = true,
 )
 
 /** Хранилище настроек и флагов (SharedPreferences — sync-чтение на старте). */
@@ -32,6 +34,7 @@ class Prefs(context: Context) {
         softRebootConfirmDismissed = sp.getBoolean(KEY_SR_CONFIRM, false),
         restartConfirmDismissed = sp.getBoolean(KEY_RESTART_CONFIRM, false),
         bootRestore = sp.getBoolean(KEY_BOOT_RESTORE, true),
+        autoUpdateCheck = sp.getBoolean(KEY_AUTO_UPDATE, true),
     )
 
     fun saveSettings(s: Settings) {
@@ -44,6 +47,7 @@ class Prefs(context: Context) {
             .putBoolean(KEY_SR_CONFIRM, s.softRebootConfirmDismissed)
             .putBoolean(KEY_RESTART_CONFIRM, s.restartConfirmDismissed)
             .putBoolean(KEY_BOOT_RESTORE, s.bootRestore)
+            .putBoolean(KEY_AUTO_UPDATE, s.autoUpdateCheck)
             .apply()
     }
 
@@ -153,5 +157,6 @@ class Prefs(context: Context) {
         const val KEY_BOOT_RESTORE_AT = "bootRestoreLastAttempt"
         const val KEY_LOADED_VARIANT = "loadedModuleVariant"
         const val KEY_DEV_UNLOCKED = "devUnlocked"
+        const val KEY_AUTO_UPDATE = "autoUpdateCheck"
     }
 }

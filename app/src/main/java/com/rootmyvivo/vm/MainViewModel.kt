@@ -7,6 +7,8 @@ import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.rootmyvivo.R
+import com.rootmyvivo.data.AppUpdate
+import com.rootmyvivo.data.AppUpdater
 import com.rootmyvivo.data.Catalog
 import com.rootmyvivo.data.DeviceInfo
 import com.rootmyvivo.data.Prefs
@@ -33,6 +35,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     private val prefs = Prefs(app)
     private val catalog = Catalog()
     private var engine: ExploitEngine? = null
+    private var updateCheckJob: kotlinx.coroutines.Job? = null
 
     init {
         Transport.prefs = prefs
@@ -171,6 +174,8 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                 prefs.firstRootDone = true
                 refreshTransport()
             }
+            // Автопоиск обновлений после каждого запуска — если включён
+            if (_state.value.settings.autoUpdateCheck) checkForUpdate()
         }
     }
 
@@ -178,6 +183,77 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         engine?.stop()
         _state.value = _state.value.copy(flowRunning = false)
         com.rootmyvivo.ExploitService.stop(getApplication())
+    }
+
+    // ─────────── Обновление приложения ───────────
+
+    /**
+     * Проверить обновления в фоне (GitHub releases, стабильные только).
+     * Результат — плашка appUpdate на главной. Повторные вызовы схлопываются.
+     */
+    fun checkForUpdate() {
+        if (updateCheckJob?.isActive == true) return
+        updateCheckJob = viewModelScope.launch {
+            val update = withContext(Dispatchers.IO) { AppUpdater.check(getApplication()) }
+            // не перетираем активное скачивание предыдущей проверки
+            if (_state.value.updateDownload == null) {
+                _state.value = _state.value.copy(appUpdate = update)
+            }
+        }
+    }
+
+    fun dismissUpdate() {
+        _state.value = _state.value.copy(appUpdate = null)
+    }
+
+    /** Скачать APK обновления с живым прогрессом и открыть установщик. */
+    fun downloadAndInstallUpdate() {
+        val update = _state.value.appUpdate ?: return
+        val ctx = getApplication<Application>()
+        viewModelScope.launch {
+            _state.value = _state.value.copy(
+                updateDownload = UpdateDownloadState(update.versionName, 0, update.apkSize),
+            )
+            try {
+                val apk = AppUpdater.download(update, ctx) { read, total ->
+                    _state.value = _state.value.copy(
+                        updateDownload = UpdateDownloadState(update.versionName, read, total),
+                    )
+                }
+                _state.value = _state.value.copy(
+                    updateDownload = UpdateDownloadState(update.versionName, apk.length(), apk.length()),
+                    updateInstalling = true,
+                )
+                val started = AppUpdater.install(apk, ctx)
+                if (!started) {
+                    _state.value = _state.value.copy(updateInstalling = false)
+                }
+                // установщик открыт: плашку убираем, скачивание остаётся
+                // (пользователь может вернуться назад и повторить установку)
+                _state.value = _state.value.copy(appUpdate = null)
+            } catch (e: Exception) {
+                Log.w(TAG, "update download failed: ${e.message}")
+                _state.value = _state.value.copy(
+                    updateDownload = null,
+                    appUpdate = update, // плашку возвращаем — можно повторить
+                )
+            }
+        }
+    }
+
+    /** Повторно открыть установщик уже скачанного APK (после возврата). */
+    fun retryInstallDownloaded() {
+        val dl = _state.value.updateDownload ?: return
+        if (!dl.done) return
+        val ctx = getApplication<Application>()
+        viewModelScope.launch {
+            // ищем скачанный файл по маске — имя содержит versionName
+            val dir = ctx.externalCacheDir ?: ctx.cacheDir
+            val f = dir.listFiles()
+                ?.filter { it.name.startsWith("rmv-update-") && it.name.endsWith(".apk") }
+                ?.maxByOrNull { it.lastModified() }
+            if (f != null && f.exists()) AppUpdater.install(f, ctx)
+        }
     }
 
     /** Soft reboot — только по подтверждению пользователя. */

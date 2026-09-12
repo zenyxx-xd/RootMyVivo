@@ -44,11 +44,27 @@ sealed interface FlowResult {
     data class Failure(val reason: com.rootmyvivo.root.FlowEvent.Reason) : FlowResult
 }
 
+/** Прогресс скачивания обновления приложения. */
+data class UpdateDownloadState(
+    val versionName: String,
+    val read: Long,
+    val total: Long,
+) {
+    val fraction: Float? get() = if (total > 0) read.toFloat() / total else null
+    val done: Boolean get() = total > 0 && read >= total
+}
+
 data class UiState(
     // устройство и каталог
     val device: DeviceInfo? = null,
     val payload: PayloadEntry? = null,
     val catalogState: CatalogState = CatalogState.LOADING,
+    // найденное обновление приложения (плашка на главной)
+    val appUpdate: com.rootmyvivo.data.AppUpdate? = null,
+    /** Скачивание обновления: файл + прогресс [0..1] или null при неизвестном размере */
+    val updateDownload: UpdateDownloadState? = null,
+    /** Скачивание завершено, открыт системный установщик */
+    val updateInstalling: Boolean = false,
     // транспорт и root
     val transport: TransportState = TransportState.None,
     val rootState: RootState = RootState.UNKNOWN,
