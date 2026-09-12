@@ -194,8 +194,10 @@ fun HomeScreen(
         // если рут жив, но KSU не встал (soft reboot не нужен — только
         // повторный прогон цепочки поверх живого рута)
         if (state.rootState == RootState.ROOTED) {
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Button(
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                // Перезапуск эксплойта — контурная: это вторичное действие,
+                // заливку оставляем перезагрузке userspace
+                OutlinedButton(
                     onClick = {
                         if (state.settings.restartConfirmDismissed) {
                             vm.startRoot()
@@ -204,12 +206,12 @@ fun HomeScreen(
                             confirmAction = true
                         }
                     },
-                    modifier = Modifier.weight(1f),
+                    modifier = Modifier.fillMaxWidth(),
                     shape = MaterialTheme.shapes.large,
                 ) {
                     Icon(Icons.Rounded.RestartAlt, null, modifier = Modifier.size(16.dp))
                     Spacer(Modifier.width(6.dp))
-                    Text(stringResource(R.string.home_restart_exploit), maxLines = 2)
+                    Text(stringResource(R.string.home_restart_exploit), maxLines = 1)
                 }
                 Button(
                     onClick = {
@@ -219,12 +221,12 @@ fun HomeScreen(
                             confirmAction = true
                         }
                     },
-                    modifier = Modifier.weight(1f),
+                    modifier = Modifier.fillMaxWidth(),
                     shape = MaterialTheme.shapes.large,
                 ) {
                     Icon(Icons.Rounded.Refresh, null, modifier = Modifier.size(16.dp))
                     Spacer(Modifier.width(6.dp))
-                    Text(stringResource(R.string.home_softreboot), maxLines = 2)
+                    Text(stringResource(R.string.home_softreboot), maxLines = 1)
                 }
             }
         }
