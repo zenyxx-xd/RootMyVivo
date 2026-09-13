@@ -189,13 +189,6 @@ private fun PayloadRow(p: com.rootmyvivo.data.PayloadEntry, mine: Boolean) {
                     }
                 }
                 Text(
-                    p.marketNames.joinToString(" · "),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1,
-                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
-                )
-                Text(
                     (p.kernelVersions.joinToString(" · ").ifEmpty { "—" }) +
                         "  ·  " + (p.files.values.sumOf { it.size } / 1024) + " КБ",
                     style = MaterialTheme.typography.bodySmall,
