@@ -91,10 +91,21 @@ class Catalog(var url: String = DEFAULT_URL) {
         val byModel = catalog.payloads.filter {
             it.enabled && (it.models.contains(info.model) || it.marketNames.contains(info.marketName))
         }
-        // сначала точное совпадение модели + ядро (полная строка uname, если
-        // запись задаёт полный паттерн), потом модель без проверки ядра
-        return byModel.firstOrNull { matchesKernel(it.kernelVersions, info.kernelShort, info.kernel) }
-            ?: byModel.firstOrNull()
+        // Модель + ядро. Без fallback на «любой пейлоад этой модели»:
+        // одна модель живёт на нескольких сборках (b57 / g1f71897 / 6.6.127),
+        // и чужой .so на несовпавшем uname не должен подставляться.
+        val kernelHit = byModel.filter {
+            matchesKernel(it.kernelVersions, info.kernelShort, info.kernel)
+        }
+        if (kernelHit.isEmpty()) return null
+        val bestSpec = kernelHit.maxOf { payload ->
+            payload.kernelVersions.maxOf { patternSpecificity(it) }
+        }
+        val best = kernelHit.filter { payload ->
+            payload.kernelVersions.maxOf { patternSpecificity(it) } == bestSpec
+        }
+        // при одинаковом ядре берём более узкую запись (Z10 Turbo, а не общий b57-алиас)
+        return best.minByOrNull { it.models.size }
     }
 
     /**
@@ -110,10 +121,21 @@ class Catalog(var url: String = DEFAULT_URL) {
                 pattern.endsWith(".*") ->
                     actualFull.startsWith(pattern.removeSuffix("*")) ||
                         actualShort.startsWith(pattern.removeSuffix("*"))
-                pattern.count { it == '.' } > 2 -> actualFull.contains(pattern)
+                isBuildPattern(pattern) -> actualFull.contains(pattern)
                 else -> actualShort == pattern
             }
         }
+    }
+
+    /** Полная GKI-строка / git-id, а не x.y.z. */
+    private fun isBuildPattern(pattern: String): Boolean =
+        pattern.contains('-') || pattern.any { it.isLetter() }
+
+    /** Чем длиннее/точнее паттерн ядра, тем выше приоритет при нескольких хитах. */
+    private fun patternSpecificity(pattern: String): Int = when {
+        pattern.endsWith(".*") -> pattern.length + 50
+        isBuildPattern(pattern) -> pattern.length + 100
+        else -> pattern.length
     }
 
     /** Скачивание файла пейлоада: основной URL, затем зеркала (если заданы);
