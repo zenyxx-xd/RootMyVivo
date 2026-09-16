@@ -273,4 +273,10 @@
     <string name="settings_predictive_back_desc">The window shrinks along with the back swipe</string>
     <string name="other_demo_run">Exploit demonstration</string>
     <string name="settings_root">Root</string>
+    <string name="home_pick_payload">Choose payload.so</string>
+    <string name="home_custom_payload_active">Custom: %1$s</string>
+    <string name="home_custom_payload_size">%1$s MB · will run as is</string>
+    <string name="log_custom_payload">Custom payload: %1$s (no catalog)</string>
+    <string name="log_custom_selected">Selected file: %1$s</string>
+    <string name="log_custom_copy_failed">Failed to read the selected file</string>
 </resources>

@@ -54,11 +54,22 @@ data class UpdateDownloadState(
     val done: Boolean get() = total > 0 && read >= total
 }
 
+/** Кастомный пейлоад, выбранный пользователем через файловый менеджер. */
+data class CustomPayload(
+    val displayName: String,
+    val size: Long,
+    /** Локальный файл в filesDir/payloads, готовый к деплою. */
+    val file: java.io.File,
+)
+
 data class UiState(
     // устройство и каталог
     val device: DeviceInfo? = null,
     val payload: PayloadEntry? = null,
     val catalogState: CatalogState = CatalogState.LOADING,
+    // кастомный пейлоад (выбран через файловый менеджер): деплоится именно
+    // этот файл — каталог и GitHub при таком запуске не используются
+    val customPayload: CustomPayload? = null,
     // найденное обновление приложения (плашка на главной)
     val appUpdate: com.rootmyvivo.data.AppUpdate? = null,
     /** Диалог обновления открыт (первый показ после нахождения) */

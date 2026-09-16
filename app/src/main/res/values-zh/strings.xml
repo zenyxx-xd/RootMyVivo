@@ -273,4 +273,10 @@
     <string name="settings_predictive_back_desc">窗口随手势返回一起缩小</string>
     <string name="other_demo_run">漏洞利用演示</string>
     <string name="settings_root">Root</string>
+    <string name="home_pick_payload">选择 payload.so</string>
+    <string name="home_custom_payload_active">自定义：%1$s</string>
+    <string name="home_custom_payload_size">%1$s MB · 将按原样运行</string>
+    <string name="log_custom_payload">自定义载荷：%1$s（不使用目录）</string>
+    <string name="log_custom_selected">已选择文件：%1$s</string>
+    <string name="log_custom_copy_failed">读取所选文件失败</string>
 </resources>

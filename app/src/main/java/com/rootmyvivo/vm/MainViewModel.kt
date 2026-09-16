@@ -146,6 +146,34 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     fun startRoot() {
         val device = _state.value.device ?: return
         val ctx = getApplication<Application>()
+        val custom = _state.value.customPayload
+        // Кастомный пейлоад: минимальный движок без каталога и загрузок,
+        // деплоит выбранный пользователем файл как есть
+        if (custom != null) {
+            engine = ExploitEngine(ctx, device, catalog)
+            runStartedAt = System.currentTimeMillis()
+            _state.value = _state.value.copy(
+                flowRunning = true,
+                log = emptyList(),
+                exploitLive = ExploitLiveState(),
+                flowResult = null,
+                downloadProgress = null,
+                softRebootPrompt = false,
+            )
+            com.rootmyvivo.ExploitService.start(ctx, ctx.getString(R.string.notif_root_running))
+            val localFile = custom.file
+            viewModelScope.launch {
+                val variant = _state.value.selectedKsu
+                val ok = engine!!.runCustomPreload(localFile, variant) { event -> applyFlowEvent(event) }
+                _state.value = _state.value.copy(flowRunning = false)
+                com.rootmyvivo.ExploitService.stop(ctx)
+                if (ok) {
+                    prefs.firstRootDone = true
+                    refreshTransport()
+                }
+            }
+            return
+        }
         engine = ExploitEngine(ctx, device, catalog)
         runStartedAt = System.currentTimeMillis()
         _state.value = _state.value.copy(
@@ -185,6 +213,57 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         engine?.stop()
         _state.value = _state.value.copy(flowRunning = false)
         com.rootmyvivo.ExploitService.stop(getApplication())
+    }
+
+    // ─────────── Кастомный пейлоад ───────────
+
+    /**
+     * Пользователь выбрал файл в SAF-пикере: копируем содержимое в
+     * filesDir/payloads/preload.so (движок деплоит файл с этим именем)
+     * и показываем в главной карточке. Никаких загрузок — запуск идёт
+     * строго из этого файла.
+     */
+    fun onCustomPayloadPicked(uri: Uri) {
+        val ctx = getApplication<Application>()
+        viewModelScope.launch {
+            val ok = withContext(Dispatchers.IO) {
+                runCatching {
+                    val workDir = java.io.File(ctx.filesDir, "payloads").apply { mkdirs() }
+                    val dest = java.io.File(workDir, "preload.so")
+                    ctx.contentResolver.openInputStream(uri)?.use { input ->
+                        dest.outputStream().use { output -> input.copyTo(output) }
+                    } ?: throw IllegalStateException("resolver returned no stream")
+                    val name = queryDisplayName(uri) ?: "payload.so"
+                    name to dest.length()
+                }
+            }
+            ok.onSuccess { (name, size) ->
+                // Загруженные ранее файлы каталога больше не актуальны
+                _state.value = _state.value.copy(
+                    customPayload = CustomPayload(name, size, java.io.File(ctx.filesDir, "payloads/preload.so")),
+                    flowResult = null,
+                )
+                addLog(ctx.getString(R.string.log_custom_selected, name))
+            }.onFailure { e ->
+                Log.w(TAG, "custom payload copy failed: ${e.message}")
+                addLog(ctx.getString(R.string.log_custom_copy_failed))
+            }
+        }
+    }
+
+    /** Отвязать кастомный пейлоад — вернуть обычный путь каталога. */
+    fun clearCustomPayload() {
+        _state.value = _state.value.copy(customPayload = null)
+    }
+
+    private fun queryDisplayName(uri: Uri): String? = try {
+        val ctx = getApplication<Application>()
+        ctx.contentResolver.query(uri, null, null, null, null)?.use { c ->
+            val idx = c.getColumnIndex(android.provider.OpenableColumns.DISPLAY_NAME)
+            if (idx >= 0 && c.moveToFirst()) c.getString(idx) else null
+        }
+    } catch (_: Exception) {
+        null
     }
 
     // ─────────── Обновление приложения ───────────

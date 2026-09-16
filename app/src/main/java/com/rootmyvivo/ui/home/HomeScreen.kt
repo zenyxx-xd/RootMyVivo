@@ -1,5 +1,7 @@
 package com.rootmyvivo.ui.home
 
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
@@ -30,6 +32,7 @@ import androidx.compose.material.icons.rounded.Bolt
 import androidx.compose.material.icons.rounded.CheckCircle
 import androidx.compose.material.icons.rounded.CloudDownload
 import androidx.compose.material.icons.rounded.Description
+import androidx.compose.material.icons.rounded.FolderOpen
 import androidx.compose.material.icons.rounded.LinkOff
 import androidx.compose.material.icons.rounded.PhoneAndroid
 import androidx.compose.material.icons.rounded.Search
@@ -38,7 +41,6 @@ import androidx.compose.material.icons.rounded.Usb
 import androidx.compose.material.icons.rounded.Verified
 import androidx.compose.material3.Button
 import androidx.compose.material.icons.rounded.Refresh
-import androidx.compose.material.icons.rounded.RestartAlt
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
@@ -87,6 +89,11 @@ fun HomeScreen(
     var ksuDialog by remember { mutableStateOf(false) }
     var warnDialog by remember { mutableStateOf(false) }
     var confirmAction by remember { mutableStateOf(false) }
+    // Системный файловый менеджер (SAF): выбор кастомного payload.so —
+    // без скачиваний, деплоится именно выбранный файл
+    val pickPayload = rememberLauncherForActivityResult(
+        ActivityResultContracts.OpenDocument(),
+    ) { uri -> uri?.let(vm::onCustomPayloadPicked) }
     // Чекеры «больше не показывать» — локальные: фиксируются только кнопкой
     // действия. Отмена оставляет настройку нетронутой
     var warnDontShow by remember { mutableStateOf(false) }
@@ -180,54 +187,37 @@ fun HomeScreen(
     ) {
         Spacer(Modifier.height(20.dp))
         Header()
-        HeroCard(state, onRoot = {
-            if (state.settings.warnDismissed) {
-                vm.startRoot()
-                onRootStarted()
-            } else {
-                warnDialog = true
-            }
-        })
-
+        HeroCard(
+            state,
+            onRoot = {
+                if (state.settings.warnDismissed) {
+                    vm.startRoot()
+                    onRootStarted()
+                } else {
+                    warnDialog = true
+                }
+            },
+            onPickPayload = { pickPayload.launch(arrayOf("*/*")) },
+            onClearPayload = vm::clearCustomPayload,
+        )
         // Действие при активном руте: перезагрузка userspace (как на iOS),
-        // с подтверждением против мискликов + перезапуск эксплойта,
-        // если рут жив, но KSU не встал (soft reboot не нужен — только
-        // повторный прогон цепочки поверх живого рута)
+        // с подтверждением против мискликов. Перезапуск эксплойта остался
+        // в меню разработчика
         if (state.rootState == RootState.ROOTED) {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                // Перезапуск эксплойта — контурная: это вторичное действие,
-                // заливку оставляем перезагрузке userspace
-                OutlinedButton(
-                    onClick = {
-                        if (state.settings.restartConfirmDismissed) {
-                            vm.startRoot()
-                            onRootStarted()
-                        } else {
-                            confirmAction = true
-                        }
-                    },
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = MaterialTheme.shapes.large,
-                ) {
-                    Icon(Icons.Rounded.RestartAlt, null, modifier = Modifier.size(16.dp))
-                    Spacer(Modifier.width(6.dp))
-                    Text(stringResource(R.string.home_restart_exploit), maxLines = 1)
-                }
-                Button(
-                    onClick = {
-                        if (state.settings.softRebootConfirmDismissed) {
-                            vm.performSoftReboot()
-                        } else {
-                            confirmAction = true
-                        }
-                    },
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = MaterialTheme.shapes.large,
-                ) {
-                    Icon(Icons.Rounded.Refresh, null, modifier = Modifier.size(16.dp))
-                    Spacer(Modifier.width(6.dp))
-                    Text(stringResource(R.string.home_softreboot), maxLines = 1)
-                }
+            Button(
+                onClick = {
+                    if (state.settings.softRebootConfirmDismissed) {
+                        vm.performSoftReboot()
+                    } else {
+                        confirmAction = true
+                    }
+                },
+                modifier = Modifier.fillMaxWidth(),
+                shape = MaterialTheme.shapes.large,
+            ) {
+                Icon(Icons.Rounded.Refresh, null, modifier = Modifier.size(16.dp))
+                Spacer(Modifier.width(6.dp))
+                Text(stringResource(R.string.home_softreboot), maxLines = 1)
             }
         }
         // Плашка обновления приложения (автопоиск при запуске / «Проверить сейчас»).
@@ -355,7 +345,12 @@ private fun Header() {
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-private fun HeroCard(state: UiState, onRoot: () -> Unit) {
+private fun HeroCard(
+    state: UiState,
+    onRoot: () -> Unit,
+    onPickPayload: () -> Unit,
+    onClearPayload: () -> Unit,
+) {
     val rooted = state.rootState == RootState.ROOTED
     val transportOk = state.transport == TransportState.Adb || state.transport == TransportState.Shizuku
     Surface(
@@ -433,6 +428,61 @@ private fun HeroCard(state: UiState, onRoot: () -> Unit) {
                         )
                         Spacer(Modifier.height(16.dp))
                         RootButton(state, transportOk, onRoot)
+                        // Кастомный пейлоад выбран — показываем его вместо
+                        // каталога и даём отвязать; кнопка выбора доступна,
+                        // пока рут не получен
+                        if (state.customPayload != null) {
+                            Spacer(Modifier.height(10.dp))
+                            Surface(
+                                shape = MaterialTheme.shapes.large,
+                                color = MaterialTheme.colorScheme.surfaceContainerHighest,
+                                modifier = Modifier.fillMaxWidth(),
+                            ) {
+                                Row(
+                                    Modifier.padding(start = 14.dp, end = 6.dp, top = 6.dp, bottom = 6.dp),
+                                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                ) {
+                                    Icon(
+                                        Icons.Rounded.Description, null,
+                                        tint = MaterialTheme.colorScheme.primary,
+                                        modifier = Modifier.size(18.dp),
+                                    )
+                                    Column(Modifier.weight(1f)) {
+                                        Text(
+                                            state.customPayload!!.displayName,
+                                            style = MaterialTheme.typography.labelLarge,
+                                            fontWeight = FontWeight.SemiBold,
+                                            maxLines = 1,
+                                        )
+                                        Text(
+                                            stringResource(
+                                                R.string.home_custom_payload_size,
+                                                "%.1f".format(state.customPayload!!.size / 1048576.0),
+                                            ),
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        )
+                                    }
+                                    TextButton(onClick = onClearPayload) {
+                                        Text(stringResource(R.string.action_close))
+                                    }
+                                }
+                            }
+                        }
+                        if (!rooted) {
+                            Spacer(Modifier.height(8.dp))
+                            OutlinedButton(
+                                onClick = onPickPayload,
+                                enabled = !state.flowRunning,
+                                modifier = Modifier.fillMaxWidth(),
+                                shape = MaterialTheme.shapes.large,
+                            ) {
+                                Icon(Icons.Rounded.FolderOpen, null, modifier = Modifier.size(16.dp))
+                                Spacer(Modifier.width(6.dp))
+                                Text(stringResource(R.string.home_pick_payload), maxLines = 1)
+                            }
+                        }
                         if (transportOk) {
                             Spacer(Modifier.height(10.dp))
                             Row(
@@ -467,7 +517,7 @@ private fun HeroCard(state: UiState, onRoot: () -> Unit) {
 
 @Composable
 private fun RootButton(state: UiState, transportOk: Boolean, onRoot: () -> Unit) {
-    val ready = state.payload != null
+    val ready = state.payload != null || state.customPayload != null
     Button(
         onClick = onRoot,
         enabled = ready && transportOk && !state.flowRunning,
@@ -480,9 +530,10 @@ private fun RootButton(state: UiState, transportOk: Boolean, onRoot: () -> Unit)
         Spacer(Modifier.width(10.dp))
         Text(
             when {
-                !ready && state.catalogState == CatalogState.LOADING ->
+                state.customPayload != null -> stringResource(R.string.action_root)
+                state.catalogState == CatalogState.LOADING ->
                     stringResource(R.string.catalog_loading)
-                !ready && state.catalogState == CatalogState.ERROR ->
+                state.catalogState == CatalogState.ERROR ->
                     stringResource(R.string.catalog_retry)
                 !ready -> stringResource(R.string.status_unsupported)
                 else -> stringResource(R.string.action_root)
@@ -655,11 +706,17 @@ private fun StatusGroup(
         SettingsRow(
             title = stringResource(R.string.status_payload),
             description = when {
+                state.customPayload != null ->
+                    stringResource(R.string.home_custom_payload_active, state.customPayload!!.displayName)
                 state.payload != null -> state.payload!!.displayName
                 state.catalogState == CatalogState.ERROR -> stringResource(R.string.catalog_error)
                 else -> stringResource(R.string.payload_short_searching)
             },
-            icon = if (state.payload != null) Icons.Rounded.Verified else Icons.Rounded.Search,
+            icon = if (state.payload != null || state.customPayload != null) {
+                Icons.Rounded.Verified
+            } else {
+                Icons.Rounded.Search
+            },
         )
         SettingsDivider()
         // Поддерживаемые устройства — карточка всех пейлоадов каталога

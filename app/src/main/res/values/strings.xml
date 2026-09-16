@@ -286,4 +286,10 @@
     <string name="settings_predictive_back_desc">Окно сжимается вслед за свайпом «назад»</string>
     <string name="other_demo_run">Демонстрация эксплоита</string>
     <string name="settings_root">Рут</string>
+    <string name="home_pick_payload">Выбрать payload.so</string>
+    <string name="home_custom_payload_active">Кастомный: %1$s</string>
+    <string name="home_custom_payload_size">%1$s МБ · будет запущен как есть</string>
+    <string name="log_custom_payload">Кастомный пейлоад: %1$s (без каталога)</string>
+    <string name="log_custom_selected">Выбран файл: %1$s</string>
+    <string name="log_custom_copy_failed">Не удалось прочитать выбранный файл</string>
 </resources>
