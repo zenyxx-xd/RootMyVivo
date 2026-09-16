@@ -164,7 +164,14 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             val localFile = custom.file
             viewModelScope.launch {
                 val variant = _state.value.selectedKsu
-                val ok = engine!!.runCustomPreload(localFile, variant) { event -> applyFlowEvent(event) }
+                // Эксплойт мог остаться жить с прошлого запуска — подхватываем его,
+                // как в обычном пути, вместо параллельного второго процесса
+                val alreadyRunning = withContext(Dispatchers.IO) { engine!!.detectRunning() }
+                val ok = if (alreadyRunning) {
+                    engine!!.runAttached(variant) { event -> applyFlowEvent(event) }
+                } else {
+                    engine!!.runCustomPreload(localFile, variant) { event -> applyFlowEvent(event) }
+                }
                 _state.value = _state.value.copy(flowRunning = false)
                 com.rootmyvivo.ExploitService.stop(ctx)
                 if (ok) {
