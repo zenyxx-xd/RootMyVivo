@@ -3,6 +3,7 @@ package com.rootmyvivo
 import android.os.Bundle
 import android.os.Build
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.LocalActivityResultRegistryOwner
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.runtime.CompositionLocalProvider
@@ -60,7 +61,16 @@ class MainActivity : ComponentActivity() {
                 createConfigurationContext(config)
             }
 
-            CompositionLocalProvider(LocalContext provides localizedContext) {
+            // Локаль применена через createConfigurationContext: у такого
+            // контекста нет цепочки base-контекстов до Activity, а
+            // LocalActivityResultRegistryOwner в activity-compose ищет
+            // владельца именно по LocalContext. Без явного провайдера
+            // rememberLauncherForActivityResult (SAF-пикер payload.so) падает
+            // на первом кадре: "No ActivityResultRegistryOwner was provided".
+            CompositionLocalProvider(
+                LocalContext provides localizedContext,
+                LocalActivityResultRegistryOwner provides this@MainActivity,
+            ) {
                 NeoTheme(
                     themeMode = state.settings.themeMode,
                     dynamicColors = state.settings.dynamicColors,
