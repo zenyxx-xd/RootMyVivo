@@ -1,7 +1,5 @@
 package com.rootmyvivo.ui.home
 
-import android.content.Intent
-import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedContent
@@ -44,6 +42,7 @@ import androidx.compose.material.icons.rounded.FolderOpen
 import androidx.compose.material.icons.rounded.LinkOff
 import androidx.compose.material.icons.rounded.PhoneAndroid
 import androidx.compose.material.icons.rounded.Search
+import androidx.compose.material.icons.rounded.SearchOff
 import androidx.compose.material.icons.rounded.Security
 import androidx.compose.material.icons.rounded.StopCircle
 import androidx.compose.material.icons.rounded.Usb
@@ -70,6 +69,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -104,42 +104,25 @@ fun HomeScreen(
     // Диалог остановки эксплойта — анти-мисклик, чекер «не показывать» в нём
     var stopDialog by remember { mutableStateOf(false) }
     var stopDontShow by remember { mutableStateOf(false) }
-    // Системный файловый менеджер: выбор кастомного payload.so — без
-    // скачиваний, деплоится именно выбранный файл. Файловик vivo перехватывает
-    // ACTION_OPEN_DOCUMENT своим провайдером, поэтому если в системе есть
-    // AOSP DocumentsUI — жёстко таргетим его пакетом; его нет — как есть
+    // Системный файловый менеджер (SAF): выбор кастомного payload.so —
+    // без скачиваний, деплоится именно выбранный файл
     val pickPayload = rememberLauncherForActivityResult(
-        object : androidx.activity.result.contract.ActivityResultContract<Array<String>, Uri?>() {
-            override fun createIntent(context: android.content.Context, input: Array<String>): Intent {
-                val base = ActivityResultContracts.OpenDocument().createIntent(context, input)
-                val pm = context.packageManager
-                val hasAosp = runCatching {
-                    pm.getPackageInfo("com.android.documentsui", 0) != null
-                }.getOrDefault(false)
-                if (hasAosp) {
-                    base.setPackage("com.android.documentsui")
-                    // пакет есть, но его обработчик может быть отключён —
-                    // тогда снимаем таргет и отдаём системный дефолт
-                    if (pm.resolveActivity(
-                            base,
-                            android.content.pm.PackageManager.MATCH_DEFAULT_ONLY,
-                        ) == null
-                    ) {
-                        base.setPackage(null)
-                    }
-                }
-                return base
-            }
-
-            override fun parseResult(resultCode: Int, intent: Intent?): Uri? =
-                if (resultCode != android.app.Activity.RESULT_OK) null else intent?.data
-        },
+        ActivityResultContracts.OpenDocument(),
     ) { uri -> uri?.let(vm::onCustomPayloadPicked) }
     // Чекеры «больше не показывать» — локальные: фиксируются только кнопкой
     // действия. Отмена оставляет настройку нетронутой
     var warnDontShow by remember { mutableStateOf(false) }
     var rebootDontShow by remember { mutableStateOf(false) }
     val warnDismissed = state.settings.warnDismissed
+
+    // Системный тост: неподдерживаемый тип файла и прочие одноразовые события
+    val appCtx = LocalContext.current
+    LaunchedEffect(state.toastRes) {
+        state.toastRes?.let {
+            android.widget.Toast.makeText(appCtx, it, android.widget.Toast.LENGTH_SHORT).show()
+            vm.consumeToast()
+        }
+    }
 
     // Предупреждение перед запуском (или сразу запуск если скрыто)
     if (warnDialog && warnDismissed) {
@@ -687,17 +670,17 @@ private fun RootButton(state: UiState, transportOk: Boolean, onRoot: () -> Unit)
     )
     // Смена состояний («Получить рут» ↔ «Не поддерживается» ↔ загрузка
     // каталога) всегда анимирована в обе стороны: текст едет с фейдом,
-    // цвет контейнера перетекает. Свои цвета отдаём и в disabled-пары,
-    // иначе Material сам выкрасит кнопку в серый без анимации
+    // цвет перетекает. В disabled — стандартные Material-токены
+    // (onSurface 12%/38%): именно «неактивная» кнопка, а не залитая серая
     val container by animateColorAsState(
         if (enabled) MaterialTheme.colorScheme.primary
-        else MaterialTheme.colorScheme.surfaceContainerHighest,
+        else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f),
         animationSpec = tween(220),
         label = "rootBtnContainer",
     )
     val contentColor by animateColorAsState(
         if (enabled) MaterialTheme.colorScheme.onPrimary
-        else MaterialTheme.colorScheme.onSurfaceVariant,
+        else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f),
         animationSpec = tween(220),
         label = "rootBtnContent",
     )
@@ -901,13 +884,17 @@ private fun StatusGroup(
                 state.customPayload != null ->
                     stringResource(R.string.home_custom_payload_active, state.customPayload!!.displayName)
                 state.payload != null -> state.payload!!.displayName
-                state.catalogState == CatalogState.ERROR -> stringResource(R.string.catalog_error)
-                else -> stringResource(R.string.payload_short_searching)
+                state.catalogState == CatalogState.LOADING ->
+                    stringResource(R.string.payload_short_searching)
+                // каталог загружен, но записи для этого устройства нет —
+                // «поиск» больше не идёт, честно говорим «не найден»
+                state.catalogState == CatalogState.READY -> stringResource(R.string.payload_not_found)
+                else -> stringResource(R.string.catalog_error)
             },
-            icon = if (state.payload != null || state.customPayload != null) {
-                Icons.Rounded.Verified
-            } else {
-                Icons.Rounded.Search
+            icon = when {
+                state.payload != null || state.customPayload != null -> Icons.Rounded.Verified
+                state.catalogState == CatalogState.READY -> Icons.Rounded.SearchOff
+                else -> Icons.Rounded.Search
             },
         )
         SettingsDivider()

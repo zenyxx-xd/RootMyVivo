@@ -272,14 +272,16 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                 addLog(ctx.getString(R.string.log_custom_selected, name))
             }.onFailure { e ->
                 Log.w(TAG, "custom payload copy failed: ${e.message}")
-                addLog(
-                    ctx.getString(
-                        if (e is NotELF) R.string.log_custom_not_so
-                        else R.string.log_custom_copy_failed,
-                    ),
-                )
+                val res = if (e is NotELF) R.string.log_custom_not_so else R.string.log_custom_copy_failed
+                _state.value = _state.value.copy(toastRes = res)
+                addLog(ctx.getString(res))
             }
         }
+    }
+
+    /** UI показал тост — событие больше не нужно. */
+    fun consumeToast() {
+        _state.value = _state.value.copy(toastRes = null)
     }
 
     private class NotELF : Exception("not an ELF64 aarch64 shared object")

@@ -291,4 +291,7 @@
     <string name="log_traces_no_ksud">KernelSU not responding — cleanup skipped</string>
     <string name="log_traces_failed">Failed to remove temporary files</string>
     <string name="log_custom_not_so">Selected file is not a .so library — cannot run</string>
+    <string name="payload_not_found">Not found</string>
+    <string name="toast_unsupported_file">Unsupported file type</string>
+    <string name="other_section_process">Process</string>
 </resources>

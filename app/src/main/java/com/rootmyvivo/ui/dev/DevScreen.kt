@@ -2,6 +2,7 @@ package com.rootmyvivo.ui.dev
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -15,6 +16,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.Bolt
 import androidx.compose.material.icons.rounded.Check
+import androidx.compose.material.icons.rounded.CleaningServices
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.Restore
 import androidx.compose.material3.Button
@@ -25,6 +27,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
@@ -33,6 +36,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -40,17 +44,17 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.rootmyvivo.R
 import com.rootmyvivo.data.Catalog
-import com.rootmyvivo.ui.common.SettingsGroup
 import com.rootmyvivo.ui.flow.FlowScreen
 import com.rootmyvivo.vm.LogEntry
 import com.rootmyvivo.vm.LogKind
 import com.rootmyvivo.vm.MainViewModel
+import com.rootmyvivo.vm.RootState
 import com.rootmyvivo.vm.UiState
 import kotlinx.coroutines.launch
 
 /**
- * «Другое»: перезапуск эксплойта, демонстрация процесса и редактор
- * каталога пейлоадов.
+ * «Другое»: инструменты разработчика. Секции-карточки — процесс (перезапуск
+ * эксплойта, демо), root (зачистка следов) и каталог пейлоадов.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -59,6 +63,8 @@ fun DevScreen(vm: MainViewModel, state: UiState, onClose: () -> Unit, onRootStar
     val scope = rememberCoroutineScope()
     val ctx = LocalContext.current
     demoContext = ctx.applicationContext
+    val demoEnabled = state.payload != null && !state.flowRunning
+    val rooted = state.rootState == RootState.ROOTED
 
     val closeDemo = {
         demoState = null
@@ -96,73 +102,124 @@ fun DevScreen(vm: MainViewModel, state: UiState, onClose: () -> Unit, onRootStar
                 .fillMaxSize()
                 .padding(padding)
                 .verticalScroll(rememberScrollState())
-                .padding(horizontal = 20.dp),
-            verticalArrangement = Arrangement.spacedBy(14.dp),
+                .padding(horizontal = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            Spacer(Modifier.height(4.dp))
-
-            // ── Перезапуск эксплойта (залитая, сверху) ──
-            Button(
-                onClick = {
-                    vm.startRoot()
-                    onRootStarted()
-                },
-                modifier = Modifier.fillMaxWidth(),
-                shape = MaterialTheme.shapes.large,
-                enabled = state.payload != null && !state.flowRunning,
-            ) {
-                Icon(Icons.Rounded.Bolt, null, modifier = Modifier.size(18.dp))
-                Spacer(Modifier.width(6.dp))
-                Text(stringResource(R.string.home_restart_exploit))
-            }
-
-            // ── Демонстрация эксплоита (контурная, без подложки) ──
-            OutlinedButton(
-                onClick = { runDemo(scope) { demoState = it } },
-                modifier = Modifier.fillMaxWidth(),
-                shape = MaterialTheme.shapes.large,
-            ) {
-                Icon(Icons.Rounded.PlayArrow, null, modifier = Modifier.size(18.dp))
-                Spacer(Modifier.width(6.dp))
-                Text(stringResource(R.string.other_demo_run))
-            }
-
-            // ── Каталог пейлоадов ──
-            SettingsGroup(title = stringResource(R.string.settings_catalog)) {
-                var url by remember(state.settings.catalogUrl) { mutableStateOf(state.settings.catalogUrl) }
-                Column(Modifier.padding(horizontal = 16.dp, vertical = 10.dp)) {
-                    OutlinedTextField(
-                        value = url,
-                        onValueChange = { url = it },
-                        singleLine = true,
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = MaterialTheme.shapes.medium,
-                        textStyle = MaterialTheme.typography.bodySmall,
-                        trailingIcon = {
-                            if (url != Catalog.DEFAULT_URL) {
-                                IconButton(onClick = {
-                                    vm.setCatalogUrl(Catalog.DEFAULT_URL)
-                                }) {
-                                    Icon(Icons.Rounded.Restore, null, tint = MaterialTheme.colorScheme.primary)
-                                }
-                            }
-                        },
-                    )
-                    Spacer(Modifier.height(10.dp))
-                    Button(
-                        onClick = { vm.setCatalogUrl(url) },
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = MaterialTheme.shapes.large,
-                    ) {
-                        Icon(Icons.Rounded.Check, null, modifier = Modifier.size(18.dp))
-                        Spacer(Modifier.width(6.dp))
-                        Text(stringResource(R.string.action_save))
-                    }
+            // ── Процесс ──
+            DevSection(title = stringResource(R.string.other_section_process)) {
+                Button(
+                    onClick = {
+                        vm.startRoot()
+                        onRootStarted()
+                    },
+                    enabled = demoEnabled,
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = MaterialTheme.shapes.large,
+                ) {
+                    Icon(Icons.Rounded.Bolt, null, modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.width(8.dp))
+                    Text(stringResource(R.string.home_restart_exploit), maxLines = 1)
+                }
+                OutlinedButton(
+                    onClick = { runDemo(scope) { demoState = it } },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = MaterialTheme.shapes.large,
+                ) {
+                    Icon(Icons.Rounded.PlayArrow, null, modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.width(8.dp))
+                    Text(stringResource(R.string.other_demo_run), maxLines = 1)
                 }
             }
 
-            Spacer(Modifier.height(24.dp))
+            // ── Root ──
+            DevSection(title = stringResource(R.string.settings_root)) {
+                SectionCaption(
+                    stringResource(R.string.settings_clean_traces_desc),
+                )
+                OutlinedButton(
+                    onClick = vm::cleanRootTraces,
+                    enabled = rooted && !state.flowRunning,
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = MaterialTheme.shapes.large,
+                ) {
+                    Icon(Icons.Rounded.CleaningServices, null, modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.width(8.dp))
+                    Text(stringResource(R.string.settings_clean_traces), maxLines = 1)
+                }
+            }
+
+            // ── Каталог ──
+            DevSection(title = stringResource(R.string.settings_catalog)) {
+                var url by remember(state.settings.catalogUrl) { mutableStateOf(state.settings.catalogUrl) }
+                OutlinedTextField(
+                    value = url,
+                    onValueChange = { url = it },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = MaterialTheme.shapes.medium,
+                    textStyle = MaterialTheme.typography.bodySmall,
+                    trailingIcon = {
+                        if (url != Catalog.DEFAULT_URL) {
+                            IconButton(onClick = {
+                                vm.setCatalogUrl(Catalog.DEFAULT_URL)
+                            }) {
+                                Icon(
+                                    Icons.Rounded.Restore, null,
+                                    tint = MaterialTheme.colorScheme.primary,
+                                )
+                            }
+                        }
+                    },
+                )
+                Button(
+                    onClick = { vm.setCatalogUrl(url) },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = MaterialTheme.shapes.large,
+                ) {
+                    Icon(Icons.Rounded.Check, null, modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.width(8.dp))
+                    Text(stringResource(R.string.action_save), maxLines = 1)
+                }
+            }
+
+            Spacer(Modifier.height(8.dp))
         }
+    }
+}
+
+/** Секция вкладки «Другое»: заголовок над карточкой-подложкой. */
+@Composable
+private fun DevSection(
+    title: String,
+    content: @Composable androidx.compose.foundation.layout.ColumnScope.() -> Unit,
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text(
+            title,
+            style = MaterialTheme.typography.labelLarge,
+            fontWeight = FontWeight.SemiBold,
+            color = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.padding(start = 8.dp),
+        )
+        Surface(
+            modifier = Modifier.fillMaxWidth(),
+            shape = MaterialTheme.shapes.extraLarge,
+            color = MaterialTheme.colorScheme.surfaceContainerLow,
+        ) {
+            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp), content = content)
+        }
+    }
+}
+
+/** Поясняющая строка внутри секции. */
+@Composable
+private fun SectionCaption(text: String) {
+    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text(
+            text,
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
     }
 }
 

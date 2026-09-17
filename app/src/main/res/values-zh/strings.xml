@@ -291,4 +291,7 @@
     <string name="log_traces_no_ksud">KernelSU 未响应——跳过清理</string>
     <string name="log_traces_failed">删除临时文件失败</string>
     <string name="log_custom_not_so">所选文件不是 .so 库——无法运行</string>
+    <string name="payload_not_found">未找到</string>
+    <string name="toast_unsupported_file">不支持的文件类型</string>
+    <string name="other_section_process">进程</string>
 </resources>

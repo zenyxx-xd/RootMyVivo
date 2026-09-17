@@ -13,8 +13,8 @@ android {
         minSdk = 31
         targetSdk = 36
         // Схема MMmmpp: 01-мажор 00-минор 10-патчи
-        versionCode = 10028
-        versionName = "1.0.28"
+        versionCode = 10029
+        versionName = "1.0.29"
     }
 
     signingConfigs {

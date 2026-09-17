@@ -67,6 +67,8 @@ data class UiState(
     val device: DeviceInfo? = null,
     val payload: PayloadEntry? = null,
     val catalogState: CatalogState = CatalogState.LOADING,
+    /** Одноразовый тост (string resource id): UI показывает и гасит consumeToast */
+    val toastRes: Int? = null,
     // кастомный пейлоад (выбран через файловый менеджер): деплоится именно
     // этот файл — каталог и GitHub при таком запуске не используются
     val customPayload: CustomPayload? = null,

@@ -304,4 +304,7 @@
     <string name="log_traces_no_ksud">KernelSU не отвечает — очистка пропущена</string>
     <string name="log_traces_failed">Не удалось очистить временные файлы</string>
     <string name="log_custom_not_so">Выбранный файл не является .so — запуск невозможен</string>
+    <string name="payload_not_found">Не найден</string>
+    <string name="toast_unsupported_file">Неподдерживаемый тип файла</string>
+    <string name="other_section_process">Процесс</string>
 </resources>
