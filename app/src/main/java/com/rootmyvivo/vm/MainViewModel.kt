@@ -45,7 +45,9 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             settings = prefs.settings(),
             selectedKsu = KsuVariant.byId("resukisu"),
         )
-        catalog.url = _state.value.settings.catalogUrl
+        if (_state.value.settings.catalogUrl.contains("/devices.json")) {
+            catalog.url = _state.value.settings.catalogUrl
+        }
         _state.value = _state.value.copy(
             selectedKsu = KsuVariant.byId(prefs.selectedKsu),
             needsSoftReboot = prefs.softRebootPendingActual(),
@@ -95,7 +97,9 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             )
 
             // Каталог в фоне
+            if (_state.value.settings.catalogUrl.contains("/devices.json")) {
             catalog.url = _state.value.settings.catalogUrl
+        }
             val result = catalog.fetch()
             val cat = result.getOrNull()
             _state.value = _state.value.copy(
@@ -779,7 +783,9 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     fun updateSettings(transform: (Settings) -> Settings) {
         val new = transform(_state.value.settings)
         prefs.saveSettings(new)
-        catalog.url = new.catalogUrl
+        // Каталог v5 (devices.json): кастомный URL применяется, только если
+        // это он — файлы формата v4 дают пустой каталог
+        if (new.catalogUrl.contains("/devices.json")) catalog.url = new.catalogUrl
         _state.value = _state.value.copy(settings = new)
     }
 

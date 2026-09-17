@@ -10,42 +10,123 @@ import java.net.HttpURLConnection
 import java.net.URL
 import java.security.MessageDigest
 
-data class FileEntry(
+/**
+ * Каталог пейлоадов схемы v5: `builds` — сборки ядра (GKI git-id → Image →
+ * бинарь), `devices` — физические тела с картой известных сборок ядра.
+ * Приложение не содержит эксплойтов — всё скачивается по описанию.
+ *
+ * Статусы билда: ready — заявлено рабочим; off — бинарь есть, не заявлено;
+ * patched — CVE закрыт в этой сборке; unsupported — пейлоада нет.
+ */
+
+/** Файл пейлоада: деплоится под именем [name]; [mirrors] на случай
+ *  недоступного ассет-домена GitHub. */
+data class PayloadFile(
+    val name: String,
     val url: String,
+    val mirrors: List<String>,
     val sha256: String?,
     val size: Long,
-    /** Зеркала: пробуются по очереди, если основной URL недоступен
-     *  (GitHub release assets живут на release-assets.githubusercontent.com,
-     *  который у части пользователей заблокирован, когда сам GitHub работает). */
-    val mirrors: List<String> = emptyList(),
 )
 
-data class PayloadEntry(
+/** Одна сборка ядра: один Image = один бинарь. */
+data class KernelBuild(
     val id: String,
-    val displayName: String,
+    /** Паттерны uname: полная GKI-строка строже короткой версии, «.*» — префикс. */
+    val match: List<String>,
+    val exploit: String,
+    val status: String,
+    val file: PayloadFile?,
+    val env: Map<String, String>,
+    val note: String,
+) {
+    val ready: Boolean get() = status == "ready" && file != null
+    val label: String get() = match.firstOrNull()?.let { kernelTag(it) } ?: id
+
+    /** 2 — совпал GKI-паттерн (строже), 1 — короткая версия, 0 — мимо. */
+    fun specificity(actualFull: String): Int {
+        var best = 0
+        for (m in match) {
+            val hit = if (m.endsWith(".*")) actualFull.startsWith(m.removeSuffix("*")) else actualFull.contains(m)
+            if (!hit) continue
+            val score = if (shortVersion(m).isNotEmpty()) 1 else 2
+            if (score > best) best = score
+        }
+        return best
+    }
+}
+
+/** Физическое тело: маркет-нейм + V-код, алиасы Build.DEVICE/Build.MODEL. */
+data class CatalogDevice(
+    val id: String,
+    val marketName: String,
+    val code: String,
     val models: List<String>,
-    val marketNames: List<String>,
-    val kernelVersions: List<String>,
-    val enabled: Boolean,
-    val verifiedBy: String?,
-    val files: Map<String, FileEntry>,
-    /** Переменные окружения эксплойта (RMV_ATTEMPTS, RMV_RETRY_DELAY, …) */
-    val env: Map<String, String> = emptyMap(),
+    val names: List<String>,
+    val kernels: List<KernelRef>,
+) {
+    val title: String get() = if (code.isNotEmpty()) "$marketName • $code" else marketName
+}
+
+data class KernelRef(
+    val buildId: String,
+    val note: String,
 )
 
-data class PayloadCatalog(val payloads: List<PayloadEntry>)
+/** Матч тела и живой сборки — то, что скачивает и деплоит движок. */
+data class PayloadMatch(
+    val device: CatalogDevice,
+    val build: KernelBuild,
+) {
+    val env: Map<String, String> get() = build.env
+    /** Человекочитаемое имя для логов и карточки на главной. */
+    val displayName: String get() = "${device.title} · ${build.label}"
+}
+
+/** Билд в привязке к карточке-владельцу (для экрана устройств). */
+data class DeviceKernel(
+    val build: KernelBuild,
+    val note: String,
+)
+
+data class PayloadCatalog(
+    val schemaVersion: Int,
+    val builds: Map<String, KernelBuild>,
+    val devices: List<CatalogDevice>,
+) {
+    fun kernelsOf(device: CatalogDevice): List<DeviceKernel> =
+        device.kernels.mapNotNull { kr -> builds[kr.buildId]?.let { DeviceKernel(it, kr.note) } }
+
+    fun isSupported(device: CatalogDevice): Boolean =
+        kernelsOf(device).any { it.build.ready }
+}
+
+/** Короткая версия x.y.z из строки, '' если не читается. */
+fun shortVersion(s: String): String =
+    Regex("""^\d+\.\d+\.\d+""").find(s)?.value ?: ""
 
 /**
- * Каталог пейлоадов: приложение не содержит эксплойтов — скачивает их по описанию.
- * Кэш: 24 ч свежести; при ошибке сети используется кэш любого возраста.
+ * Метка сборки для UI: «6.6.89-b57af» — версия + первые 5 символов git-хэша
+ * (не полная GKI-строка и не голая версия). Без git-суффикса — версия как есть.
+ */
+fun kernelTag(s: String): String {
+    val ver = shortVersion(s)
+    val hex = Regex("""-g([0-9a-f]{5,})""").find(s)?.groupValues?.get(1)
+    return if (ver.isNotEmpty() && hex != null) "$ver-${hex.take(5)}" else ver.ifEmpty { s }
+}
+
+/**
+ * Каталог: 24 ч свежести; при сетевой ошибке — кэш любого возраста.
+ * Парсится только v5: старый файл (v4) даёт пустой каталог, и UI показывает
+ * «не найдено», а не чужой пейлоад.
  */
 class Catalog(var url: String = DEFAULT_URL) {
 
     companion object {
         const val DEFAULT_URL =
-            "https://raw.githubusercontent.com/zenyxx-xd/RootMyVivo-Payloads/main/support/targets-vivo.json"
+            "https://raw.githubusercontent.com/zenyxx-xd/RootMyVivo-Payloads/main/catalog/devices.json"
         private const val TAG = "NeoCatalog"
-        private const val CACHE_FILE = "catalog.json"
+        private const val CACHE_FILE = "catalog-v5.json"
         private const val CACHE_FRESH_MS = 24 * 3600_000L
         private var cacheDir: File? = null
 
@@ -60,12 +141,7 @@ class Catalog(var url: String = DEFAULT_URL) {
         try {
             val body = httpGet(url, timeout = 15_000)
             if (body == null) {
-                val c = cached()
-                if (c != null) {
-                    Result.success(c)
-                } else {
-                    Result.failure(IOException("network error"))
-                }
+                cached()?.let { Result.success(it) } ?: Result.failure(IOException("network error"))
             } else {
                 cacheFile()?.writeText(body)
                 Result.success(parse(body))
@@ -76,89 +152,58 @@ class Catalog(var url: String = DEFAULT_URL) {
         }
     }
 
-    private fun cached(ignoreAge: Boolean = false): PayloadCatalog? {
-        return try {
-            val f = cacheFile()
-            if (f == null || !f.exists()) return null
-            if (!ignoreAge && System.currentTimeMillis() - f.lastModified() > CACHE_FRESH_MS) return null
-            parse(f.readText())
-        } catch (_: Exception) {
-            null
-        }
-    }
-
-    fun findPayload(catalog: PayloadCatalog, info: DeviceInfo): PayloadEntry? {
-        val byModel = catalog.payloads.filter {
-            it.enabled && (it.models.contains(info.model) || it.marketNames.contains(info.marketName))
-        }
-        // Модель + ядро. Без fallback на «любой пейлоад этой модели»:
-        // одна модель живёт на нескольких сборках (b57 / g1f71897 / 6.6.127),
-        // и чужой .so на несовпавшем uname не должен подставляться.
-        val kernelHit = byModel.filter {
-            matchesKernel(it.kernelVersions, info.kernelShort, info.kernel)
-        }
-        if (kernelHit.isEmpty()) return null
-        val bestSpec = kernelHit.maxOf { payload ->
-            payload.kernelVersions.maxOf { patternSpecificity(it) }
-        }
-        val best = kernelHit.filter { payload ->
-            payload.kernelVersions.maxOf { patternSpecificity(it) } == bestSpec
-        }
-        // при одинаковом ядре берём более узкую запись (Z10 Turbo, а не общий b57-алиас)
-        return best.minByOrNull { it.models.size }
+    private fun cached(ignoreAge: Boolean = false): PayloadCatalog? = try {
+        val f = cacheFile()
+        if (f == null || !f.exists()) null
+        else if (!ignoreAge && System.currentTimeMillis() - f.lastModified() > CACHE_FRESH_MS) null
+        else parse(f.readText())
+    } catch (_: Exception) {
+        null
     }
 
     /**
-     * Паттерны ядра: короткий «6.6.89» сравнивается с короткой версией,
-     * полный «6.6.89-android15-8-gb57af212129c» — подстрокой uname release
-     * (различает сборки ядра одной модели: Neo10 Pro gf2… vs b57…),
-     * суффикс «.*» — префикс полной строки.
+     * Живой пейлоад для устройства: тело по моделям/неймам, затем только ready-
+     * сборки с точным совпадением версии (или подстрокой для GKI-паттерна).
+     * Fallback на чужую сборку той же модели отсутствует.
      */
-    private fun matchesKernel(supported: List<String>, actualShort: String, actualFull: String): Boolean {
-        if (supported.isEmpty()) return true
-        return supported.any { pattern ->
-            when {
-                pattern.endsWith(".*") ->
-                    actualFull.startsWith(pattern.removeSuffix("*")) ||
-                        actualShort.startsWith(pattern.removeSuffix("*"))
-                isBuildPattern(pattern) -> actualFull.contains(pattern)
-                else -> actualShort == pattern
-            }
+    fun findPayload(catalog: PayloadCatalog, info: DeviceInfo): PayloadMatch? {
+        val device = catalog.devices.firstOrNull { d ->
+            (info.model.isNotEmpty() && d.models.any { it.equals(info.model, true) }) ||
+                (info.marketName.isNotEmpty() && d.names.any { it.equals(info.marketName, true) })
+        } ?: return null
+        var best: Pair<KernelBuild, Int>? = null
+        for (dk in catalog.kernelsOf(device)) {
+            val b = dk.build
+            if (!b.ready) continue
+            val s = b.specificity(info.kernel)
+            if (s > 0 && (best == null || s > best!!.second)) best = b to s
         }
+        return best?.let { PayloadMatch(device, it.first) }
     }
 
-    /** Полная GKI-строка / git-id, а не x.y.z. */
-    private fun isBuildPattern(pattern: String): Boolean =
-        pattern.contains('-') || pattern.any { it.isLetter() }
-
-    /** Чем длиннее/точнее паттерн ядра, тем выше приоритет при нескольких хитах. */
-    private fun patternSpecificity(pattern: String): Int = when {
-        pattern.endsWith(".*") -> pattern.length + 50
-        isBuildPattern(pattern) -> pattern.length + 100
-        else -> pattern.length
-    }
-
-    /** Скачивание файла пейлоада: основной URL, затем зеркала (если заданы);
-     *  редиректы, проверка размера и SHA-256, атомарная запись. */
+    /**
+     * Скачивание файла: основной URL, затем зеркала. Редиректы, проверка
+     * размера и SHA-256, атомарная запись (.part → rename).
+     */
     suspend fun downloadFile(
-        entry: FileEntry,
+        file: PayloadFile,
         dest: File,
         onProgress: suspend (read: Long, total: Long) -> Unit = { _, _ -> },
     ): Result<Unit> = withContext(Dispatchers.IO) {
-        val urls = listOf(entry.url) + entry.mirrors
-        var lastError: Throwable? = null
+        val urls = listOf(file.url) + file.mirrors
+        var last: Throwable? = null
         for (u in urls) {
-            val res = downloadFrom(u, entry, dest, onProgress)
+            val res = downloadFrom(u, file, dest, onProgress)
             if (res.isSuccess) return@withContext res
-            lastError = res.exceptionOrNull()
-            Log.w(TAG, "download ${dest.name} from ${u.substringBefore('/' + dest.name)} failed: ${lastError?.message}")
+            last = res.exceptionOrNull()
+            Log.w(TAG, "download ${dest.name} from $u failed: ${last?.message}")
         }
-        Result.failure(lastError ?: IOException("all sources failed"))
+        Result.failure(last ?: IOException("all sources failed"))
     }
 
     private suspend fun downloadFrom(
         url: String,
-        entry: FileEntry,
+        file: PayloadFile,
         dest: File,
         onProgress: suspend (read: Long, total: Long) -> Unit,
     ): Result<Unit> = try {
@@ -170,8 +215,7 @@ class Catalog(var url: String = DEFAULT_URL) {
         var code = conn.responseCode
         var hops = 0
         while (hops < 5 && code in 301..308) {
-            val loc = conn.getHeaderField("Location")
-                ?: throw IOException("HTTP $code without Location")
+            val loc = conn.getHeaderField("Location") ?: throw IOException("HTTP $code without Location")
             conn.disconnect()
             conn = open(URL(URL(url), loc).toString())
             code = conn.responseCode
@@ -179,7 +223,7 @@ class Catalog(var url: String = DEFAULT_URL) {
         }
         if (code !in 200..299) throw IOException("HTTP $code")
 
-        val total = conn.contentLengthLong.takeIf { it > 0 } ?: entry.size
+        val total = conn.contentLengthLong.takeIf { it > 0 } ?: file.size
         conn.inputStream.use { input ->
             tmp.outputStream().use { output ->
                 val buf = ByteArray(65536)
@@ -193,14 +237,13 @@ class Catalog(var url: String = DEFAULT_URL) {
                 }
             }
         }
-
         if (tmp.length() == 0L) throw IOException("empty response")
-        if (entry.size > 0L && tmp.length() != entry.size) {
-            throw IOException("incomplete: ${tmp.length()} of ${entry.size} bytes")
+        if (file.size > 0 && tmp.length() != file.size) {
+            throw IOException("incomplete: ${tmp.length()} of ${file.size} bytes")
         }
-        entry.sha256?.let { expected ->
-            val actual = sha256(tmp)
-            if (!actual.equals(expected, ignoreCase = true)) throw IOException("sha256 mismatch: $actual")
+        file.sha256?.let { want ->
+            val got = sha256(tmp)
+            if (!got.equals(want, ignoreCase = true)) throw IOException("sha256 mismatch: $got")
         }
         if (!tmp.renameTo(dest)) throw IOException("rename failed")
         dest.setReadable(true, false)
@@ -232,46 +275,71 @@ class Catalog(var url: String = DEFAULT_URL) {
         }
     }
 
-    // ── Парсинг (org.json, без зависимостей) ──
+    // ── Парсинг v5 (org.json, без зависимостей) ──
 
     fun parse(body: String): PayloadCatalog {
-        val arr = JSONObject(body).optJSONArray("payloads") ?: return PayloadCatalog(emptyList())
-        val out = mutableListOf<PayloadEntry>()
-        for (i in 0 until arr.length()) {
-            val o = arr.getJSONObject(i)
-            val files = mutableMapOf<String, FileEntry>()
-            o.optJSONObject("files")?.let { fo ->
-                fo.keys().forEach { key ->
-                    val f = fo.optJSONObject(key) ?: return@forEach
-                    val u = f.optString("url", "")
-                    if (u.startsWith("http")) {
-                        val mirrors = f.optJSONArray("mirrors").strings().filter { it.startsWith("http") }
-                        files[key] = FileEntry(u, f.optString("sha256", null), f.optLong("size", 0), mirrors)
-                    }
+        val root = JSONObject(body)
+        if (root.optInt("schemaVersion", 0) < 5) return PayloadCatalog(0, emptyMap(), emptyList())
+
+        val builds = LinkedHashMap<String, KernelBuild>()
+        root.optJSONObject("builds")?.let { bo ->
+            for (id in bo.keys()) {
+                val o = bo.optJSONObject(id) ?: continue
+                val match = o.optJSONArray("match").strings().ifEmpty {
+                    o.optString("match", "").let { listOf(it) }
+                }.filter { it.isNotEmpty() }
+                val file = o.optJSONObject("file")?.let { fo ->
+                    val u = fo.optString("url", "")
+                    if (!u.startsWith("http")) null else PayloadFile(
+                        name = fo.optString("name", "preload.so"),
+                        url = u,
+                        mirrors = fo.optJSONArray("mirrors").strings().filter { it.startsWith("http") },
+                        sha256 = fo.optString("sha256", null),
+                        size = fo.optLong("size", 0),
+                    )
                 }
+                val env = LinkedHashMap<String, String>()
+                o.optJSONObject("env")?.let { eo ->
+                    eo.keys().forEach { k -> env[k] = eo.optString(k) }
+                }
+                builds[id] = KernelBuild(
+                    id = id,
+                    match = match,
+                    exploit = o.optString("exploit", ""),
+                    status = o.optString("status", "off"),
+                    file = file,
+                    env = env,
+                    note = o.optString("matchCondition", ""),
+                )
             }
-            val env = mutableMapOf<String, String>()
-            o.optJSONObject("env")?.let { eo ->
-                eo.keys().forEach { k -> env[k] = eo.optString(k) }
+        }
+
+        val devices = mutableListOf<CatalogDevice>()
+        val da = root.optJSONArray("devices")
+        if (da != null) for (i in 0 until da.length()) {
+            val o = da.optJSONObject(i) ?: continue
+            val kernels = mutableListOf<KernelRef>()
+            val ka = o.optJSONArray("kernels")
+            if (ka != null) for (k in 0 until ka.length()) {
+                val ko = ka.optJSONObject(k) ?: continue
+                val buildId = ko.optString("build", "")
+                if (buildId.isNotEmpty()) kernels += KernelRef(buildId, ko.optString("note", ""))
             }
-            out += PayloadEntry(
-                id = o.getString("payloadId"),
-                displayName = o.optString("displayName", o.getString("payloadId")),
+            devices += CatalogDevice(
+                id = o.optString("id", "dev-$i"),
+                marketName = o.optString("marketName", ""),
+                code = o.optString("code", ""),
                 models = o.optJSONArray("models").strings(),
-                marketNames = o.optJSONArray("marketNames").strings(),
-                kernelVersions = o.optJSONArray("kernelVersions").strings(),
-                enabled = o.optBoolean("enabled", true),
-                verifiedBy = o.optString("verifiedBy", null),
-                files = files,
-                env = env,
+                names = o.optJSONArray("names").strings(),
+                kernels = kernels,
             )
         }
-        return PayloadCatalog(out)
+        return PayloadCatalog(5, builds, devices)
     }
 
     private fun org.json.JSONArray?.strings(): List<String> {
         if (this == null) return emptyList()
-        return List(length()) { getString(it) }
+        return List(length()) { optString(it) }.filter { it.isNotEmpty() }
     }
 
     private fun sha256(f: File): String =

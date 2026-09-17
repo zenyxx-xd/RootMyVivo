@@ -248,9 +248,9 @@
     <string name="home_restart_exploit">Restart exploit</string>
     <string name="home_supported_devices">Supported devices</string>
     <string name="supported_title">Supported devices</string>
-    <string name="supported_count">%1$d payloads · %2$d devices</string>
+    <string name="supported_count">%1$d devices · %2$d kernels</string>
     <string name="supported_your">Your device</string>
-    <string name="supported_disabled">Not enabled</string>
+    <string name="supported_disabled">Root not available on any kernel</string>
     <string name="update_none_found">No updates available</string>
     <string name="link_open_failed">Couldn\'t open the link</string>
     <string name="about_title">About</string>

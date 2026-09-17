@@ -248,9 +248,9 @@
     <string name="home_restart_exploit">重新运行漏洞利用</string>
     <string name="home_supported_devices">支持的设备</string>
     <string name="supported_title">支持的设备</string>
-    <string name="supported_count">%1$d 个载荷 · %2$d 台设备</string>
+    <string name="supported_count">%1$d 台设备 · %2$d 个内核</string>
     <string name="supported_your">你的设备</string>
-    <string name="supported_disabled">未启用</string>
+    <string name="supported_disabled">所有内核均不支持 root</string>
     <string name="update_none_found">暂无更新</string>
     <string name="link_open_failed">无法打开链接</string>
     <string name="about_title">关于</string>

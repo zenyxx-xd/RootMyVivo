@@ -1,7 +1,7 @@
 package com.rootmyvivo.vm
 
 import com.rootmyvivo.data.DeviceInfo
-import com.rootmyvivo.data.PayloadEntry
+import com.rootmyvivo.data.PayloadMatch
 import com.rootmyvivo.data.Settings
 import com.rootmyvivo.root.KsuVariant
 import com.rootmyvivo.root.LogLevel
@@ -65,7 +65,8 @@ data class CustomPayload(
 data class UiState(
     // устройство и каталог
     val device: DeviceInfo? = null,
-    val payload: PayloadEntry? = null,
+    /** Найденный живой пейлоад: тело + готовая сборка ядра из каталога v5. */
+    val payload: PayloadMatch? = null,
     val catalogState: CatalogState = CatalogState.LOADING,
     /** Одноразовый тост (string resource id): UI показывает и гасит consumeToast */
     val toastRes: Int? = null,
