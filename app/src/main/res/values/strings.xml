@@ -286,10 +286,22 @@
     <string name="settings_predictive_back_desc">Окно сжимается вслед за свайпом «назад»</string>
     <string name="other_demo_run">Демонстрация эксплоита</string>
     <string name="settings_root">Рут</string>
-    <string name="home_pick_payload">Выбрать payload.so</string>
+    <string name="home_pick_payload">Выбрать кастомный .so</string>
     <string name="home_custom_payload_active">Кастомный: %1$s</string>
-    <string name="home_custom_payload_size">%1$s МБ · будет запущен как есть</string>
+    <string name="home_custom_payload_size">%1$s МБ</string>
     <string name="log_custom_payload">Кастомный пейлоад: %1$s (без каталога)</string>
     <string name="log_custom_selected">Выбран файл: %1$s</string>
     <string name="log_custom_copy_failed">Не удалось прочитать выбранный файл</string>
+    <string name="home_custom_payload_selected">Выбран кастомный эксплойт</string>
+    <string name="home_custom_payload_cancel">Отмена</string>
+    <string name="home_stop_exploit">Остановить эксплойт</string>
+    <string name="home_stop_title">Остановить эксплойт?</string>
+    <string name="home_stop_text">Эксплойт будет принудительно завершён на устройстве, root получен не будет. Запустить можно заново в любой момент.</string>
+    <string name="home_stop_go">Остановить</string>
+    <string name="settings_clean_traces">Очистить следы root</string>
+    <string name="settings_clean_traces_desc">Удалить временные su-файлы (только когда работает KernelSU)</string>
+    <string name="log_traces_cleaned">Временные su-файлы удалены</string>
+    <string name="log_traces_no_ksud">KernelSU не отвечает — очистка пропущена</string>
+    <string name="log_traces_failed">Не удалось очистить временные файлы</string>
+    <string name="log_custom_not_so">Выбранный файл не является .so — запуск невозможен</string>
 </resources>

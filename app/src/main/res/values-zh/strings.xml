@@ -273,10 +273,22 @@
     <string name="settings_predictive_back_desc">窗口随手势返回一起缩小</string>
     <string name="other_demo_run">漏洞利用演示</string>
     <string name="settings_root">Root</string>
-    <string name="home_pick_payload">选择 payload.so</string>
+    <string name="home_pick_payload">选择自定义 .so</string>
     <string name="home_custom_payload_active">自定义：%1$s</string>
-    <string name="home_custom_payload_size">%1$s MB · 将按原样运行</string>
+    <string name="home_custom_payload_size">%1$s MB</string>
     <string name="log_custom_payload">自定义载荷：%1$s（不使用目录）</string>
     <string name="log_custom_selected">已选择文件：%1$s</string>
     <string name="log_custom_copy_failed">读取所选文件失败</string>
+    <string name="home_custom_payload_selected">已选择自定义漏洞利用</string>
+    <string name="home_custom_payload_cancel">取消</string>
+    <string name="home_stop_exploit">停止漏洞利用</string>
+    <string name="home_stop_title">停止漏洞利用？</string>
+    <string name="home_stop_text">设备上的漏洞利用进程将被强制终止，不会获得 root。可以随时重新启动。</string>
+    <string name="home_stop_go">停止</string>
+    <string name="settings_clean_traces">清除 root 痕迹</string>
+    <string name="settings_clean_traces_desc">删除临时 su 文件（仅在 KernelSU 运行时）</string>
+    <string name="log_traces_cleaned">临时 su 文件已删除</string>
+    <string name="log_traces_no_ksud">KernelSU 未响应——跳过清理</string>
+    <string name="log_traces_failed">删除临时文件失败</string>
+    <string name="log_custom_not_so">所选文件不是 .so 库——无法运行</string>
 </resources>

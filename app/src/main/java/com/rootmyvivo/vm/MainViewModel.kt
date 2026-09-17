@@ -19,6 +19,7 @@ import com.rootmyvivo.root.FlowEvent
 import com.rootmyvivo.root.LogLevel
 import com.rootmyvivo.root.KsuVariant
 import com.rootmyvivo.root.Phase
+import com.rootmyvivo.root.RootTraces
 import com.rootmyvivo.shell.Transport
 import com.rootmyvivo.shell.TransportState
 import kotlinx.coroutines.Dispatchers
@@ -220,6 +221,19 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         engine?.stop()
         _state.value = _state.value.copy(flowRunning = false)
         com.rootmyvivo.ExploitService.stop(getApplication())
+        // «Принудительно» — не только бросить наблюдение во флоу, но и
+        // прибить сам демон на устройстве: процесс с LD_PRELOAD=rmv/preload.so
+        // (cmdline у него /system/bin/true, поэтому ищем через maps)
+        val ctx = getApplication<Application>()
+        viewModelScope.launch(Dispatchers.IO) {
+            runCatching {
+                Transport.exec(
+                    ctx,
+                    "for d in \$(grep -l rmv/preload.so /proc/[0-9]*/maps 2>/dev/null | cut -d/ -f3); do kill -9 \$d 2>/dev/null; done",
+                    timeoutSec = 20,
+                )
+            }
+        }
     }
 
     // ─────────── Кастомный пейлоад ───────────
@@ -228,7 +242,8 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
      * Пользователь выбрал файл в SAF-пикере: копируем содержимое в
      * filesDir/payloads/preload.so (движок деплоит файл с этим именем)
      * и показываем в главной карточке. Никаких загрузок — запуск идёт
-     * строго из этого файла.
+     * строго из этого файла. Файл обязан быть ELF64-библиотекой aarch64:
+     * заголовок проверяем до приёма, картинка/текст в пикере не проходят.
      */
     fun onCustomPayloadPicked(uri: Uri) {
         val ctx = getApplication<Application>()
@@ -240,6 +255,10 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                     ctx.contentResolver.openInputStream(uri)?.use { input ->
                         dest.outputStream().use { output -> input.copyTo(output) }
                     } ?: throw IllegalStateException("resolver returned no stream")
+                    if (!isElf64Aarch64(dest)) {
+                        dest.delete()
+                        throw NotELF()
+                    }
                     val name = queryDisplayName(uri) ?: "payload.so"
                     name to dest.length()
                 }
@@ -253,8 +272,58 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                 addLog(ctx.getString(R.string.log_custom_selected, name))
             }.onFailure { e ->
                 Log.w(TAG, "custom payload copy failed: ${e.message}")
-                addLog(ctx.getString(R.string.log_custom_copy_failed))
+                addLog(
+                    ctx.getString(
+                        if (e is NotELF) R.string.log_custom_not_so
+                        else R.string.log_custom_copy_failed,
+                    ),
+                )
             }
+        }
+    }
+
+    private class NotELF : Exception("not an ELF64 aarch64 shared object")
+
+    /** ELF64 little-endian с e_machine == EM_AARCH64 (0xB7). */
+    private fun isElf64Aarch64(f: java.io.File): Boolean = try {
+        val hdr = ByteArray(20)
+        java.io.FileInputStream(f).use { input ->
+            var read = 0
+            while (read < 20) {
+                val n = input.read(hdr, read, 20 - read)
+                if (n < 0) break
+                read += n
+            }
+            if (read < 20) return false
+        }
+        hdr[0] == 0x7F.toByte() && hdr[1] == 'E'.code.toByte() &&
+            hdr[2] == 'L'.code.toByte() && hdr[3] == 'F'.code.toByte() &&
+            hdr[4] == 2.toByte() && hdr[5] == 1.toByte() &&
+            (hdr[18].toInt() and 0xFF) or ((hdr[19].toInt() and 0xFF) shl 8) == 0xB7
+    } catch (_: Exception) {
+        false
+    }
+
+    /**
+     * Настройки «Другое» → «Очистить следы root»: снести временные su-файлы.
+     * Работает только через RootTraces с его гейтом — если ksud не отвечает,
+     * удалять нечего и нечем (root ещё на клиенте демона).
+     */
+    fun cleanRootTraces() {
+        if (_state.value.flowRunning) return
+        val ctx = getApplication<Application>()
+        viewModelScope.launch {
+            val outcome = withContext(Dispatchers.IO) { RootTraces.clean(ctx) }
+            addLog(
+                ctx.getString(
+                    when (outcome) {
+                        RootTraces.Outcome.CLEANED -> R.string.log_traces_cleaned
+                        RootTraces.Outcome.NO_KSUD -> R.string.log_traces_no_ksud
+                        RootTraces.Outcome.FAILED -> R.string.log_traces_failed
+                    },
+                ),
+            )
+            detectDevice()
         }
     }
 

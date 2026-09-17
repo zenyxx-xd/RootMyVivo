@@ -3,14 +3,18 @@ package com.rootmyvivo.ui.home
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.IntrinsicSize
@@ -31,12 +35,14 @@ import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
 import androidx.compose.material.icons.rounded.Bolt
 import androidx.compose.material.icons.rounded.CheckCircle
 import androidx.compose.material.icons.rounded.CloudDownload
+import androidx.compose.material.icons.rounded.Code
 import androidx.compose.material.icons.rounded.Description
 import androidx.compose.material.icons.rounded.FolderOpen
 import androidx.compose.material.icons.rounded.LinkOff
 import androidx.compose.material.icons.rounded.PhoneAndroid
 import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material.icons.rounded.Security
+import androidx.compose.material.icons.rounded.StopCircle
 import androidx.compose.material.icons.rounded.Usb
 import androidx.compose.material.icons.rounded.Verified
 import androidx.compose.material3.Button
@@ -51,6 +57,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -58,6 +65,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -89,6 +97,9 @@ fun HomeScreen(
     var ksuDialog by remember { mutableStateOf(false) }
     var warnDialog by remember { mutableStateOf(false) }
     var confirmAction by remember { mutableStateOf(false) }
+    // Диалог остановки эксплойта — анти-мисклик, чекер «не показывать» в нём
+    var stopDialog by remember { mutableStateOf(false) }
+    var stopDontShow by remember { mutableStateOf(false) }
     // Системный файловый менеджер (SAF): выбор кастомного payload.so —
     // без скачиваний, деплоится именно выбранный файл
     val pickPayload = rememberLauncherForActivityResult(
@@ -200,6 +211,25 @@ fun HomeScreen(
             onPickPayload = { pickPayload.launch(arrayOf("*/*")) },
             onClearPayload = vm::clearCustomPayload,
         )
+        // Принудительная остановка во время выполнения — под главным статусом.
+        // Подтверждение можно отключить чекером в диалоге
+        if (state.flowRunning) {
+            OutlinedButton(
+                onClick = {
+                    if (state.settings.exploitStopConfirmDismissed) {
+                        vm.stopRoot()
+                    } else {
+                        stopDialog = true
+                    }
+                },
+                modifier = Modifier.fillMaxWidth(),
+                shape = MaterialTheme.shapes.large,
+            ) {
+                Icon(Icons.Rounded.StopCircle, null, modifier = Modifier.size(16.dp))
+                Spacer(Modifier.width(6.dp))
+                Text(stringResource(R.string.home_stop_exploit), maxLines = 1)
+            }
+        }
         // Действие при активном руте: перезагрузка userspace (как на iOS),
         // с подтверждением против мискликов. Перезапуск эксплойта остался
         // в меню разработчика
@@ -303,6 +333,59 @@ fun HomeScreen(
             },
             dismissButton = {
                 androidx.compose.material3.TextButton(onClick = { confirmAction = false }) {
+                    Text(stringResource(R.string.warn_cancel))
+                }
+            },
+            shape = MaterialTheme.shapes.extraLarge,
+        )
+    }
+
+    // Подтверждение остановки эксплойта — анти-мисклик, как у «Получить рут»:
+    // объясняем последствия, чекер фиксируется только подтверждением
+    if (stopDialog) {
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = { stopDialog = false },
+            title = {
+                Text(
+                    stringResource(R.string.home_stop_title),
+                    fontWeight = FontWeight.Bold,
+                )
+            },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Text(
+                        stringResource(R.string.home_stop_text),
+                        style = MaterialTheme.typography.bodyMedium,
+                    )
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.padding(start = 8.dp),
+                    ) {
+                        androidx.compose.material3.Checkbox(
+                            checked = stopDontShow,
+                            onCheckedChange = { stopDontShow = it },
+                        )
+                        Text(
+                            stringResource(R.string.warn_dont_show),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
+            },
+            confirmButton = {
+                Button(onClick = {
+                    if (stopDontShow) {
+                        vm.updateSettings { it.copy(exploitStopConfirmDismissed = true) }
+                    }
+                    stopDialog = false
+                    vm.stopRoot()
+                }) {
+                    Text(stringResource(R.string.home_stop_go))
+                }
+            },
+            dismissButton = {
+                androidx.compose.material3.TextButton(onClick = { stopDialog = false }) {
                     Text(stringResource(R.string.warn_cancel))
                 }
             },
@@ -428,49 +511,82 @@ private fun HeroCard(
                         )
                         Spacer(Modifier.height(16.dp))
                         RootButton(state, transportOk, onRoot)
-                        // Кастомный пейлоад выбран — показываем его вместо
-                        // каталога и даём отвязать; кнопка выбора доступна,
-                        // пока рут не получен
-                        if (state.customPayload != null) {
-                            Spacer(Modifier.height(10.dp))
-                            Surface(
-                                shape = MaterialTheme.shapes.large,
-                                color = MaterialTheme.colorScheme.surfaceContainerHighest,
-                                modifier = Modifier.fillMaxWidth(),
-                            ) {
-                                Row(
-                                    Modifier.padding(start = 14.dp, end = 6.dp, top = 6.dp, bottom = 6.dp),
-                                    horizontalArrangement = Arrangement.spacedBy(10.dp),
-                                    verticalAlignment = Alignment.CenterVertically,
+                        // Кастомный пейлоад: карточка с контуром (как у кнопки
+                        // выбора, без заливки). Снимок держим до конца анимации
+                        // сворачивания — иначе контент исчезнет раньше выхода
+                        var shownPayload by remember { mutableStateOf(state.customPayload) }
+                        LaunchedEffect(state.customPayload) {
+                            state.customPayload?.let { shownPayload = it }
+                        }
+                        AnimatedVisibility(
+                            visible = state.customPayload != null,
+                            enter = expandVertically(tween(260)) + fadeIn(tween(260)),
+                            exit = shrinkVertically(tween(200)) + fadeOut(tween(200)),
+                        ) {
+                            shownPayload?.let { cp ->
+                                Spacer(Modifier.height(10.dp))
+                                Surface(
+                                    shape = MaterialTheme.shapes.large,
+                                    color = Color.Transparent,
+                                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+                                    modifier = Modifier.fillMaxWidth(),
                                 ) {
-                                    Icon(
-                                        Icons.Rounded.Description, null,
-                                        tint = MaterialTheme.colorScheme.primary,
-                                        modifier = Modifier.size(18.dp),
-                                    )
-                                    Column(Modifier.weight(1f)) {
-                                        Text(
-                                            state.customPayload!!.displayName,
-                                            style = MaterialTheme.typography.labelLarge,
-                                            fontWeight = FontWeight.SemiBold,
-                                            maxLines = 1,
-                                        )
-                                        Text(
-                                            stringResource(
-                                                R.string.home_custom_payload_size,
-                                                "%.1f".format(state.customPayload!!.size / 1048576.0),
-                                            ),
-                                            style = MaterialTheme.typography.labelSmall,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        )
-                                    }
-                                    TextButton(onClick = onClearPayload) {
-                                        Text(stringResource(R.string.action_close))
+                                    Column(
+                                        Modifier.padding(start = 16.dp, end = 8.dp, top = 12.dp, bottom = 4.dp),
+                                        verticalArrangement = Arrangement.spacedBy(2.dp),
+                                    ) {
+                                        Row(
+                                            horizontalArrangement = Arrangement.spacedBy(5.dp),
+                                            verticalAlignment = Alignment.CenterVertically,
+                                        ) {
+                                            Icon(
+                                                Icons.Rounded.Code, null,
+                                                tint = MaterialTheme.colorScheme.primary,
+                                                modifier = Modifier.size(14.dp),
+                                            )
+                                            Text(
+                                                stringResource(R.string.home_custom_payload_selected),
+                                                style = MaterialTheme.typography.labelSmall,
+                                                fontWeight = FontWeight.SemiBold,
+                                                color = MaterialTheme.colorScheme.primary,
+                                            )
+                                        }
+                                        Row(
+                                            horizontalArrangement = Arrangement.spacedBy(10.dp),
+                                            verticalAlignment = Alignment.CenterVertically,
+                                        ) {
+                                            Icon(
+                                                Icons.Rounded.Description, null,
+                                                tint = MaterialTheme.colorScheme.primary,
+                                                modifier = Modifier.size(18.dp),
+                                            )
+                                            Column(Modifier.weight(1f)) {
+                                                Text(
+                                                    cp.displayName,
+                                                    style = MaterialTheme.typography.labelLarge,
+                                                    fontWeight = FontWeight.SemiBold,
+                                                    maxLines = 1,
+                                                )
+                                                Text(
+                                                    stringResource(
+                                                        R.string.home_custom_payload_size,
+                                                        "%.1f".format(cp.size / 1048576.0),
+                                                    ),
+                                                    style = MaterialTheme.typography.labelSmall,
+                                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                )
+                                            }
+                                            TextButton(onClick = onClearPayload) {
+                                                Text(stringResource(R.string.home_custom_payload_cancel))
+                                            }
+                                        }
                                     }
                                 }
                             }
                         }
-                        if (!rooted) {
+                        // Кнопка выбора только пока файл не выбран — карточка
+                        // уже показывает текущий, повторный выбор не нужен
+                        if (!rooted && state.customPayload == null) {
                             Spacer(Modifier.height(8.dp))
                             OutlinedButton(
                                 onClick = onPickPayload,

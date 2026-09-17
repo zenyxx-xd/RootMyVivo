@@ -25,6 +25,7 @@ data class Settings(
     val warnDismissed: Boolean = false,
     val softRebootConfirmDismissed: Boolean = false,
     val restartConfirmDismissed: Boolean = false,
+    val exploitStopConfirmDismissed: Boolean = false,
     val bootRestore: Boolean = true,
     /** Автопоиск обновлений приложения после каждого запуска */
     val autoUpdateCheck: Boolean = true,
@@ -47,6 +48,7 @@ class Prefs(context: Context) {
         warnDismissed = sp.getBoolean(KEY_WARN_DISMISSED, false),
         softRebootConfirmDismissed = sp.getBoolean(KEY_SR_CONFIRM, false),
         restartConfirmDismissed = sp.getBoolean(KEY_RESTART_CONFIRM, false),
+        exploitStopConfirmDismissed = sp.getBoolean(KEY_STOP_CONFIRM, false),
         bootRestore = sp.getBoolean(KEY_BOOT_RESTORE, true),
         autoUpdateCheck = sp.getBoolean(KEY_AUTO_UPDATE, true),
     )
@@ -61,6 +63,7 @@ class Prefs(context: Context) {
             .putBoolean(KEY_WARN_DISMISSED, s.warnDismissed)
             .putBoolean(KEY_SR_CONFIRM, s.softRebootConfirmDismissed)
             .putBoolean(KEY_RESTART_CONFIRM, s.restartConfirmDismissed)
+            .putBoolean(KEY_STOP_CONFIRM, s.exploitStopConfirmDismissed)
             .putBoolean(KEY_BOOT_RESTORE, s.bootRestore)
             .putBoolean(KEY_AUTO_UPDATE, s.autoUpdateCheck)
             .apply()
@@ -164,6 +167,7 @@ class Prefs(context: Context) {
         const val KEY_WARN_DISMISSED = "warnDismissed"
         const val KEY_SR_CONFIRM = "softRebootConfirmDismissed"
         const val KEY_RESTART_CONFIRM = "restartConfirmDismissed"
+        const val KEY_STOP_CONFIRM = "exploitStopConfirmDismissed"
         const val KEY_ROOT_DONE = "firstRootDone"
         const val KEY_SR_PENDING = "softRebootPending"
         const val KEY_ROOT_BOOT_ID = "rootBootId"

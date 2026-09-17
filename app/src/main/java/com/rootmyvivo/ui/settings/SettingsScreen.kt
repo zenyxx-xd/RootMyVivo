@@ -16,6 +16,7 @@ import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
 import androidx.compose.material.icons.rounded.BrightnessAuto
 import androidx.compose.material.icons.rounded.BugReport
 import androidx.compose.material.icons.rounded.Check
+import androidx.compose.material.icons.rounded.CleaningServices
 import androidx.compose.material.icons.rounded.Info
 import androidx.compose.material.icons.rounded.Language
 import androidx.compose.material.icons.rounded.Palette
@@ -51,6 +52,7 @@ import com.rootmyvivo.ui.common.SettingsGroup
 import com.rootmyvivo.ui.common.SettingsRow
 import com.rootmyvivo.ui.common.TrailingValue
 import com.rootmyvivo.vm.MainViewModel
+import com.rootmyvivo.vm.RootState
 import com.rootmyvivo.vm.UiState
 
 @Composable
@@ -142,6 +144,17 @@ fun SettingsScreen(
                 onClick = onDevOpen,
                 trailing = { Chevron() },
             )
+            // Зачистка временных su-файлов — только при активном руте;
+            // внутри гейт «ksud реально отвечает» в RootTraces
+            if (state.rootState == RootState.ROOTED) {
+                SettingsDivider()
+                SettingsRow(
+                    title = stringResource(R.string.settings_clean_traces),
+                    description = stringResource(R.string.settings_clean_traces_desc),
+                    icon = Icons.Rounded.CleaningServices,
+                    onClick = vm::cleanRootTraces,
+                )
+            }
         }
 
         // ── О приложении ──

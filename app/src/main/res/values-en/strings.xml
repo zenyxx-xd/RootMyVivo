@@ -273,10 +273,22 @@
     <string name="settings_predictive_back_desc">The window shrinks along with the back swipe</string>
     <string name="other_demo_run">Exploit demonstration</string>
     <string name="settings_root">Root</string>
-    <string name="home_pick_payload">Choose payload.so</string>
+    <string name="home_pick_payload">Choose custom .so</string>
     <string name="home_custom_payload_active">Custom: %1$s</string>
-    <string name="home_custom_payload_size">%1$s MB · will run as is</string>
+    <string name="home_custom_payload_size">%1$s MB</string>
     <string name="log_custom_payload">Custom payload: %1$s (no catalog)</string>
     <string name="log_custom_selected">Selected file: %1$s</string>
     <string name="log_custom_copy_failed">Failed to read the selected file</string>
+    <string name="home_custom_payload_selected">Custom exploit selected</string>
+    <string name="home_custom_payload_cancel">Cancel</string>
+    <string name="home_stop_exploit">Stop exploit</string>
+    <string name="home_stop_title">Stop the exploit?</string>
+    <string name="home_stop_text">The exploit will be force-terminated on the device and root will not be obtained. You can start it again at any time.</string>
+    <string name="home_stop_go">Stop</string>
+    <string name="settings_clean_traces">Clean root traces</string>
+    <string name="settings_clean_traces_desc">Remove temporary su files (only when KernelSU is running)</string>
+    <string name="log_traces_cleaned">Temporary su files removed</string>
+    <string name="log_traces_no_ksud">KernelSU not responding — cleanup skipped</string>
+    <string name="log_traces_failed">Failed to remove temporary files</string>
+    <string name="log_custom_not_so">Selected file is not a .so library — cannot run</string>
 </resources>
