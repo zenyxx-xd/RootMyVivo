@@ -117,15 +117,18 @@ fun SupportedDevicesScreen(
                                 (i.marketName.isNotEmpty() && d.names.any { it.equals(i.marketName, true) })
                         }
                     }
-                    val kernelsTotal = cat.devices.sumOf { cat.kernelsOf(it).size }
+                    // Показываем только тела с живой сборкой: полностью
+                    // отключённые модели не показываем вовсе
+                    val shown = cat.devices.filter { cat.isSupported(it) }
+                    val kernelsTotal = shown.sumOf { cat.kernelsOf(it).size }
                     Text(
-                        stringResource(R.string.supported_count, cat.devices.size, kernelsTotal),
+                        stringResource(R.string.supported_count, shown.size, kernelsTotal),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(start = 12.dp),
                     )
                     // карточки появляются каскадом, как в остальном приложении
-                    cat.devices.forEachIndexed { i, device ->
+                    shown.forEachIndexed { i, device ->
                         var visible by remember { mutableStateOf(false) }
                         LaunchedEffect(Unit) {
                             kotlinx.coroutines.delay((i * 40L).coerceAtMost(400L))
@@ -161,7 +164,6 @@ private fun DeviceRow(
     mine: Boolean,
     currentBuild: String?,
 ) {
-    val supported = kernels.any { it.build.ready }
     Surface(
         modifier = Modifier.fillMaxWidth(),
         shape = MaterialTheme.shapes.large,
@@ -179,14 +181,11 @@ private fun DeviceRow(
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
+                // карточка показывается только для живых тел — иконка всегда «ок»
                 Icon(
-                    if (supported) Icons.Rounded.CheckCircle else Icons.Rounded.Cancel,
+                    Icons.Rounded.CheckCircle,
                     null,
-                    tint = if (supported) {
-                        MaterialTheme.colorScheme.primary
-                    } else {
-                        MaterialTheme.colorScheme.error
-                    },
+                    tint = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.size(20.dp),
                 )
                 Text(
@@ -226,13 +225,6 @@ private fun DeviceRow(
                         current = dk.build.id == currentBuild,
                     )
                 }
-            }
-            if (!supported) {
-                Text(
-                    stringResource(R.string.supported_disabled),
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.error,
-                )
             }
         }
     }

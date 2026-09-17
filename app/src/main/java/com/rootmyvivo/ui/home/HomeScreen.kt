@@ -221,9 +221,51 @@ fun HomeScreen(
                     warnDialog = true
                 }
             },
-            onPickPayload = { pickPayload.launch(arrayOf("*/*")) },
             onClearPayload = vm::clearCustomPayload,
         )
+        // Выбор кастомного .so — под главной карточкой рута. При полученном
+        // руте не показываем; при выбранном файле тоже (карточка внутри
+        // показывает текущий). Если телефон официально не поддерживается —
+        // залитая кнопка: путь к руту единственный, прятать его не за чем
+        AnimatedVisibility(
+            visible = state.rootState != RootState.ROOTED &&
+                state.rootState != RootState.CHECKING &&
+                state.customPayload == null,
+            enter = expandVertically(tween(260)) + fadeIn(tween(260)),
+            exit = shrinkVertically(tween(200)) + fadeOut(tween(200)),
+        ) {
+            val filled = state.catalogState == CatalogState.READY && state.payload == null
+            AnimatedContent(
+                targetState = filled,
+                transitionSpec = { fadeIn(tween(200)) togetherWith fadeOut(tween(150)) },
+                label = "pickStyle",
+            ) { isFilled ->
+                val onClick = { pickPayload.launch(arrayOf("*/*")) }
+                if (isFilled) {
+                    Button(
+                        onClick = onClick,
+                        enabled = !state.flowRunning,
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = MaterialTheme.shapes.large,
+                    ) {
+                        Icon(Icons.Rounded.FolderOpen, null, modifier = Modifier.size(16.dp))
+                        Spacer(Modifier.width(6.dp))
+                        Text(stringResource(R.string.home_pick_payload), maxLines = 1)
+                    }
+                } else {
+                    OutlinedButton(
+                        onClick = onClick,
+                        enabled = !state.flowRunning,
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = MaterialTheme.shapes.large,
+                    ) {
+                        Icon(Icons.Rounded.FolderOpen, null, modifier = Modifier.size(16.dp))
+                        Spacer(Modifier.width(6.dp))
+                        Text(stringResource(R.string.home_pick_payload), maxLines = 1)
+                    }
+                }
+            }
+        }
         // Принудительная остановка во время выполнения — под главным статусом.
         // Подтверждение можно отключить чекером в диалоге
         if (state.flowRunning) {
@@ -444,7 +486,6 @@ private fun Header() {
 private fun HeroCard(
     state: UiState,
     onRoot: () -> Unit,
-    onPickPayload: () -> Unit,
     onClearPayload: () -> Unit,
 ) {
     val rooted = state.rootState == RootState.ROOTED
@@ -601,28 +642,9 @@ private fun HeroCard(
                                 }
                             }
                         }
-                        // Кнопка выбора только пока файл не выбран — карточка
-                        // уже показывает текущий. Появление/исчезновение
-                        // анимировано в обе стороны (отступ — padding'ом кнопки,
-                        // см. карточку выше)
-                        AnimatedVisibility(
-                            visible = !rooted && state.customPayload == null,
-                            enter = expandVertically(tween(260)) + fadeIn(tween(260)),
-                            exit = shrinkVertically(tween(200)) + fadeOut(tween(200)),
-                        ) {
-                            OutlinedButton(
-                                onClick = onPickPayload,
-                                enabled = !state.flowRunning,
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(top = 8.dp),
-                                shape = MaterialTheme.shapes.large,
-                            ) {
-                                Icon(Icons.Rounded.FolderOpen, null, modifier = Modifier.size(16.dp))
-                                Spacer(Modifier.width(6.dp))
-                                Text(stringResource(R.string.home_pick_payload), maxLines = 1)
-                            }
-                        }
+                        // Кнопка выбора переехала под карточку (см. HomeScreen):
+                        // там она заметнее и может быть залита, когда телефон
+                        // официально не поддерживается
                         if (transportOk) {
                             Spacer(Modifier.height(10.dp))
                             Row(
