@@ -263,6 +263,8 @@
     <string name="supported_title">Поддерживаемые устройства</string>
     <string name="supported_count">%1$d устройств · %2$d ядер</string>
     <string name="supported_your">Ваше устройство</string>
+    <string name="supported_kernels_caption">ЯДРА</string>
+    <string name="supported_temporarily_disabled">Устройство временно отключено</string>
     <string name="update_none_found">Обновлений нет</string>
     <string name="link_open_failed">Не удалось открыть ссылку</string>
     <string name="about_title">О приложении</string>

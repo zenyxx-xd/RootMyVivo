@@ -106,13 +106,14 @@ fun shortVersion(s: String): String =
     Regex("""^\d+\.\d+\.\d+""").find(s)?.value ?: ""
 
 /**
- * Метка сборки для UI: «6.6.89-b57af» — версия + первые 5 символов git-хэша
- * (не полная GKI-строка и не голая версия). Без git-суффикса — версия как есть.
+ * Метка сборки для UI: «6.6.89-gb57a» — версия, «-g» и первые 4 символа
+ * git-хэша (5 знаков после дефиса; полная GKI-строка не нужна).
+ * Без git-суффикса — версия как есть.
  */
 fun kernelTag(s: String): String {
     val ver = shortVersion(s)
     val hex = Regex("""-g([0-9a-f]{5,})""").find(s)?.groupValues?.get(1)
-    return if (ver.isNotEmpty() && hex != null) "$ver-${hex.take(5)}" else ver.ifEmpty { s }
+    return if (ver.isNotEmpty() && hex != null) "$ver-g${hex.take(4)}" else ver.ifEmpty { s }
 }
 
 /**

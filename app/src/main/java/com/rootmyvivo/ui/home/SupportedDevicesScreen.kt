@@ -16,14 +16,12 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
-import androidx.compose.material.icons.rounded.Cancel
-import androidx.compose.material.icons.rounded.CheckCircle
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
@@ -55,10 +53,11 @@ import com.rootmyvivo.data.PayloadCatalog
 import com.rootmyvivo.vm.UiState
 
 /**
- * Каталог v5: карточка = физическое тело («iQOO Neo 11 • V2520A»), внутри —
- * ВСЕ известные сборки ядра чипами вида «6.6.89-1f718»: живые обычным,
- * мёртвые — зачёркнутым. Разные сборки одного корпуса не дробятся по
- * карточкам и не режутся многоточием: чипы переносятся строкой ниже.
+ * Каталог v5: карточка = физическое тело («iQOO Neo 11 • V2520A»). Тела с
+ * живой сборкой показывают список ядер чипами «6.6.89-1f718» (версия +
+ * git-хэш, переносятся строкой ниже, не обрезаются). Тела вообще без ядер —
+ * «временно отключено». Тела, у которых ядра есть, но все мёртвые, не
+ * показываем.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -117,9 +116,11 @@ fun SupportedDevicesScreen(
                                 (i.marketName.isNotEmpty() && d.names.any { it.equals(i.marketName, true) })
                         }
                     }
-                    // Показываем только тела с живой сборкой: полностью
-                    // отключённые модели не показываем вовсе
-                    val shown = cat.devices.filter { cat.isSupported(it) }
+                    // Показываем: живые тела и глобально отключённые (без ядер);
+                    // тело со списком только мёртвых сборок не показываем
+                    val shown = cat.devices.filter {
+                        cat.kernelsOf(it).isEmpty() || cat.isSupported(it)
+                    }
                     val kernelsTotal = shown.sumOf { cat.kernelsOf(it).size }
                     Text(
                         stringResource(R.string.supported_count, shown.size, kernelsTotal),
@@ -156,6 +157,10 @@ fun SupportedDevicesScreen(
     }
 }
 
+/**
+ * Карточка тела без иконок: заголовок «нейм • код» + бейдж, разделитель,
+ * блок ядер с подписью. Пустое по ядрам тело — «временно отключено».
+ */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun DeviceRow(
@@ -173,28 +178,16 @@ private fun DeviceRow(
             MaterialTheme.colorScheme.surfaceContainerLow
         },
     ) {
-        Column(
-            Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
+        Column(Modifier.padding(horizontal = 18.dp, vertical = 16.dp)) {
             Row(
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                // карточка показывается только для живых тел — иконка всегда «ок»
-                Icon(
-                    Icons.Rounded.CheckCircle,
-                    null,
-                    tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(20.dp),
-                )
                 Text(
                     device.title,
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = if (mine) FontWeight.Bold else FontWeight.Medium,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
                     color = if (mine) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
-                    // название не растягивает карточку: максимум 2 строки,
-                    // бейдж всегда виден рядом
                     modifier = Modifier.weight(1f, fill = false),
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
@@ -208,22 +201,41 @@ private fun DeviceRow(
                             stringResource(R.string.supported_your),
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onPrimary,
-                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 1.dp),
+                            modifier = Modifier.padding(horizontal = 7.dp, vertical = 2.dp),
                         )
                     }
                 }
             }
-            // Все ядра корпуса: переносятся, а не обрезаются
-            FlowRow(
-                horizontalArrangement = Arrangement.spacedBy(6.dp),
-                verticalArrangement = Arrangement.spacedBy(6.dp),
-            ) {
-                kernels.forEach { dk ->
-                    KernelChip(
-                        label = dk.build.label,
-                        ready = dk.build.ready,
-                        current = dk.build.id == currentBuild,
-                    )
+            HorizontalDivider(
+                modifier = Modifier.padding(top = 12.dp, bottom = 12.dp),
+                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f),
+            )
+            if (kernels.isEmpty()) {
+                Text(
+                    stringResource(R.string.supported_temporarily_disabled),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            } else {
+                Text(
+                    stringResource(R.string.supported_kernels_caption),
+                    style = MaterialTheme.typography.labelSmall,
+                    fontWeight = FontWeight.Medium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(bottom = 8.dp),
+                )
+                // Все ядра корпуса: переносятся, а не обрезаются
+                FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    verticalArrangement = Arrangement.spacedBy(6.dp),
+                ) {
+                    kernels.forEach { dk ->
+                        KernelChip(
+                            label = dk.build.label,
+                            ready = dk.build.ready,
+                            current = dk.build.id == currentBuild,
+                        )
+                    }
                 }
             }
         }
@@ -248,7 +260,7 @@ private fun KernelChip(label: String, ready: Boolean, current: Boolean) {
     ) {
         Text(
             label,
-            style = MaterialTheme.typography.labelSmall,
+            style = MaterialTheme.typography.labelMedium,
             fontFamily = FontFamily.Monospace,
             fontWeight = if (current) FontWeight.Bold else FontWeight.Normal,
             color = when {
@@ -258,7 +270,7 @@ private fun KernelChip(label: String, ready: Boolean, current: Boolean) {
             },
             textDecoration = if (ready) null else TextDecoration.LineThrough,
             maxLines = 1,
-            modifier = Modifier.padding(horizontal = 7.dp, vertical = 3.dp),
+            modifier = Modifier.padding(horizontal = 9.dp, vertical = 5.dp),
         )
     }
 }
