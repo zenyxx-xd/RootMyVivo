@@ -144,17 +144,16 @@ fun SettingsScreen(
                 onClick = onDevOpen,
                 trailing = { Chevron() },
             )
-            // Зачистка временных su-файлов — только при активном руте;
-            // внутри гейт «ksud реально отвечает» в RootTraces
-            if (state.rootState == RootState.ROOTED) {
-                SettingsDivider()
-                SettingsRow(
-                    title = stringResource(R.string.settings_clean_traces),
-                    description = stringResource(R.string.settings_clean_traces_desc),
-                    icon = Icons.Rounded.CleaningServices,
-                    onClick = vm::cleanRootTraces,
-                )
-            }
+            // Зачистка временных su-файлов: строка видна всегда, но без
+            // активного рута неактивна; внутри гейт «ksud отвечает» в RootTraces
+            SettingsDivider()
+            SettingsRow(
+                title = stringResource(R.string.settings_clean_traces),
+                description = stringResource(R.string.settings_clean_traces_desc),
+                icon = Icons.Rounded.CleaningServices,
+                enabled = state.rootState == RootState.ROOTED,
+                onClick = vm::cleanRootTraces,
+            )
         }
 
         // ── О приложении ──

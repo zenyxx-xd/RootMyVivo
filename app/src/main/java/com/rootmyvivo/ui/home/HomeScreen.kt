@@ -1,5 +1,7 @@
 package com.rootmyvivo.ui.home
 
+import android.content.Intent
+import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedContent
@@ -7,6 +9,7 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -46,6 +49,7 @@ import androidx.compose.material.icons.rounded.StopCircle
 import androidx.compose.material.icons.rounded.Usb
 import androidx.compose.material.icons.rounded.Verified
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
@@ -100,10 +104,36 @@ fun HomeScreen(
     // Диалог остановки эксплойта — анти-мисклик, чекер «не показывать» в нём
     var stopDialog by remember { mutableStateOf(false) }
     var stopDontShow by remember { mutableStateOf(false) }
-    // Системный файловый менеджер (SAF): выбор кастомного payload.so —
-    // без скачиваний, деплоится именно выбранный файл
+    // Системный файловый менеджер: выбор кастомного payload.so — без
+    // скачиваний, деплоится именно выбранный файл. Файловик vivo перехватывает
+    // ACTION_OPEN_DOCUMENT своим провайдером, поэтому если в системе есть
+    // AOSP DocumentsUI — жёстко таргетим его пакетом; его нет — как есть
     val pickPayload = rememberLauncherForActivityResult(
-        ActivityResultContracts.OpenDocument(),
+        object : androidx.activity.result.contract.ActivityResultContract<Array<String>, Uri?>() {
+            override fun createIntent(context: android.content.Context, input: Array<String>): Intent {
+                val base = ActivityResultContracts.OpenDocument().createIntent(context, input)
+                val pm = context.packageManager
+                val hasAosp = runCatching {
+                    pm.getPackageInfo("com.android.documentsui", 0) != null
+                }.getOrDefault(false)
+                if (hasAosp) {
+                    base.setPackage("com.android.documentsui")
+                    // пакет есть, но его обработчик может быть отключён —
+                    // тогда снимаем таргет и отдаём системный дефолт
+                    if (pm.resolveActivity(
+                            base,
+                            android.content.pm.PackageManager.MATCH_DEFAULT_ONLY,
+                        ) == null
+                    ) {
+                        base.setPackage(null)
+                    }
+                }
+                return base
+            }
+
+            override fun parseResult(resultCode: Int, intent: Intent?): Uri? =
+                if (resultCode != android.app.Activity.RESULT_OK) null else intent?.data
+        },
     ) { uri -> uri?.let(vm::onCustomPayloadPicked) }
     // Чекеры «больше не показывать» — локальные: фиксируются только кнопкой
     // действия. Отмена оставляет настройку нетронутой
@@ -524,12 +554,16 @@ private fun HeroCard(
                             exit = shrinkVertically(tween(200)) + fadeOut(tween(200)),
                         ) {
                             shownPayload?.let { cp ->
-                                Spacer(Modifier.height(10.dp))
+                                // Отступ — padding'ом самой карточки: контейнер
+                                // AnimatedVisibility кладёт детей в Box, и
+                                // отдельный Spacer внутрь высоты не добавил бы
                                 Surface(
                                     shape = MaterialTheme.shapes.large,
                                     color = Color.Transparent,
                                     border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
-                                    modifier = Modifier.fillMaxWidth(),
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(top = 10.dp),
                                 ) {
                                     Column(
                                         Modifier.padding(start = 16.dp, end = 8.dp, top = 12.dp, bottom = 4.dp),
@@ -585,13 +619,20 @@ private fun HeroCard(
                             }
                         }
                         // Кнопка выбора только пока файл не выбран — карточка
-                        // уже показывает текущий, повторный выбор не нужен
-                        if (!rooted && state.customPayload == null) {
-                            Spacer(Modifier.height(8.dp))
+                        // уже показывает текущий. Появление/исчезновение
+                        // анимировано в обе стороны (отступ — padding'ом кнопки,
+                        // см. карточку выше)
+                        AnimatedVisibility(
+                            visible = !rooted && state.customPayload == null,
+                            enter = expandVertically(tween(260)) + fadeIn(tween(260)),
+                            exit = shrinkVertically(tween(200)) + fadeOut(tween(200)),
+                        ) {
                             OutlinedButton(
                                 onClick = onPickPayload,
                                 enabled = !state.flowRunning,
-                                modifier = Modifier.fillMaxWidth(),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(top = 8.dp),
                                 shape = MaterialTheme.shapes.large,
                             ) {
                                 Icon(Icons.Rounded.FolderOpen, null, modifier = Modifier.size(16.dp))
@@ -634,28 +675,63 @@ private fun HeroCard(
 @Composable
 private fun RootButton(state: UiState, transportOk: Boolean, onRoot: () -> Unit) {
     val ready = state.payload != null || state.customPayload != null
+    val enabled = ready && transportOk && !state.flowRunning
+    val label = stringResource(
+        when {
+            state.customPayload != null -> R.string.action_root
+            state.catalogState == CatalogState.LOADING -> R.string.catalog_loading
+            state.catalogState == CatalogState.ERROR -> R.string.catalog_retry
+            !ready -> R.string.status_unsupported
+            else -> R.string.action_root
+        },
+    )
+    // Смена состояний («Получить рут» ↔ «Не поддерживается» ↔ загрузка
+    // каталога) всегда анимирована в обе стороны: текст едет с фейдом,
+    // цвет контейнера перетекает. Свои цвета отдаём и в disabled-пары,
+    // иначе Material сам выкрасит кнопку в серый без анимации
+    val container by animateColorAsState(
+        if (enabled) MaterialTheme.colorScheme.primary
+        else MaterialTheme.colorScheme.surfaceContainerHighest,
+        animationSpec = tween(220),
+        label = "rootBtnContainer",
+    )
+    val contentColor by animateColorAsState(
+        if (enabled) MaterialTheme.colorScheme.onPrimary
+        else MaterialTheme.colorScheme.onSurfaceVariant,
+        animationSpec = tween(220),
+        label = "rootBtnContent",
+    )
     Button(
         onClick = onRoot,
-        enabled = ready && transportOk && !state.flowRunning,
+        enabled = enabled,
         modifier = Modifier
             .fillMaxWidth()
             .height(62.dp),
         shape = MaterialTheme.shapes.extraLarge,
+        colors = ButtonDefaults.buttonColors(
+            containerColor = container,
+            contentColor = contentColor,
+            disabledContainerColor = container,
+            disabledContentColor = contentColor,
+        ),
     ) {
         Icon(Icons.Rounded.Bolt, null, modifier = Modifier.size(24.dp))
         Spacer(Modifier.width(10.dp))
-        Text(
-            when {
-                state.customPayload != null -> stringResource(R.string.action_root)
-                state.catalogState == CatalogState.LOADING ->
-                    stringResource(R.string.catalog_loading)
-                state.catalogState == CatalogState.ERROR ->
-                    stringResource(R.string.catalog_retry)
-                !ready -> stringResource(R.string.status_unsupported)
-                else -> stringResource(R.string.action_root)
+        AnimatedContent(
+            targetState = label,
+            transitionSpec = {
+                (
+                    fadeIn(tween(160)) +
+                        slideInVertically(tween(220), initialOffsetY = { it / 3 })
+                    ) togetherWith (
+                    fadeOut(tween(120)) +
+                        slideOutVertically(tween(120), targetOffsetY = { -it / 3 })
+                    )
             },
-            style = MaterialTheme.typography.titleMedium,
-        )
+            label = "rootBtnLabel",
+        ) { text ->
+            Text(text, style = MaterialTheme.typography.titleMedium)
+        }
     }
 }
 

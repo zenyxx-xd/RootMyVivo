@@ -39,6 +39,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.layout.onGloballyPositioned
@@ -113,6 +114,8 @@ fun SettingsRow(
     description: String? = null,
     selected: Boolean = false,
     isError: Boolean = false,
+    /** false — строка затемнена и не кликается (как неактивные кнопки) */
+    enabled: Boolean = true,
     onClick: (() -> Unit)? = null,
     trailing: (@Composable () -> Unit)? = null,
     below: (@Composable () -> Unit)? = null,
@@ -142,8 +145,9 @@ fun SettingsRow(
         Row(
             Modifier
                 .fillMaxWidth()
+                .alpha(if (enabled) 1f else 0.38f)
                 .then(
-                    if (onClick != null) {
+                    if (onClick != null && enabled) {
                         Modifier.clickable(
                             interactionSource = interaction,
                             indication = null,
