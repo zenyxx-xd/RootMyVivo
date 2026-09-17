@@ -250,7 +250,6 @@
     <string name="supported_title">支持的设备</string>
     <string name="supported_count">%1$d 台设备 · %2$d 个内核</string>
     <string name="supported_your">你的设备</string>
-    <string name="supported_kernels_caption">内核</string>
     <string name="supported_temporarily_disabled">设备已暂时停用</string>
     <string name="update_none_found">暂无更新</string>
     <string name="link_open_failed">无法打开链接</string>

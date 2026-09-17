@@ -16,10 +16,13 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
+import androidx.compose.material.icons.rounded.Cancel
+import androidx.compose.material.icons.rounded.CheckCircle
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -144,7 +147,8 @@ fun SupportedDevicesScreen(
                             DeviceRow(
                                 device = device,
                                 kernels = cat.kernelsOf(device),
-                                mine = myDevice?.id == device.id,
+                                sameBody = myDevice?.id == device.id,
+                                liveMine = state.payload?.device?.id == device.id,
                                 currentBuild =
                                     if (myDevice?.id == device.id) state.payload?.build?.id else null,
                             )
@@ -158,41 +162,55 @@ fun SupportedDevicesScreen(
 }
 
 /**
- * Карточка тела без иконок: заголовок «нейм • код» + бейдж, разделитель,
- * блок ядер с подписью. Пустое по ядрам тело — «временно отключено».
+ * Карточка тела: иконка статуса, заголовок «нейм • код», разделитель, чипы
+ * ядер. Акцент на карточке — только когда это тело пользователя И ядро
+ * реально поддерживается; при совпадении только модели остаётся плашка
+ * «ваше устройство». Тело без ядер — красный текст «временно отключено».
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun DeviceRow(
     device: CatalogDevice,
     kernels: List<DeviceKernel>,
-    mine: Boolean,
+    sameBody: Boolean,
+    liveMine: Boolean,
     currentBuild: String?,
 ) {
+    val supported = kernels.isNotEmpty()
     Surface(
         modifier = Modifier.fillMaxWidth(),
         shape = MaterialTheme.shapes.large,
-        color = if (mine) {
+        color = if (liveMine) {
             MaterialTheme.colorScheme.primaryContainer
         } else {
             MaterialTheme.colorScheme.surfaceContainerLow
         },
     ) {
-        Column(Modifier.padding(horizontal = 18.dp, vertical = 16.dp)) {
+        Column(Modifier.padding(horizontal = 16.dp, vertical = 14.dp)) {
             Row(
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
+                Icon(
+                    if (supported) Icons.Rounded.CheckCircle else Icons.Rounded.Cancel,
+                    null,
+                    tint = if (supported) {
+                        MaterialTheme.colorScheme.primary
+                    } else {
+                        MaterialTheme.colorScheme.error
+                    },
+                    modifier = Modifier.size(20.dp),
+                )
                 Text(
                     device.title,
                     style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold,
-                    color = if (mine) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
+                    fontWeight = if (liveMine) FontWeight.Bold else FontWeight.SemiBold,
+                    color = if (liveMine) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
                     modifier = Modifier.weight(1f, fill = false),
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
                 )
-                if (mine) {
+                if (sameBody) {
                     Surface(
                         shape = MaterialTheme.shapes.small,
                         color = MaterialTheme.colorScheme.primary,
@@ -214,16 +232,9 @@ private fun DeviceRow(
                 Text(
                     stringResource(R.string.supported_temporarily_disabled),
                     style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = MaterialTheme.colorScheme.error,
                 )
             } else {
-                Text(
-                    stringResource(R.string.supported_kernels_caption),
-                    style = MaterialTheme.typography.labelSmall,
-                    fontWeight = FontWeight.Medium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(bottom = 8.dp),
-                )
                 // Все ядра корпуса: переносятся, а не обрезаются
                 FlowRow(
                     horizontalArrangement = Arrangement.spacedBy(6.dp),
