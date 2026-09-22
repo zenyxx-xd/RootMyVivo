@@ -84,8 +84,10 @@ data class UiState(
     val updateDialogOpen: Boolean = false,
     /** Скачивание обновления: файл + прогресс [0..1] или null при неизвестном размере */
     val updateDownload: UpdateDownloadState? = null,
-    /** Скачивание завершено, открыт системный установщик */
+    /** Плашка-обновление показана диалогом или компактно */
     val updateInstalling: Boolean = false,
+    /** Плашка первого запуска с просьбой подписаться на Telegram-канал */
+    val tgBannerVisible: Boolean = false,
     // транспорт и root
     val transport: TransportState = TransportState.None,
     val rootState: RootState = RootState.UNKNOWN,

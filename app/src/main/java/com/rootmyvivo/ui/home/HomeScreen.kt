@@ -8,6 +8,7 @@ import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -16,7 +17,9 @@ import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
@@ -29,6 +32,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -39,11 +43,13 @@ import androidx.compose.material.icons.rounded.CloudDownload
 import androidx.compose.material.icons.rounded.Code
 import androidx.compose.material.icons.rounded.Description
 import androidx.compose.material.icons.rounded.FolderOpen
+import androidx.compose.material.icons.rounded.HelpOutline
 import androidx.compose.material.icons.rounded.LinkOff
 import androidx.compose.material.icons.rounded.PhoneAndroid
 import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material.icons.rounded.SearchOff
 import androidx.compose.material.icons.rounded.Security
+import androidx.compose.material.icons.rounded.Send
 import androidx.compose.material.icons.rounded.StopCircle
 import androidx.compose.material.icons.rounded.Usb
 import androidx.compose.material.icons.rounded.Verified
@@ -67,8 +73,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -97,6 +105,7 @@ fun HomeScreen(
     onRootStarted: () -> Unit,
     onOpenLastLog: () -> Unit = {},
     onOpenSupported: () -> Unit = {},
+    onOpenFaq: () -> Unit = {},
 ) {
     var ksuDialog by remember { mutableStateOf(false) }
     var warnDialog by remember { mutableStateOf(false) }
@@ -211,6 +220,17 @@ fun HomeScreen(
     ) {
         Spacer(Modifier.height(20.dp))
         Header()
+        // Плашка первого запуска: подписка на Telegram-канал автора.
+        // Показывается один раз — «Пропустить» и «Перейти» гасят её навсегда
+        AnimatedVisibility(
+            visible = state.tgBannerVisible,
+            enter = expandVertically(
+                animationSpec = tween(380, easing = androidx.compose.animation.core.FastOutSlowInEasing),
+            ) + fadeIn(tween(300)),
+            exit = shrinkVertically(tween(240)) + fadeOut(tween(200)),
+        ) {
+            TelegramPromoCard(vm)
+        }
         HeroCard(
             state,
             onRoot = {
@@ -296,8 +316,14 @@ fun HomeScreen(
                 TransportCard(state, onPermission = vm::requestShizukuPermission, onOpenShizuku = vm::openShizukuApp)
             else -> {}
         }
-        StatusGroup(state, onKsuClick = { ksuDialog = true }, onOpenLastLog = onOpenLastLog, onOpenSupported = onOpenSupported)
-        DeviceGroup(state)
+        // Группа 1: рут-менеджер + пейлоад + характеристики устройства
+        InfoGroup(state, onKsuClick = { ksuDialog = true })
+        // Группа 2: история запусков, поддерживаемые устройства, FAQ
+        NavGroup(
+            onOpenLastLog = onOpenLastLog,
+            onOpenSupported = onOpenSupported,
+            onOpenFaq = onOpenFaq,
+        )
         Spacer(Modifier.height(28.dp))
     }
 
@@ -449,6 +475,9 @@ private fun HeroCard(
 ) {
     val rooted = state.rootState == RootState.ROOTED
     val transportOk = state.transport == TransportState.Adb || state.transport == TransportState.Shizuku
+    // Тёмная тема определяется по реальной яркости фона: NeoTheme выбирает
+    // палитру настройкой, а не только системным флагом
+    val isDark = MaterialTheme.colorScheme.background.luminance() < 0.5f
     Surface(
         modifier = Modifier.fillMaxWidth(),
         shape = MaterialTheme.shapes.extraLarge,
@@ -633,6 +662,8 @@ private fun HeroCard(
                                         Text(stringResource(R.string.home_pick_payload), maxLines = 1)
                                     }
                                 } else {
+                                    // В тёмной теме — усиленный контрастный контур,
+                                    // в светлой — обычный Material-контур
                                     OutlinedButton(
                                         onClick = onPickPayload,
                                         enabled = !state.flowRunning,
@@ -640,6 +671,11 @@ private fun HeroCard(
                                             .fillMaxWidth()
                                             .padding(top = 10.dp),
                                         shape = MaterialTheme.shapes.large,
+                                        border = if (isDark) {
+                                            BorderStroke(1.5.dp, MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f))
+                                        } else {
+                                            BorderStroke(1.dp, MaterialTheme.colorScheme.outline)
+                                        },
                                     ) {
                                         Icon(Icons.Rounded.FolderOpen, null, modifier = Modifier.size(16.dp))
                                         Spacer(Modifier.width(6.dp))
@@ -905,16 +941,110 @@ private fun TransportCard(
     }
 }
 
-// ─────────── Статус: транспорт + пейлоад + рут-менеджер (компактно) ───────────
+// ─────────── Плашка первого запуска: Telegram-канал ───────────
 
 @Composable
-private fun StatusGroup(
-    state: UiState,
-    onKsuClick: () -> Unit,
-    onOpenLastLog: () -> Unit,
-    onOpenSupported: () -> Unit,
-) {
+private fun TelegramPromoCard(vm: MainViewModel) {
+    var shown by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) { shown = true }
+    // Иконка «выпрыгивает» пружиной вслед за разворотом карточки
+    val iconScale by animateFloatAsState(
+        targetValue = if (shown) 1f else 0.2f,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Spring.StiffnessLow,
+        ),
+        label = "tgIcon",
+    )
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = MaterialTheme.shapes.extraLarge,
+        color = Color.Transparent,
+    ) {
+        Column(
+            Modifier
+                .background(
+                    androidx.compose.ui.graphics.Brush.horizontalGradient(
+                        listOf(
+                            MaterialTheme.colorScheme.primaryContainer,
+                            MaterialTheme.colorScheme.tertiaryContainer,
+                        ),
+                    ),
+                )
+                .padding(20.dp),
+        ) {
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(14.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Box(
+                    Modifier
+                        .size(52.dp)
+                        .scale(iconScale)
+                        .clip(CircleShape)
+                        .background(MaterialTheme.colorScheme.primary),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(
+                        Icons.Rounded.Send, null,
+                        tint = MaterialTheme.colorScheme.onPrimary,
+                        modifier = Modifier.size(26.dp),
+                    )
+                }
+                Column(Modifier.weight(1f)) {
+                    Text(
+                        stringResource(R.string.tg_promo_title),
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                    )
+                    Text(
+                        stringResource(R.string.tg_promo_text),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+            Spacer(Modifier.height(14.dp))
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                TextButton(
+                    onClick = vm::dismissTgBanner,
+                    modifier = Modifier.weight(1f),
+                ) {
+                    Text(stringResource(R.string.tg_promo_skip))
+                }
+                Button(
+                    onClick = vm::openTelegramChannel,
+                    modifier = Modifier.weight(1f),
+                ) {
+                    Text(stringResource(R.string.tg_promo_go))
+                }
+            }
+        }
+    }
+}
+
+// ─────────── Группа 1: менеджер + пейлоад + устройство ───────────
+
+@Composable
+private fun InfoGroup(state: UiState, onKsuClick: () -> Unit) {
     SettingsGroup {
+        // Рут-менеджер
+        SettingsRow(
+            title = stringResource(R.string.ksu_title),
+            description = state.selectedKsu.displayName,
+            icon = Icons.Rounded.Security,
+            onClick = onKsuClick,
+            trailing = {
+                Icon(
+                    Icons.AutoMirrored.Rounded.KeyboardArrowRight, null,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            },
+        )
+        SettingsDivider()
         // Пейлоад
         SettingsRow(
             title = stringResource(R.string.status_payload),
@@ -935,61 +1065,14 @@ private fun StatusGroup(
                 else -> Icons.Rounded.Search
             },
         )
-        SettingsDivider()
-        // Поддерживаемые устройства — карточка всех пейлоадов каталога
-        SettingsRow(
-            title = stringResource(R.string.home_supported_devices),
-            icon = Icons.Rounded.PhoneAndroid,
-            onClick = onOpenSupported,
-            trailing = {
-                Icon(
-                    Icons.AutoMirrored.Rounded.KeyboardArrowRight, null,
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            },
-        )
-        SettingsDivider()
-        // Рут-менеджер
-        SettingsRow(
-            title = stringResource(R.string.ksu_title),
-            description = state.selectedKsu.displayName,
-            icon = Icons.Rounded.Security,
-            onClick = onKsuClick,
-            trailing = {
-                Icon(
-                    Icons.AutoMirrored.Rounded.KeyboardArrowRight, null,
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            },
-        )
-        // История запусков — всегда видима: на свежей установке это
-        // единственная точка входа к логам, пустая история не повод её прятать
-        SettingsDivider()
-        SettingsRow(
-            title = stringResource(R.string.home_lastlog),
-            icon = Icons.Rounded.Description,
-            onClick = onOpenLastLog,
-            trailing = {
-                Icon(
-                    Icons.AutoMirrored.Rounded.KeyboardArrowRight, null,
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            },
-        )
-    }
-}
-
-// ─────────── Устройство ───────────
-
-@Composable
-private fun DeviceGroup(state: UiState) {
-    SettingsGroup(title = stringResource(R.string.device_title)) {
+        // Характеристики устройства — переехали сюда отдельным блоком
         val d = state.device
         if (d == null) {
             Row(Modifier.padding(16.dp)) {
                 LinearProgressIndicator(Modifier.fillMaxWidth())
             }
         } else {
+            SettingsDivider(indentIcon = false)
             SettingsRow(
                 title = stringResource(R.string.device_model),
                 // Маркет-нейм из каталога + PD-код: «vivo X200 Pro (PD2405)».
@@ -1022,6 +1105,56 @@ private fun DeviceGroup(state: UiState) {
                 trailing = { TrailingValue(d.soc, maxLines = 3) },
             )
         }
+    }
+}
+
+// ─────────── Группа 2: навигация (история / устройства / FAQ) ───────────
+
+@Composable
+private fun NavGroup(
+    onOpenLastLog: () -> Unit,
+    onOpenSupported: () -> Unit,
+    onOpenFaq: () -> Unit,
+) {
+    SettingsGroup {
+        // История запусков — всегда видима: на свежей установке это
+        // единственная точка входа к логам, пустая история не повод её прятать
+        SettingsRow(
+            title = stringResource(R.string.home_lastlog),
+            icon = Icons.Rounded.Description,
+            onClick = onOpenLastLog,
+            trailing = {
+                Icon(
+                    Icons.AutoMirrored.Rounded.KeyboardArrowRight, null,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            },
+        )
+        SettingsDivider()
+        SettingsRow(
+            title = stringResource(R.string.home_supported_devices),
+            icon = Icons.Rounded.PhoneAndroid,
+            onClick = onOpenSupported,
+            trailing = {
+                Icon(
+                    Icons.AutoMirrored.Rounded.KeyboardArrowRight, null,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            },
+        )
+        SettingsDivider()
+        SettingsRow(
+            title = stringResource(R.string.home_faq),
+            description = stringResource(R.string.home_faq_desc),
+            icon = Icons.Rounded.HelpOutline,
+            onClick = onOpenFaq,
+            trailing = {
+                Icon(
+                    Icons.AutoMirrored.Rounded.KeyboardArrowRight, null,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            },
+        )
     }
 }
 

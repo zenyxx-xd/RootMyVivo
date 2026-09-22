@@ -158,6 +158,13 @@ class Prefs(context: Context) {
             sp.edit().putBoolean(KEY_DEV_UNLOCKED, value).apply()
         }
 
+    /** Плашка «подпишись на Telegram» скрыта пользователем навсегда. */
+    var tgPromoDismissed: Boolean
+        get() = sp.getBoolean(KEY_TG_PROMO, false)
+        set(value) {
+            sp.edit().putBoolean(KEY_TG_PROMO, value).apply()
+        }
+
     private companion object {
         const val KEY_LANGUAGE = "language"
         const val KEY_THEME = "theme"
@@ -177,6 +184,7 @@ class Prefs(context: Context) {
         const val KEY_BOOT_RESTORE_AT = "bootRestoreLastAttempt"
         const val KEY_LOADED_VARIANT = "loadedModuleVariant"
         const val KEY_DEV_UNLOCKED = "devUnlocked"
+        const val KEY_TG_PROMO = "tgPromoDismissed"
         const val KEY_AUTO_UPDATE = "autoUpdateCheck"
     }
 }

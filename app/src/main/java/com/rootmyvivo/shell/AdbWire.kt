@@ -215,9 +215,13 @@ object AdbWire {
         return parseV2(acc.toByteArray())
     }
 
-    /** Передать файл: exec:cat > path, сырые чанки, CLSE = EOF. Проверяет размер. */
+    /**
+     * Передать файл: exec:cat > path, сырые чанки, CLSE = EOF. Проверяет
+     * размер. null — успех; иначе — текст причины для лога процесса
+     * (обрыв потока, закрытие сессии, несовпадение размера).
+     */
     @Synchronized
-    fun deploy(ctx: Context, localPath: String, remotePath: String): Boolean {
+    fun deploy(ctx: Context, localPath: String, remotePath: String): String? {
         return try {
             connect(ctx)
             val data = File(localPath).readBytes()
@@ -227,10 +231,10 @@ object AdbWire {
             send(OPEN, local, 0, "exec:cat > $remotePath\u0000".toByteArray())
             var remote = -1
             while (remote < 0) {
-                val p = recv(10_000) ?: return false
+                val p = recv(10_000) ?: return "ADB: adbd закрыл соединение до открытия сессии"
                 when (p.cmd) {
                     OKAY -> if (p.a1 == local || p.a0 == local) remote = if (p.a1 == local) p.a0 else p.a1
-                    CLSE -> if (p.a1 == local || p.a0 == local) return false else send(CLSE, p.a1, p.a0)
+                    CLSE -> if (p.a1 == local || p.a0 == local) return ctx.getString(com.rootmyvivo.R.string.deploy_err_adb_closed) else send(CLSE, p.a1, p.a0)
                 }
             }
 
@@ -240,10 +244,11 @@ object AdbWire {
                 send(WRTE, local, remote, data.copyOfRange(off, off + len))
                 off += len
                 while (true) {
-                    val p = recv(10_000) ?: return false
+                    val p = recv(10_000)
+                        ?: return "ADB: обрыв потока на $off/${data.size} байт"
                     if (p.cmd == OKAY) break
                     if (p.cmd == WRTE) send(OKAY, local, remote)
-                    if (p.cmd == CLSE) return false
+                    if (p.cmd == CLSE) return "ADB: сессия закрыта на $off/${data.size} байт"
                 }
             }
             send(CLSE, local, remote) // EOF
@@ -254,11 +259,15 @@ object AdbWire {
             }
 
             val (code, out) = shell(ctx, "wc -c < $remotePath")
-            code == 0 && out.trim() == data.size.toString()
+            if (code != 0 || out.trim() != data.size.toString()) {
+                ctx.getString(com.rootmyvivo.R.string.deploy_err_adb_size)
+            } else {
+                null
+            }
         } catch (e: Exception) {
             Log.e(TAG, "deploy failed", e)
             close()
-            false
+            "ADB: ${e.message ?: "wire error"}"
         }
     }
 

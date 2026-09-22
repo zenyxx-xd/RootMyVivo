@@ -150,23 +150,28 @@ object Transport {
         -1 to (e.message ?: "shizuku error")
     }
 
-    private fun deployShizuku(ctx: Context, localPath: String, remotePath: String): Boolean {
+    private fun deployShizuku(
+        ctx: Context,
+        localPath: String,
+        remotePath: String,
+    ): Pair<Boolean, String> {
+        val svc = shizukuService ?: bindShizukuService(ctx)?.let { shizukuService }
+            ?: return false to ctx.getString(com.rootmyvivo.R.string.deploy_err_shizuku_bind)
         return try {
-            val svc = shizukuService ?: bindShizukuService(ctx)?.let { shizukuService } ?: return false
             val data = File(localPath).readBytes()
             var offset = 0L
             while (offset < data.size) {
                 val len = minOf(SHIZUKU_CHUNK, (data.size - offset).toInt()).toLong()
                 if (!svc.writeFileChunk(remotePath, offset, data.copyOfRange(offset.toInt(), (offset + len).toInt()))) {
-                    return false
+                    return false to "Shizuku writeFileChunk failed at offset $offset/${data.size}"
                 }
                 offset += len
             }
             svc.exec("chmod 644 $remotePath")
-            true
+            true to ""
         } catch (e: Exception) {
             Log.e(TAG, "shizuku deploy failed", e)
-            false
+            false to "Shizuku: ${e.message ?: "binder error"}"
         }
     }
 
@@ -251,13 +256,21 @@ object Transport {
             }
         }
 
-    /** Передать файл в /data/local/tmp по политике транспорта. */
-    suspend fun deploy(ctx: Context, localPath: String, remotePath: String): Boolean =
+    /**
+     * Передать файл в /data/local/tmp по политике транспорта.
+     * (успех, причина-текст): false — вторая строка объясняет что именно
+     * не так (исключение канала, обрыв передачи, битый сервис) — это уходит
+     * в лог процесса вместо безликого «не удалось задеплоить».
+     */
+    suspend fun deploy(ctx: Context, localPath: String, remotePath: String): Pair<Boolean, String> =
         withContext(Dispatchers.IO) {
             when {
-                prefs.firstRootDone && adbAlive(ctx) -> AdbWire.deploy(ctx, localPath, remotePath)
+                prefs.firstRootDone && adbAlive(ctx) -> {
+                    val err = AdbWire.deploy(ctx, localPath, remotePath)
+                    if (err == null) true to "" else false to err
+                }
                 shizukuAlive && shizukuPermissionGranted() -> deployShizuku(ctx, localPath, remotePath)
-                else -> false
+                else -> false to ctx.getString(com.rootmyvivo.R.string.deploy_err_no_transport)
             }
         }
 
@@ -356,10 +369,10 @@ object Transport {
         val tmp = File(ctx.filesDir, "selftest.bin")
         val payload = ByteArray(64 * 1024) { (it % 251).toByte() }
         tmp.writeBytes(payload)
-        val ok = AdbWire.deploy(ctx, tmp.absolutePath, "/data/local/tmp/neo_selftest.bin")
+        val deployErr = AdbWire.deploy(ctx, tmp.absolutePath, "/data/local/tmp/neo_selftest.bin")
         val (_, md5) = AdbWire.shell(ctx, "md5sum /data/local/tmp/neo_selftest.bin | cut -d' ' -f1; rm -f /data/local/tmp/neo_selftest.bin")
         val local = java.security.MessageDigest.getInstance("MD5").digest(payload).joinToString("") { "%02x".format(it) }
-        log += "[adb] deploy 64KB: $ok, md5 ok: ${md5.trim() == local}"
+        log += "[adb] deploy 64KB: ${deployErr ?: "ok"}, md5 ok: ${md5.trim() == local}"
         tmp.delete()
         log.forEach { Log.i(TAG, it) }
         log

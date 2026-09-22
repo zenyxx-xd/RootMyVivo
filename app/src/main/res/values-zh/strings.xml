@@ -297,4 +297,76 @@
     <string name="payload_not_found">未找到</string>
     <string name="toast_unsupported_file">不支持的文件类型</string>
     <string name="other_section_process">进程</string>
+
+    <!-- 首次启动 Telegram 提示 -->
+    <string name="tg_promo_title">在 Telegram 获取最新动态</string>
+    <string name="tg_promo_text">新设备支持、教程与 root 新闻——订阅我的频道。</string>
+    <string name="tg_promo_go">前往</string>
+    <string name="tg_promo_skip">跳过</string>
+
+    <!-- 清理临时文件 -->
+    <string name="log_cleanup_start">清理临时文件…</string>
+    <string name="log_cleanup_done">临时文件已删除</string>
+    <string name="log_cleanup_fail">未能完全清理临时文件</string>
+
+    <!-- 部署诊断 -->
+    <string name="log_deploy_fail_detail">部署失败：%1$s</string>
+    <string name="deploy_err_no_transport">没有可用的传输通道</string>
+    <string name="deploy_err_adb_size">设备上文件大小不一致——传输中途连接中断</string>
+    <string name="deploy_err_adb_closed">adbd 关闭了传输会话——请确认 ADB 通道正常</string>
+    <string name="deploy_err_shizuku_bind">Shizuku 服务无响应</string>
+
+    <!-- FAQ -->
+    <string name="home_faq">FAQ</string>
+    <string name="home_faq_desc">教程、原理说明与错误处理</string>
+    <string name="faq_cat_basics">基础</string>
+    <string name="faq_cat_errors">错误</string>
+    <string name="faq_cat_guides">教程</string>
+    <string name="faq_cat_advanced">进阶</string>
+
+    <string name="faq_q_root">为什么需要 root？</string>
+    <string name="faq_a_root">root 是对 Android 系统的完全访问权限：可以使用 KernelSU 模块（例如游戏绕过检测）、深度定制系统与界面、删除无法卸载的预装应用、连同数据一起备份应用，以及精细调节电池和性能。本应用提供的 root 就是标准的 KernelSU，带图形化管理器，和其他 root 方案一样。</string>
+
+    <string name="faq_q_how">应用是如何获取 root 的？</string>
+    <string name="faq_a_how">利用内核漏洞：提权仅发生在内存中——不修改系统分区和文件，重启后手机与原来完全一致。获得权限后向内核加载 KernelSU 模块并安装管理器应用。因此 root 不会写进固件，有时需要在重启后重新执行。</string>
+
+    <string name="faq_q_manager">应该选择哪个 root 管理器？</string>
+    <string name="faq_a_manager">默认选择 ReSukiSU——针对这种 root 方式最稳定。KernelSU 和 KernelSU Next 也可用；需要 susfs 模块的选 SukiSU Ultra。若安装后管理器显示"未安装"，请换管理器：重启手机，在主界面重新选择并再次执行。</string>
+
+    <string name="faq_q_reboot">为什么重启后 root 消失了？</string>
+    <string name="faq_a_reboot">root 存在于内存中，重启会清空它。应用会在开机几分钟后自动重新执行——该功能默认开启（设置中的"重启后恢复 root"）。若开机后 root 仍未恢复，请打开应用手动执行。</string>
+
+    <string name="faq_q_deploy">"无法将 exploit 传输到设备"</string>
+    <string name="faq_a_deploy">exploit 文件未能传送到手机。常见原因：执行中 Shizuku 被关闭或重启、软重启后 ADB 通道断开、手机存储空间不足。运行日志现在会标明具体原因——若错误反复出现，请复制日志并在评论区反馈。可自行尝试：确认 Shizuku（或 ADB）在运行、释放空间后重新执行。</string>
+
+    <string name="faq_q_notinstalled">root 管理器显示"未安装"</string>
+    <string name="faq_a_notinstalled">KernelSU 模块已加载，但管理器尚未识别。请按几下主界面的"重启用户空间"——通常之后模块就会激活。仍无效：完全重启，在主界面换另一个管理器并重新执行。若所有管理器都不行——请附运行日志到评论区反馈（见"如何报告错误"）。</string>
+
+    <string name="faq_q_exploitfail">"exploit 结束但未获得 root"或超时</string>
+    <string name="faq_a_exploitfail">获取 root 是时序的运气活：前几次失败很正常。重启手机再试——换一种 system 状态往往有效：刚重启后或设备运行一段时间后概率都更高。不要连续执行几十次——让手机休息几分钟。若约十次后仍失败——请附日志到评论区反馈。</string>
+
+    <string name="faq_q_appclosed">执行过程中应用被关闭</string>
+    <string name="faq_a_appclosed">没关系：即使应用关闭，exploit 仍会继续在设备上执行。重新打开应用即可——它会发现在运行的进程并继续监视和记录日志。已完成的运行记录随时可在主界面"运行历史"中查看。</string>
+
+    <string name="faq_q_request">如何申请支持我的设备？</string>
+    <string name="faq_a_request">如果你的设备不在支持名单中，但很想 root——请在下方链接的 Telegram 频道帖子评论区提交申请。\n\n先检查：若你的手机安全补丁为 2026 年 8 月（08.2026）或更新——该漏洞已被修复，目前无法 root，此类申请请勿提交。\n\n其他情况请严格按下方模板提交。内核版本请从设置（关于手机 → 内核版本）完整复制，不要写"x.7.1488"这样的简写：同一版本号下可能有多个内核构建，关键数字各不相同。\n\n申请请写在帖子评论区：https://t.me/zenyxx_projects/54</string>
+    <string name="faq_t_request">请将我的设备添加到 RootMyVivo 支持列表\n1. 型号：\n2. 内核版本：\n3. Android 安全补丁： </string>
+
+    <string name="faq_q_report">如何报告 bug 或错误？</string>
+    <string name="faq_a_report">若发现 bug、root 管理器提示"未安装"或执行中出现任何其他错误——请在群组或帖子评论区反馈：https://t.me/zenyxx_projects\n\n最好附上出错运行的日志：在执行页面右上角用复制按钮复制。若已离开——打开主界面"运行历史"，选择对应记录，复制按钮也在那里。</string>
+
+    <string name="faq_q_downgrade">安全补丁已修复漏洞，怎么办？</string>
+    <string name="faq_a_downgrade">如果手机的安全补丁已修复该漏洞，但仍想 root——可以尝试回退到上一个大版本固件。\n\n警告：手机上所有数据将被清除，请先把重要资料保存到电脑或 SD 卡。\n\n要求：\n1. 出厂为 OriginOS 5 或更早的手机——只能回退到上一大版本\n2. 一台电脑\n3. 一点空闲时间\n\n步骤：\n1. 下载并安装回退工具（下载链接作者在 Telegram 频道发布）。\n2. 将手机连接电脑，打开程序，按以下顺序点击按钮：\n— 设备被识别后——点大蓝色按钮；\n— 先点白色备份按钮（数据已备份则直接点蓝色），再点蓝色开始回退；\n— 任选一项并点蓝色按钮；\n— 点蓝色按钮开始下载，下载完成后再点一次；\n— 在最后的对话框点蓝色按钮——回退开始，数据将被清除。\n\n完成后手机已回到旧固件——安装应用并正常执行 exploit 即可。若本指南有不准确之处——欢迎在评论区指正。</string>
+
+    <string name="faq_q_firstlaunch">首次启动：为什么需要 Shizuku？</string>
+    <string name="faq_a_firstlaunch">获取 root 之前，应用需要 shell 域的执行权限——由 Shizuku 提供。安装 Shizuku（https://shizuku.rikka.ru），在开发者选项里通过"无线调试"启动（配对设备并启动 Shizuku），然后在弹窗中允许 RootMyVivo。\n\n首次 root 成功后，应用会固定自己的 ADB 通道——之后重启不再需要 Shizuku。</string>
+
+    <string name="faq_q_softreboot">"用户空间重启"和普通重启有何不同？</string>
+    <string name="faq_a_softreboot">用户空间重启只重启 Android 系统界面——内核不重载，root 和 KernelSU 模块会保留。完全重启会重新加载内核：root 将消失，直到自动恢复完成。当模块已加载但管理器识别不到时，应使用用户空间重启。</string>
+
+    <string name="faq_q_customso">"选择自定义 .so"按钮是做什么的？</string>
+    <string name="faq_a_customso">面向高级用户的功能：不下载目录中的 payload，而是部署并执行你选择的库文件。该文件必须是 aarch64 的 ELF 库，并遵循相同运行协议（向 /data/local/tmp/rmv 写入 DONE 和 live.log）。主要用于测试自制 exploit 构建。</string>
+
+    <string name="faq_q_traces">应用把文件写到哪里，又如何清理？</string>
+    <string name="faq_a_traces">运行期间手机会生成临时文件：su 客户端、exploit 二进制、日志。一旦 KernelSU 激活，应用会以 root 权限自动删除它们——运行日志会出现"清理临时文件"一行。若故障后仍有残留，可在设置中使用"清除 root 痕迹"；即使失败，文件位于 /data/local/tmp 且属主是 shell 用户，也可以通过 ADB 在无 root 的情况下删除。</string>
 </resources>

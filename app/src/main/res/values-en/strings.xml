@@ -297,4 +297,76 @@
     <string name="payload_not_found">Not found</string>
     <string name="toast_unsupported_file">Unsupported file type</string>
     <string name="other_section_process">Process</string>
+
+    <!-- First-run Telegram promo -->
+    <string name="tg_promo_title">Follow updates on Telegram</string>
+    <string name="tg_promo_text">New devices, guides and rooting news — subscribe to my channel.</string>
+    <string name="tg_promo_go">Open</string>
+    <string name="tg_promo_skip">Skip</string>
+
+    <!-- Temp file cleanup -->
+    <string name="log_cleanup_start">Cleaning temporary files…</string>
+    <string name="log_cleanup_done">Temporary files removed</string>
+    <string name="log_cleanup_fail">Could not fully clean temporary files</string>
+
+    <!-- Deploy diagnostics -->
+    <string name="log_deploy_fail_detail">Deploy failed: %1$s</string>
+    <string name="deploy_err_no_transport">no working transport</string>
+    <string name="deploy_err_adb_size">data on device did not match the source — the channel broke mid-transfer</string>
+    <string name="deploy_err_adb_closed">adbd closed the transfer session — make sure the ADB transport is alive</string>
+    <string name="deploy_err_shizuku_bind">Shizuku service is not responding</string>
+
+    <!-- FAQ -->
+    <string name="home_faq">FAQ</string>
+    <string name="home_faq_desc">Guides, explanations and error troubleshooting</string>
+    <string name="faq_cat_basics">Basics</string>
+    <string name="faq_cat_errors">Errors</string>
+    <string name="faq_cat_guides">Guides</string>
+    <string name="faq_cat_advanced">Advanced</string>
+
+    <string name="faq_q_root">Why would I need root at all?</string>
+    <string name="faq_a_root">Root is full access to the Android system. It enables KernelSU modules (e.g. root-detection bypass games), deep UI and system customization, removing preinstalled apps that cannot be removed otherwise, app backups with their data, and fine tuning of battery and performance. Root from this app is a regular KernelSU with a graphical manager, just like other root solutions.</string>
+
+    <string name="faq_q_how">How does the app get root?</string>
+    <string name="faq_a_how">A kernel vulnerability is used: privileges are elevated in RAM only — system partitions and files are never modified, so after a reboot the phone is exactly as it was. Once privileges are obtained, the KernelSU module is loaded into the kernel and the manager app is installed. That is why root is not baked into the firmware and sometimes needs to be re-applied after a reboot.</string>
+
+    <string name="faq_q_manager">Which root manager should I choose?</string>
+    <string name="faq_a_manager">ReSukiSU is selected by default — the most stable option for this rooting method. KernelSU and KernelSU Next also work; SukiSU Ultra is for those who need susfs modules. If the manager shows \"Not installed\" after setup, try a different manager: reboot the phone, pick it on the home screen and run the process again.</string>
+
+    <string name="faq_q_reboot">Why does root disappear after a reboot?</string>
+    <string name="faq_a_reboot">Root lives in RAM, and a reboot clears it. The app re-runs the process automatically a few minutes after the phone powers on — this is on by default (\"Restore root after reboot\" in settings). If root still did not come back after power-on, open the app and run the process manually.</string>
+
+    <string name="faq_q_deploy">\"Failed to transfer exploit to device\"</string>
+    <string name="faq_a_deploy">The exploit file could not be pushed to the phone. Usually one of these is the cause: Shizuku was closed or restarted mid-process, the ADB channel dropped after a reboot, or the phone ran out of free storage. The run log now states the exact reason — if the error persists, copy the log and report it in the comments. To try yourself: make sure Shizuku (or ADB) is running, free up space, then start the process again.</string>
+
+    <string name="faq_q_notinstalled">The root manager says \"Not installed\"</string>
+    <string name="faq_a_notinstalled">The KernelSU module loaded but the manager does not see it yet. Press \"Userspace reboot\" on the home screen — it usually activates the module. If it does not helping: do a full reboot, pick a different manager on the home screen and run the process again. If nothing works with any manager — write in the comments and attach the run log (see \"How to report a bug\").</string>
+
+    <string name="faq_q_exploitfail">\"Exploit finished without root\" or timeout</string>
+    <string name="faq_a_exploitfail">Getting root is a timing lottery: sometimes the first attempts miss, and that is normal. Reboot the phone and try again — flipping the system \"temperature\" often helps: a fresh boot or a warmed-up device may both improve chances. Do not launch the process dozens of times in a row — give the phone a few minutes. If root still fails after about ten attempts — write in the comments with the log attached.</string>
+
+    <string name="faq_q_appclosed">The app closed during the process</string>
+    <string name="faq_a_appclosed">Nothing bad: the exploit keeps running on the device even with the app closed. Just open the app again — it detects the running process and resumes watching it and writing the log. Finished runs are always available in \"Run history\" on the home screen.</string>
+
+    <string name="faq_q_request">How do I request support for my device?</string>
+    <string name="faq_a_request">If your phone is not in the supported list but you really want root — post a request in the comments under the post on our Telegram channel (link below).\n\nCheck first: if your phone has an Android security patch of August 2026 (08.2026) or newer — the vulnerability is patched there and root is currently impossible. Please do not file such requests.\n\nIn all other cases write the request strictly in the template below. Copy the kernel version in full from settings (About phone → Kernel version), not just \"6.7.1488\": one version number hides several kernel builds, and the important digits differ between them.\n\nRequests go to the comments under the post: https://t.me/zenyxx_projects/54</string>
+    <string name="faq_t_request">Please add my device to the RootMyVivo supported list\n1. Model: \n2. Kernel version: \n3. Android security patch: </string>
+
+    <string name="faq_q_report">How do I report a bug or an error?</string>
+    <string name="faq_a_report">If you notice a bug, the root manager says \"Not installed\", or any other error appears during the process — write to the group or in the comments under the post: https://t.me/zenyxx_projects\n\nPlease attach the log of the failing run: press the copy button in the top right corner of the run screen. If you already left it — open \"Run history\" on the home screen, pick the run, the copy button is there.</string>
+
+    <string name="faq_q_downgrade">What to do if my security patches already fixed the vulnerability?</string>
+    <string name="faq_a_downgrade">If your phone has new security patches (the vulnerability is fixed) and you still want root — you can try rolling back to the previous major firmware.\n\nWARNING: all data on the phone will be erased. Save everything important to a computer or SD card.\n\nRequirements:\n1. A phone that shipped with OriginOS 5 or earlier — rollback works only to the previous major version\n2. A computer\n3. Some free time\n\nSteps:\n1. Download and install the rollback program (the author publishes the link on the Telegram channel).\n2. Connect the phone to the PC, open the program and press the buttons in this order:\n— if the device was detected — the big blue button;\n— first the white backup button (or straight to the blue one if your data is already saved), then the blue one to start the rollback;\n— pick anything and press the blue button;\n— the blue button to start the download, then the same button again when the download finishes;\n— in the final dialog press the blue button — the rollback starts and the data gets wiped.\n\nDone: the phone has rolled back — install the app and run the exploit as usual. If anything in this guide is inaccurate — please correct it in the comments.</string>
+
+    <string name="faq_q_firstlaunch">First launch: why does it need Shizuku?</string>
+    <string name="faq_a_firstlaunch">Before root is obtained the app needs permission to run shell-domain commands — Shizuku provides it. Install Shizuku (https://shizuku.rikka.ru), start it via \"Wireless debugging\" in developer options (pair the device and start Shizuku), then allow RootMyVivo in the dialog that appears.\n\nAfter the first successful root the app pins its own ADB channel — Shizuku is no longer needed for subsequent reboots.</string>
+
+    <string name="faq_q_softreboot">How is \"userspace reboot\" different from a normal reboot?</string>
+    <string name="faq_a_softreboot">Userspace reboot restarts only the Android system UI layer — the kernel is not reloaded, so root and the KernelSU module survive. A full reboot reloads the kernel: root is gone until automatic restoration kicks in. Use it when the module is loaded but the manager does not see it.</string>
+
+    <string name="faq_q_customso">The \"Pick custom .so\" button — what is it for?</string>
+    <string name="faq_a_customso">An advanced feature: instead of the catalog payload, the library you select is pushed to the device and executed. The file must be an aarch64 ELF library following the same run protocol (writing DONE and live.log into /data/local/tmp/rmv). It is mainly for testing your own exploit builds.</string>
+
+    <string name="faq_q_traces">Where does the app put files and how does it clean them up?</string>
+    <string name="faq_a_traces">During operation the phone gets temporary files: the su client, the exploit binary, logs. As soon as KernelSU becomes active the app removes all of them as root — the run log shows a \"Cleaning temporary files\" line. If files remain after a failure, use \"Clear root traces\" in settings; and even if that fails, the files live in /data/local/tmp owned by the shell user, so they can be deleted over ADB without root.</string>
 </resources>

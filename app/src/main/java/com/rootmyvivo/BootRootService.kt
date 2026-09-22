@@ -128,6 +128,9 @@ class BootRootService : Service() {
         }
 
         notifyResult(ok = loadCachedModule())
+        // Рут восстановлен — убираем следы процесса (та же логика, что в
+        // ExploitEngine.finishRoot): файлы нужны только до активации ksud
+        if (rootActive()) runCatching { com.rootmyvivo.root.RootTraces.clean(this) }
     }
 
     /** Пейлоад на месте? Перезапускаем эксплойт в фоне, как основной флоу. */
@@ -142,7 +145,7 @@ class BootRootService : Service() {
         // пейлоад мог потеряться (чистка /data/local/tmp) — перекладываем из app-хранилища
         if (!remoteFileExists(remotePreload)) {
             val local = File(filesDir, "payloads/preload.so")
-            if (!local.exists() || !Transport.deploy(this, local.absolutePath, remotePreload)) {
+            if (!local.exists() || !Transport.deploy(this, local.absolutePath, remotePreload).first) {
                 return false
             }
         }
@@ -172,7 +175,7 @@ class BootRootService : Service() {
         var ko = "/data/adb/rmv/kernelsu.ko"
         if (!remoteFileExists(ko)) {
             if (!koLocal.exists() ||
-                !Transport.deploy(this, koLocal.absolutePath, "/data/local/tmp/rmv/kernelsu.ko")
+                !Transport.deploy(this, koLocal.absolutePath, "/data/local/tmp/rmv/kernelsu.ko").first
             ) {
                 return false
             }

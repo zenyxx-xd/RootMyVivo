@@ -227,7 +227,7 @@ class KsuInstaller(
             val prepared = if (url.endsWith(".zip")) unzipEntry(tmp, ksud, "ksud") else tmp.renameTo(ksud)
             tmp.delete()
             prepared && ksud.length() > 0 &&
-                Transport.deploy(ctx, ksud.absolutePath, REMOTE_KSUD) &&
+                Transport.deploy(ctx, ksud.absolutePath, REMOTE_KSUD).first &&
                 Transport.exec(ctx, "chmod 755 $REMOTE_KSUD").first == 0
         } catch (e: Exception) {
             Log.e(TAG, "downloadKsud failed", e)
@@ -385,7 +385,7 @@ class KsuInstaller(
     private suspend fun installApkViaRoot(apk: File): Boolean {
         val remoteApk = "/data/local/tmp/rmv/manager.apk"
         val remoteScript = "/data/local/tmp/rmv/setup.sh"
-        if (!Transport.deploy(ctx, apk.absolutePath, remoteApk)) {
+        if (!Transport.deploy(ctx, apk.absolutePath, remoteApk).first) {
             onEvent(FlowEvent.Log("deploy manager.apk: failed", LogLevel.PLAIN))
             return false
         }
@@ -404,7 +404,7 @@ class KsuInstaller(
         }
         val localScript = File(ctx.filesDir, "setup.sh")
         localScript.writeText(script)
-        if (!Transport.deploy(ctx, localScript.absolutePath, remoteScript)) {
+        if (!Transport.deploy(ctx, localScript.absolutePath, remoteScript).first) {
             localScript.delete()
             return false
         }

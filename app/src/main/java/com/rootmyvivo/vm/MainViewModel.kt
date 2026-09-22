@@ -52,6 +52,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             selectedKsu = KsuVariant.byId(prefs.selectedKsu),
             needsSoftReboot = prefs.softRebootPendingActual(),
             logHistory = loadLogHistory(),
+            tgBannerVisible = !prefs.tgPromoDismissed,
         )
         // Транспорт обновляется при запуске/смерти Shizuku
         Transport.onBinderStateChanged = { refreshTransport() }
@@ -397,6 +398,29 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     /** Закрыть диалог — компактная плашка остаётся на главной */
     fun dismissUpdateDialog() {
         _state.value = _state.value.copy(updateDialogOpen = false)
+    }
+
+    // ─────────── Плашка Telegram (первый запуск) ───────────
+
+    /** «Пропустить» или переход по ссылке — плашка больше не вернётся. */
+    fun dismissTgBanner() {
+        prefs.tgPromoDismissed = true
+        _state.value = _state.value.copy(tgBannerVisible = false)
+    }
+
+    /** «Перейти» — открыть Telegram-канал и закрыть плашку. */
+    fun openTelegramChannel() {
+        val ctx = getApplication<Application>()
+        try {
+            ctx.startActivity(
+                Intent(Intent.ACTION_VIEW, Uri.parse(TELEGRAM_CHANNEL_URL))
+                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+            )
+        } catch (e: Exception) {
+            Log.w(TAG, "open telegram failed: ${e.message}")
+            android.widget.Toast.makeText(ctx, R.string.link_open_failed, android.widget.Toast.LENGTH_SHORT).show()
+        }
+        dismissTgBanner()
     }
 
     fun dismissUpdate() {
@@ -818,5 +842,6 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         private const val TAG = "NeoVM"
         private const val SHIZUKU_PACKAGE = "moe.shizuku.privileged.api"
         private const val SHIZUKU_DOWNLOAD_URL = "https://github.com/RikkaApps/Shizuku/releases"
+        private const val TELEGRAM_CHANNEL_URL = "https://t.me/zenyxx_projects"
     }
 }

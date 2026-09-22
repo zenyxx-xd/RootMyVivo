@@ -182,9 +182,9 @@ fun SupportedDevicesScreen(
 
 /**
  * Карточка тела: иконка статуса, заголовок «нейм • код», разделитель, чипы
- * ядер. Акцент на карточке — только когда это тело пользователя И ядро
- * реально поддерживается; при совпадении только модели остаётся плашка
- * «ваше устройство». Тело без ядер — красный текст «временно отключено».
+ * ядер. Карточка пользователя подсвечена всегда: живое поддерживаемое ядро —
+ * сильный акцент (primaryContainer), тело без живого ядра — мягкая подсветка
+ * (secondaryContainer). Тело без ядер — красный текст «временно отключено».
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -199,10 +199,10 @@ private fun DeviceRow(
     Surface(
         modifier = Modifier.fillMaxWidth(),
         shape = MaterialTheme.shapes.large,
-        color = if (liveMine) {
-            MaterialTheme.colorScheme.primaryContainer
-        } else {
-            MaterialTheme.colorScheme.surfaceContainerLow
+        color = when {
+            liveMine -> MaterialTheme.colorScheme.primaryContainer
+            sameBody -> MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.55f)
+            else -> MaterialTheme.colorScheme.surfaceContainerLow
         },
     ) {
         Column(Modifier.padding(horizontal = 16.dp, vertical = 14.dp)) {

@@ -60,6 +60,7 @@ private sealed interface RmvRoute : top.yukonga.miuix.kmp.nav.core.NavKey {
     @Serializable data object Theme : RmvRoute
     @Serializable data object About : RmvRoute
     @Serializable data object Supported : RmvRoute
+    @Serializable data object Faq : RmvRoute
     @Serializable data object Other : RmvRoute
     @Serializable data object LogHistory : RmvRoute
     @Serializable data object LogViewer : RmvRoute
@@ -146,6 +147,7 @@ fun App(vm: MainViewModel, state: UiState) {
                     onRootStarted = { flowOpen = true },
                     onOpenSupported = { pushRoute(RmvRoute.Supported) },
                     onOpenLastLog = { pushRoute(RmvRoute.LogHistory) },
+                    onOpenFaq = { pushRoute(RmvRoute.Faq) },
                     onOpenTheme = { pushRoute(RmvRoute.Theme) },
                     onOpenAbout = { pushRoute(RmvRoute.About) },
                     onOpenOther = { pushRoute(RmvRoute.Other) },
@@ -163,6 +165,9 @@ fun App(vm: MainViewModel, state: UiState) {
                     catalogUrl = state.settings.catalogUrl,
                     onClose = onBack,
                 )
+            }
+            entry<RmvRoute.Faq>(swipeDismiss = NavSwipeDirection.LeftToRight) {
+                com.rootmyvivo.ui.home.FaqScreen(onClose = onBack)
             }
             entry<RmvRoute.Other>(swipeDismiss = NavSwipeDirection.LeftToRight) {
                 DevScreen(
@@ -258,6 +263,7 @@ private fun MainScaffold(
     onRootStarted: () -> Unit,
     onOpenLastLog: () -> Unit,
     onOpenSupported: () -> Unit,
+    onOpenFaq: () -> Unit,
     onOpenTheme: () -> Unit,
     onOpenAbout: () -> Unit,
     onOpenOther: () -> Unit,
@@ -296,6 +302,7 @@ private fun MainScaffold(
                         onRootStarted = onRootStarted,
                         onOpenLastLog = onOpenLastLog,
                         onOpenSupported = onOpenSupported,
+                        onOpenFaq = onOpenFaq,
                     )
                     else -> SettingsScreen(
                         vm = vm,
