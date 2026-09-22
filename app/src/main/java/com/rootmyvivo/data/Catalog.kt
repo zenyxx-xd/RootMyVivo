@@ -163,15 +163,22 @@ class Catalog(var url: String = DEFAULT_URL) {
     }
 
     /**
+     * Тело из каталога по модели/нейму устройства — без проверки ядра.
+     * Отсутствующая запись = устройство неизвестно каталогу.
+     */
+    fun findDevice(catalog: PayloadCatalog, info: DeviceInfo): CatalogDevice? =
+        catalog.devices.firstOrNull { d ->
+            (info.model.isNotEmpty() && d.models.any { it.equals(info.model, true) }) ||
+                (info.marketName.isNotEmpty() && d.names.any { it.equals(info.marketName, true) })
+        }
+
+    /**
      * Живой пейлоад для устройства: тело по моделям/неймам, затем только ready-
      * сборки с точным совпадением версии (или подстрокой для GKI-паттерна).
      * Fallback на чужую сборку той же модели отсутствует.
      */
     fun findPayload(catalog: PayloadCatalog, info: DeviceInfo): PayloadMatch? {
-        val device = catalog.devices.firstOrNull { d ->
-            (info.model.isNotEmpty() && d.models.any { it.equals(info.model, true) }) ||
-                (info.marketName.isNotEmpty() && d.names.any { it.equals(info.marketName, true) })
-        } ?: return null
+        val device = findDevice(catalog, info) ?: return null
         var best: Pair<KernelBuild, Int>? = null
         for (dk in catalog.kernelsOf(device)) {
             val b = dk.build

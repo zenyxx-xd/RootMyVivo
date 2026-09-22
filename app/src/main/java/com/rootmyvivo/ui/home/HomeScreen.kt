@@ -605,8 +605,9 @@ private fun HeroCard(
                         // рута. При полученном ру ветка не рендерится вовсе;
                         // при выбранном файле карточка выше показывает текущий.
                         // Телефон официально не поддерживается — кнопка залита
-                        // (путь к руту единственный); иначе — контур с
-                        // контрастной обводкой, чтобы не тонула на контейнере
+                        // (путь к руту единственный); иначе — обычный контур
+                        // Material без усиленной обводки (в светлой теме
+                        // контрастный контур выглядел лишним)
                         AnimatedVisibility(
                             visible = state.customPayload == null,
                             enter = expandVertically(tween(260)) + fadeIn(tween(260)),
@@ -639,10 +640,6 @@ private fun HeroCard(
                                             .fillMaxWidth()
                                             .padding(top = 10.dp),
                                         shape = MaterialTheme.shapes.large,
-                                        border = BorderStroke(
-                                            1.5.dp,
-                                            MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
-                                        ),
                                     ) {
                                         Icon(Icons.Rounded.FolderOpen, null, modifier = Modifier.size(16.dp))
                                         Spacer(Modifier.width(6.dp))
@@ -687,15 +684,22 @@ private fun HeroCard(
 private fun RootButton(state: UiState, transportOk: Boolean, onRoot: () -> Unit) {
     val ready = state.payload != null || state.customPayload != null
     val enabled = ready && transportOk && !state.flowRunning
-    val label = stringResource(
-        when {
-            state.customPayload != null -> R.string.action_root
-            state.catalogState == CatalogState.LOADING -> R.string.catalog_loading
-            state.catalogState == CatalogState.ERROR -> R.string.catalog_retry
-            !ready -> R.string.status_unsupported
-            else -> R.string.action_root
-        },
-    )
+    val kernelShort = state.device?.kernelShort.orEmpty()
+    // «Не поддерживается» всегда объясняет причину: нет тела в каталоге →
+    // устройство; тело есть, но живой сборки под ядро нет → ядро. Без
+    // транспорта кнопка неактивна и говорит, чего не хватает
+    val label = when {
+        state.customPayload != null -> stringResource(R.string.action_root)
+        state.catalogState == CatalogState.LOADING -> stringResource(R.string.catalog_loading)
+        state.catalogState == CatalogState.ERROR -> stringResource(R.string.catalog_retry)
+        !ready && state.catalogState == CatalogState.READY && !state.deviceInCatalog ->
+            stringResource(R.string.home_btn_unsupported_device)
+        !ready && kernelShort.isNotEmpty() ->
+            stringResource(R.string.home_btn_unsupported_kernel, kernelShort)
+        !ready -> stringResource(R.string.status_unsupported)
+        !transportOk -> stringResource(R.string.home_btn_need_transport)
+        else -> stringResource(R.string.action_root)
+    }
     // Смена состояний («Получить рут» ↔ «Не поддерживается» ↔ загрузка
     // каталога) всегда анимирована в обе стороны: текст едет с фейдом,
     // цвет перетекает. В disabled — стандартные Material-токены
@@ -741,7 +745,13 @@ private fun RootButton(state: UiState, transportOk: Boolean, onRoot: () -> Unit)
             },
             label = "rootBtnLabel",
         ) { text ->
-            Text(text, style = MaterialTheme.typography.titleMedium)
+            Text(
+                text,
+                style = MaterialTheme.typography.titleMedium,
+                maxLines = 2,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.padding(horizontal = 6.dp),
+            )
         }
     }
 }
@@ -982,7 +992,14 @@ private fun DeviceGroup(state: UiState) {
         } else {
             SettingsRow(
                 title = stringResource(R.string.device_model),
-                trailing = { TrailingValue("${d.marketName} (${d.model})", maxLines = 3) },
+                // Маркет-нейм из каталога + PD-код: «vivo X200 Pro (PD2405)».
+                // Без записи в каталоге — как есть: Build.MODEL (Build.DEVICE)
+                trailing = {
+                    TrailingValue(
+                        (state.catalogMarketName ?: d.marketName) + " (${d.model})",
+                        maxLines = 3,
+                    )
+                },
             )
             SettingsDivider(indentIcon = false)
             SettingsRow(

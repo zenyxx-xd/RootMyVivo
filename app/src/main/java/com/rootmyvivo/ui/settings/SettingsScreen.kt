@@ -21,7 +21,6 @@ import androidx.compose.material.icons.rounded.Language
 import androidx.compose.material.icons.rounded.Palette
 import androidx.compose.material.icons.rounded.RestartAlt
 import androidx.compose.material.icons.rounded.Restore
-import androidx.compose.material.icons.rounded.Security
 import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -43,7 +42,6 @@ import androidx.compose.ui.unit.dp
 import com.rootmyvivo.R
 import com.rootmyvivo.data.Catalog
 import com.rootmyvivo.data.ThemeMode
-import com.rootmyvivo.root.KsuVariant
 import com.rootmyvivo.ui.common.ChoiceDialog
 import com.rootmyvivo.ui.common.ChoiceDialogItem
 import com.rootmyvivo.ui.common.SettingsDivider
@@ -62,7 +60,6 @@ fun SettingsScreen(
     onThemeOpen: () -> Unit = {},
 ) {
     var langDialog by remember { mutableStateOf(false) }
-    var ksuDialog by remember { mutableStateOf(false) }
 
     Column(
         Modifier
@@ -112,14 +109,6 @@ fun SettingsScreen(
 
         // ── Рут ──
         SettingsGroup(title = stringResource(R.string.settings_root)) {
-            SettingsRow(
-                title = stringResource(R.string.ksu_title),
-                description = state.selectedKsu.displayName,
-                icon = Icons.Rounded.Security,
-                onClick = { ksuDialog = true },
-                trailing = { Chevron() },
-            )
-            SettingsDivider()
             SettingsRow(
                 title = stringResource(R.string.settings_boot_restore),
                 description = stringResource(R.string.settings_boot_restore_desc),
@@ -176,24 +165,6 @@ fun SettingsScreen(
             },
         )
     }
-
-    // ── Диалог выбора рут-менеджера ──
-    if (ksuDialog) {
-        ChoiceDialog(
-            title = stringResource(R.string.ksu_select),
-            closeLabel = closeLabel,
-            onDismiss = { ksuDialog = false },
-            items = KsuVariant.entries.map { v ->
-                ChoiceDialogItem(
-                    label = v.displayName,
-                    description = "${v.repo} · ${stringResource(ksuDesc(v))}",
-                    selected = state.selectedKsu == v,
-                )
-            },
-            onSelect = { i -> vm.selectKsu(KsuVariant.entries[i]) },
-            closeOnSelect = false,
-        )
-    }
 }
 
 // ─────────── Компоненты ───────────
@@ -219,12 +190,4 @@ private fun themeName(mode: ThemeMode): String = when (mode) {
     ThemeMode.AUTO -> stringResource(R.string.theme_auto)
     ThemeMode.LIGHT -> stringResource(R.string.theme_light)
     ThemeMode.DARK -> stringResource(R.string.theme_dark)
-}
-
-@Composable
-private fun ksuDesc(v: KsuVariant): Int = when (v.id) {
-    KsuVariant.KERNELSU.id -> R.string.ksu_desc_kernelsu
-    KsuVariant.KSU_NEXT.id -> R.string.ksu_desc_ksunext
-    KsuVariant.SUKISU.id -> R.string.ksu_desc_sukisu
-    else -> R.string.ksu_desc_resukisu
 }

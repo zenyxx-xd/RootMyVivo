@@ -50,9 +50,16 @@ class KsuInstaller(
             } else if (moduleLoaded) {
                 log(R.string.log_ksu_already_loaded, LogLevel.WARN)
             }
-            val managerKsud =
-                if (variant.id == "sukisu") findManagerKsud(ctx, listOf(variant.packageName, prefs.managerPackage))
-                else null
+            val pkgs = listOf(variant.packageName, prefs.managerPackage)
+            // ksud берём из установленного менеджера: это РОВНО та версия,
+            // что у менеджера — скачанный из релизов/CI может не совпасть
+            // (разные CLI, другие subcommand'ы). Менеджерный libksud лежит в
+            // base.apk DEFLATE'ом и не распаковывается в /data/app, поэтому
+            // при отсутствии распакованного — распаковываем из APK. Перед
+            // использованием валидируем CLI (поздние официальные ksud умеют
+            // late-load, ранние — нет).
+            val managerKsudRaw = findManagerKsud(ctx, pkgs) ?: unpackManagerKsud(ctx, pkgs)
+            val managerKsud = if (managerKsudRaw != null && ksudUsable(ctx, managerKsudRaw)) managerKsudRaw else null
             val (_, probe) = Transport.exec(
                 ctx,
                 "[ -f /data/adb/rmv/kernelsu.ko ] && echo RMV_CACHE; [ -f $REMOTE_KSUD ] && echo RMV_KSUD",
@@ -128,17 +135,13 @@ class KsuInstaller(
                     // сканер vivo /data/local/tmp прочёсывает — там .ko успевал
                     // схватить write-дескриптором (ETXTBSY) или вовсе удалить.
                     //
-                    // ksud'ы пробуем по списку. Для SukiSU первым — ksud из
-                    // установленного менеджера (kallsyms-загрузчик для их
-                    // неэкспортируемых SELinux-символов). Для остальных —
-                    // сначала скачанный ksud: у свежих (ReSukiSU CI) есть
-                    // insmod с kallsyms, а менеджерный libksud часто другого
-                    // CLI (unrecognized subcommand). Системный insmod —
-                    // последний фолбэк, он грузит ПАТЧЕННУЮ копию.
+                    // ksud'ы пробуем по списку: первым — валидный менеджерный
+                    // libksud (ровно версия установленного менеджера, с
+                    // kallsyms-загрузчиком), затем скачанный REMOTE_KSUD,
+                    // затем системный insmod ПАТЧЕННОЙ копией — последний фолбэк.
                     val ksudPaths = buildList {
-                        if (variant.id == "sukisu") managerKsud?.let { add(it) }
+                        managerKsud?.let { add(it) }
                         add(REMOTE_KSUD)
-                        if (variant.id != "sukisu") managerKsud?.let { add(it) }
                     }
                     val (ok, o) = loadModule(ctx, koPath, koPatched, restartPkg, ksudPaths, magicaFirst = variant.id == "resukisu")
                     out = o
@@ -606,27 +609,72 @@ class KsuInstaller(
         private const val TAG = "NeoKsu"
         private const val CI_REPO = "cctv18/ReSukiSU_CI"
         private const val REMOTE_KSUD = "/data/local/tmp/rmv/ksud"
+        /** Каталог root-распаковки менеджерного libksud.so из base.apk. */
+        private const val MANAGER_KSUD_DIR = "/data/local/tmp/rmv/mgr"
 
         /**
-         * Найти ksud внутри установленного менеджера (lib/arm64/libksud.so).
-         * Это самая свежая версия — у форков в релизах ассета ksud часто нет
-         * вовсе (SukiSU v4.2+), а их модулям нужен kallsyms-загрузчик
-         * («insmod — load a kernel module with kallsyms access») для
-         * неэкспортируемых символов SELinux (policydb_*, sidtab_*, uts_sem).
-         * pm вызывается через транспорт (shell-домен): su-демон эксплойта
-         * живёт в kernel-контексте и binder-сервисов не видит.
+         * Найти ksud внутри установленного менеджера: сначала распакованный
+         * lib/arm64/libksud.so рядом с base.apk, иначе — распаковка из APK
+         * ([unpackManagerKsud]). Это самая свежая и СОГЛАСОВАННАЯ версия —
+         * ассеты ksud в релизах форков частенько отстают от менеджера
+         * (SukiSU v4.2+ вообще без ассета ksud), а их модулям нужен
+         * kallsyms-загрузчик («insmod — load a kernel module with kallsyms
+         * access») для неэкспортируемых символов SELinux (policydb_*,
+         * sidtab_*, uts_sem). pm вызывается через транспорт (shell-домен):
+         * su-демон эксплойта живёт в kernel-контексте и binder-сервисов не
+         * видит.
          */
         suspend fun findManagerKsud(ctx: android.content.Context, pkgs: List<String>): String? {
             for (pkg in pkgs.filter { it.isNotEmpty() }.distinct()) {
-                val (_, out) = Transport.exec(ctx, "pm path $pkg", timeoutSec = 30)
-                val apk = out.lineSequence()
-                    .firstOrNull { it.startsWith("package:") }
-                    ?.removePrefix("package:")?.trim() ?: continue
-                val ksud = apk.substringBeforeLast("/") + "/lib/arm64/libksud.so"
+                val baseApk = baseApkPath(ctx, pkg) ?: continue
+                val ksud = baseApk.substringBeforeLast("/") + "/lib/arm64/libksud.so"
                 val (_, probe) = Transport.exec(ctx, "[ -f $ksud ] && echo RMV_YES", timeoutSec = 15)
                 if (probe.contains("RMV_YES")) return ksud
             }
             return null
+        }
+
+        /** Путь base.apk пакета через pm (shell-домен), null если пакет не стоит. */
+        suspend fun baseApkPath(ctx: android.content.Context, pkg: String): String? {
+            if (pkg.isEmpty()) return null
+            val (_, out) = Transport.exec(ctx, "pm path $pkg", timeoutSec = 30)
+            return out.lineSequence()
+                .firstOrNull { it.startsWith("package:") }
+                ?.removePrefix("package:")?.trim()
+                ?.takeIf { it.endsWith(".apk") }
+        }
+
+        /**
+         * Распаковать libksud.so из base.apk менеджера: в современных сборках
+         * нативные библиотеки лежат в APK DEFLATE'ом и в /data/app/…/lib
+         * НЕ извлекаются — путь из findManagerKsud не существует. base.apk
+         * world-readable, распаковку делаем root-`unzip` (toybox: без -j,
+         * путь сохраняется) в /data/local/tmp/rmv/mgr. Возвращает путь к
+         * файлу или null.
+         */
+        suspend fun unpackManagerKsud(ctx: android.content.Context, pkgs: List<String>): String? {
+            val dir = "$MANAGER_KSUD_DIR/lib/arm64-v8a"
+            val dst = "$dir/libksud.so"
+            val apk = pkgs.filter { it.isNotEmpty() }.distinct().firstNotNullOfOrNull {
+                baseApkPath(ctx, it)
+            } ?: return null
+            // base.apk мог обновиться вместе с менеджером — распаковываем
+            // заново при каждом вызове (файл маленький, операция дешёвая)
+            val (code, out) = Transport.su(
+                ctx,
+                "mkdir -p $dir && rm -f $dst && " +
+                    "(unzip -o '$apk' 'lib/arm64-v8a/libksud.so' -d $MANAGER_KSUD_DIR || " +
+                    "unzip -o '$apk' 'lib/arm64/libksud.so' -d $MANAGER_KSUD_DIR) >/dev/null 2>&1; " +
+                    "[ -f $dst ] && chmod 755 $dst && echo RMV_YES",
+                timeoutSec = 60,
+            )
+            return if (code == 0 && out.contains("RMV_YES")) dst else null
+        }
+
+        /** Кандидат ksud реально умеет наш флоу (late-load обязателен). */
+        suspend fun ksudUsable(ctx: android.content.Context, path: String): Boolean {
+            val (_, hp) = Transport.exec(ctx, "$path --help 2>&1", timeoutSec = 15)
+            return hp.contains("late-load")
         }
 
         /**

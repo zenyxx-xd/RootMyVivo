@@ -182,13 +182,19 @@ class BootRootService : Service() {
             KsuVariant.byId(prefs.selectedKsu).packageName
         }
         // ksud'ы по списку: сначала свежий в /data/local/tmp (приложение его
-        // перекачивает при апдейтах), затем кэш закрепления, затем менеджер
+        // перекачивает при апдейтах), затем кэш закрепления, затем менеджерный
+        // libksud (распакованный из base.apk) — если его CLI нам подходит
+        val managerPkgs = listOf(pkg, KsuVariant.byId(prefs.selectedKsu).packageName)
+        val mgrKsud = com.rootmyvivo.root.KsuInstaller.findManagerKsud(this, managerPkgs)
+            ?: com.rootmyvivo.root.KsuInstaller.unpackManagerKsud(this, managerPkgs)
         val ksudPaths = buildList {
             if (remoteFileExists("/data/local/tmp/rmv/ksud")) add("/data/local/tmp/rmv/ksud")
             if (remoteFileExists("/data/adb/rmv/ksud")) add("/data/adb/rmv/ksud")
-            com.rootmyvivo.root.KsuInstaller
-                .findManagerKsud(this@BootRootService, listOf(pkg, KsuVariant.byId(prefs.selectedKsu).packageName))
-                ?.let { add(it) }
+            if (mgrKsud != null &&
+                com.rootmyvivo.root.KsuInstaller.ksudUsable(this@BootRootService, mgrKsud)
+            ) {
+                add(mgrKsud)
+            }
         }
         if (ksudPaths.isEmpty()) return false
         Transport.exec(this, "chmod 755 ${ksudPaths.joinToString(" ")}", timeoutSec = 15)

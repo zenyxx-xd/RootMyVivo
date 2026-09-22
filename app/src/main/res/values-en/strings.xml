@@ -13,6 +13,9 @@
     <string name="status_unsupported">Not supported</string>
 
     <string name="action_root">GET ROOT</string>
+    <string name="home_btn_unsupported_device">Device not supported</string>
+    <string name="home_btn_unsupported_kernel">Kernel %1$s not supported</string>
+    <string name="home_btn_need_transport">Shizuku or ADB required</string>
     <string name="action_back">Back</string>
     <string name="action_save">Save</string>
     <string name="action_grant_shizuku">Allow in Shizuku</string>

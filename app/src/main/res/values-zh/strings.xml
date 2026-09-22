@@ -13,6 +13,9 @@
     <string name="status_unsupported">不支持</string>
 
     <string name="action_root">获取 ROOT</string>
+    <string name="home_btn_unsupported_device">设备不受支持</string>
+    <string name="home_btn_unsupported_kernel">内核 (%1$s) 不受支持</string>
+    <string name="home_btn_need_transport">需要 Shizuku 或 ADB</string>
     <string name="action_back">返回</string>
     <string name="action_save">保存</string>
     <string name="action_grant_shizuku">在 Shizuku 中授权</string>

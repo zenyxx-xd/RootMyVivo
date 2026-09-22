@@ -124,6 +124,20 @@ fun SupportedDevicesScreen(
                     val shown = cat.devices.filter {
                         cat.kernelsOf(it).isEmpty() || cat.isSupported(it)
                     }
+                    // Карточка пользователя всегда первой, над всеми телами
+                    val ordered = if (myDevice == null) shown else
+                        shown.sortedByDescending { it.id == myDevice.id }
+                    // Живое ядро телефона: готовая сборка корпуса, паттерн
+                    // которой совпадает с живым uname (подсветка чипа в карточке).
+                    // Считаем по списку ядер корпуса, а не по state.payload:
+                    // подсветка не должна зависеть от того, успел ли главный
+                    // экран сматчить пейлоад
+                    val myBuildId = remember(cat, myDevice, info) {
+                        if (myDevice == null || info == null || info.kernel.isEmpty()) null
+                        else cat.kernelsOf(myDevice)
+                            .firstOrNull { it.build.ready && it.build.specificity(info.kernel) > 0 }
+                            ?.build?.id
+                    }
                     val kernelsTotal = shown.sumOf { cat.kernelsOf(it).size }
                     Text(
                         stringResource(R.string.supported_count, shown.size, kernelsTotal),
@@ -132,7 +146,8 @@ fun SupportedDevicesScreen(
                         modifier = Modifier.padding(start = 12.dp),
                     )
                     // карточки появляются каскадом, как в остальном приложении
-                    shown.forEachIndexed { i, device ->
+                    ordered.forEachIndexed { i, device ->
+                        val mine = myDevice != null && device.id == myDevice.id
                         var visible by remember { mutableStateOf(false) }
                         LaunchedEffect(Unit) {
                             kotlinx.coroutines.delay((i * 40L).coerceAtMost(400L))
@@ -144,14 +159,18 @@ fun SupportedDevicesScreen(
                                 animationSpec = tween(300, easing = FastOutSlowInEasing),
                             ) + fadeIn(tween(300, easing = FastOutSlowInEasing)),
                         ) {
-                            DeviceRow(
-                                device = device,
-                                kernels = cat.kernelsOf(device),
-                                sameBody = myDevice?.id == device.id,
-                                liveMine = state.payload?.device?.id == device.id,
-                                currentBuild =
-                                    if (myDevice?.id == device.id) state.payload?.build?.id else null,
-                            )
+                            // После карточки пользователя — увеличенный отступ
+                            // до следующего тела
+                            Column {
+                                DeviceRow(
+                                    device = device,
+                                    kernels = cat.kernelsOf(device),
+                                    sameBody = mine,
+                                    liveMine = state.payload?.device?.id == device.id,
+                                    currentBuild = if (mine) myBuildId ?: state.payload?.build?.id else null,
+                                )
+                                if (mine) Spacer(Modifier.height(12.dp))
+                            }
                         }
                     }
                 }

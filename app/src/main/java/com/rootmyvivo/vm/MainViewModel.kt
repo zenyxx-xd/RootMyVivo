@@ -102,9 +102,12 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         }
             val result = catalog.fetch()
             val cat = result.getOrNull()
+            val catDev = cat?.let { catalog.findDevice(it, device) }
             _state.value = _state.value.copy(
                 payload = cat?.let { catalog.findPayload(it, device) },
                 catalogState = if (cat != null) CatalogState.READY else CatalogState.ERROR,
+                deviceInCatalog = catDev != null,
+                catalogMarketName = catDev?.marketName?.takeIf { it.isNotEmpty() },
             )
         }
     }

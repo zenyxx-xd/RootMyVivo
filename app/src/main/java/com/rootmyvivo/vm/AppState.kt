@@ -68,6 +68,11 @@ data class UiState(
     /** Найденный живой пейлоад: тело + готовая сборка ядра из каталога v5. */
     val payload: PayloadMatch? = null,
     val catalogState: CatalogState = CatalogState.LOADING,
+    /** Тело пользователя есть в каталоге (независимо от ядра) — для
+     *  «Устройство не поддерживается» vs «Ядро … не поддерживается». */
+    val deviceInCatalog: Boolean = false,
+    /** Маркет-нейм из каталога («vivo X200 Pro») для строки «Модель». */
+    val catalogMarketName: String? = null,
     /** Одноразовый тост (string resource id): UI показывает и гасит consumeToast */
     val toastRes: Int? = null,
     // кастомный пейлоад (выбран через файловый менеджер): деплоится именно

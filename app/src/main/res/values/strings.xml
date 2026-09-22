@@ -18,6 +18,9 @@
     <string name="action_root">ПОЛУЧИТЬ ROOT</string>
     <string name="catalog_loading">Загрузка каталога…</string>
     <string name="catalog_retry">Повторить</string>
+    <string name="home_btn_unsupported_device">Устройство не поддерживается</string>
+    <string name="home_btn_unsupported_kernel">Ядро %1$s не поддерживается</string>
+    <string name="home_btn_need_transport">Нужен Shizuku или ADB</string>
 
     <!-- Транспорт -->
     <string name="transport_adb">Транспорт: adb tcp (5555)</string>
