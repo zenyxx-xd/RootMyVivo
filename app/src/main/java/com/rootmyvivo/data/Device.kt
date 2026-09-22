@@ -47,7 +47,7 @@ data class DeviceInfo(
 
         private fun detectSoc(): String {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                Build.SOC_MODEL?.takeIf { it.isNotEmpty() && it != "unknown" }?.let { return it.uppercase() }
+                Build.SOC_MODEL.takeIf { it.isNotEmpty() && it != "unknown" }?.let { return it.uppercase() }
             }
             val board = Build.HARDWARE.lowercase()
             return when {
@@ -60,36 +60,4 @@ data class DeviceInfo(
             }
         }
     }
-}
-
-/** Результат проверки совместимости устройства с каталогом эксплойтов. */
-data class SupportCheck(
-    val supported: Boolean,
-    val rootAlreadyActive: Boolean,
-    val issues: List<String>,
-)
-
-fun checkSupport(info: DeviceInfo, suWorks: () -> Boolean): SupportCheck {
-    val issues = mutableListOf<String>()
-    var supported = true
-
-    if (info.kernel.isEmpty()) {
-        issues += "KERNEL_UNKNOWN"
-        supported = false
-    }
-    if (info.kmi.isEmpty() && info.kernel.isNotEmpty()) {
-        issues += "KMI_UNKNOWN"
-    }
-
-    // CVE-2026-43499 закрыт в 6.6.140+
-    val minor = info.kernelShort.split(".").getOrNull(2)?.toIntOrNull() ?: 0
-    when {
-        info.kernelShort.startsWith("6.6.") && minor >= 140 -> {
-            issues += "CVE_PATCHED_6_6"
-            supported = false
-        }
-        info.kernelShort.startsWith("6.6.") && minor >= 110 -> issues += "CVE_MAYBE_BACKPORT"
-    }
-
-    return SupportCheck(supported, suWorks(), issues)
 }

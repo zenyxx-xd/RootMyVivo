@@ -9,11 +9,11 @@ import android.content.Intent
 import android.os.Build
 import androidx.core.app.NotificationCompat
 import com.rootmyvivo.data.Prefs
+import com.rootmyvivo.shell.Transport
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import java.io.File
 
 /**
  * После перезагрузки: проверяет root и присылает уведомление.
@@ -36,7 +36,7 @@ class BootReceiver : BroadcastReceiver() {
                     // уведомления только когда рут реально исчез
                     BootRootService.start(context)
                 } else {
-                    val active = isRootActive()
+                    val active = Transport.rootActiveQuick(context)
                     withContext(Dispatchers.Main) {
                         showNotification(context, active)
                     }
@@ -44,22 +44,6 @@ class BootReceiver : BroadcastReceiver() {
             } finally {
                 result.finish()
             }
-        }
-    }
-
-    private fun isRootActive(): Boolean {
-        // su-демон GhostLock
-        val suWorks = try {
-            Runtime.getRuntime().exec(arrayOf("su", "-c", "true")).waitFor() == 0
-        } catch (_: Exception) {
-            false
-        }
-        if (suWorks) return true
-        // модуль KernelSU, поднятый persistence-скриптом
-        return try {
-            File("/proc/modules").readText().contains("kernelsu", ignoreCase = true)
-        } catch (_: Exception) {
-            false
         }
     }
 

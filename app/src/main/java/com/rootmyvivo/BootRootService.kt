@@ -96,31 +96,25 @@ class BootRootService : Service() {
             return
         }
 
-        // Прогон эксплойта с ретраями: один запуск preload делает до
-        // N попыток внутри (RMV_ATTEMPTS из каталога), но на свежем ядре
-        // иногда не хватает и их — повторяем запуск целиком с паузой.
+        // Прогон эксплойта: один запуск preload делает до N попыток внутри
+        // (RMV_ATTEMPTS из каталога). ВТОРОЙ ЦИКЛ НА ТОМ ЖЕ ЯДРЕ ЗАПРЕЩЁН:
+        // неудачные CFI-попытки оставляют мусор в kernel-слэбе — следующий
+        // цикл спотыкается об него и паникует ядро (бутлуп 2-3 цикла,
+        // воспроизведено 10.09). Один цикл на одну загрузку ядра; если не
+        // вышло — пользователь перезагрузит и всё повторится само.
         prefs.bootRestoreLastAttempt = System.currentTimeMillis()
+        if (!launchExploit()) {
+            notifyResult(ok = false)
+            return
+        }
+        // Внутренние попытки идут до ~10 мин; опрашиваем su
         var rooted = false
-        for (round in 1..EXPLOIT_ROUNDS) {
-            if (!launchExploit()) {
-                notifyResult(ok = false)
-                return
+        for (i in 0 until 200) {
+            if (rootActive()) {
+                rooted = true
+                break
             }
-            // Внутренние попытки идут до ~10 мин; опрашиваем su
-            for (i in 0 until 200) {
-                if (rootActive()) {
-                    rooted = true
-                    break
-                }
-                delay(3000)
-            }
-            if (rooted) break
-            // ВТОРОЙ ЦИКЛ НА ТОМ ЖЕ ЯДРЕ ЗАПРЕЩЁН: неудачные CFI-попытки
-            // оставляют мусор в kernel-слэбе — следующий цикл спотыкается
-            // об него и паникует ядро (бутлуп 2-3 цикла, воспроизведено
-            // 10.09). Один цикл на одну загрузку ядра; если не вышло —
-            // пользователь перезагрузит и всё повторится само.
-            break
+            delay(3000)
         }
         if (!rooted) {
             notifyResult(ok = false)
@@ -213,22 +207,9 @@ class BootRootService : Service() {
         return mods2.isNotBlank()
     }
 
-    /** Рут жив: демон эксплойта отвечает, KSU-модуль в ядре или su в системе. */
-    private fun rootActive(): Boolean {
-        val su = try {
-            val (code, out) = Transport.suLocal("id", timeoutSec = 5)
-            code == 0 && out.contains("uid=0")
-        } catch (_: Exception) {
-            false
-        }
-        if (su) return true
-        if (File("/system/bin/su").exists()) return true
-        return try {
-            File("/proc/modules").readText().contains("kernelsu", ignoreCase = true)
-        } catch (_: Exception) {
-            false
-        }
-    }
+    /** Рут жив: демон эксплойта отвечает (с таймаутом), KSU-модуль в ядре
+     *  или su в системе. Та же логика, что на главной. */
+    private fun rootActive(): Boolean = Transport.rootActiveQuick(this)
 
     private fun notifyResult(ok: Boolean) {
         val nm = getSystemService(NotificationManager::class.java) ?: return
@@ -285,9 +266,6 @@ class BootRootService : Service() {
 
         /** Пауза после загрузки до эксплойта: см. комментарий в restore(). */
         private const val BOOT_SETTLE_MS = 8 * 60 * 1000L
-
-        /** Сколько раз запускать эксплойт целиком (внутри — ещё N попыток preload). */
-        private const val EXPLOIT_ROUNDS = 2
 
         fun start(ctx: Context) {
             try {

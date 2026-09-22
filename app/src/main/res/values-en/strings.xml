@@ -21,49 +21,25 @@
     <string name="action_grant_shizuku">Allow in Shizuku</string>
     <string name="action_open_shizuku">Open Shizuku</string>
 
-    <string name="transport_adb">Transport: ADB tcp (5555)</string>
-    <string name="transport_adb_desc">Persistent connection — no Shizuku needed</string>
-    <string name="transport_shizuku">Transport: Shizuku (shell)</string>
-    <string name="transport_shizuku_desc">Will switch to ADB tcp after first root</string>
     <string name="transport_shizuku_perm">Shizuku: permission needed</string>
     <string name="transport_shizuku_perm_desc">Tap the button — Shizuku will show the permission dialog</string>
     <string name="transport_none">No transport</string>
     <string name="transport_none_desc">First run requires Shizuku: open the app and start it</string>
 
-    <string name="payload_verified">verified: %s</string>
-    <string name="payload_searching">Searching payload for this device…</string>
     <string name="catalog_loading">Loading catalog…</string>
     <string name="catalog_retry">Retry search</string>
     <string name="catalog_error">Catalog failed to load — check internet or try later</string>
 
-    <string name="device_title">Device</string>
     <string name="device_model">Model</string>
     <string name="device_rom">ROM</string>
     <string name="device_kernel">Kernel</string>
-    <string name="device_kmi">KMI</string>
     <string name="device_patch">Patch</string>
     <string name="device_soc">SoC</string>
 
     <string name="ksu_title">Root manager</string>
-    <string name="settings_dev">Developer</string>
-    <string name="settings_dev_desc">Demo flow, payloads, logs</string>
     <string name="settings_boot_restore">Restore root after reboot</string>
     <string name="settings_boot_restore_desc">Automatically re-runs the exploit and loads the KernelSU module</string>
-    <string name="dev_title">Developer</string>
-    <string name="dev_demo_title">Root flow demo (exploit stub)</string>
-    <string name="dev_demo_success">Demo: success</string>
-    <string name="dev_demo_failure">Demo: failure</string>
-    <string name="dev_demo_broken">Demo: system broken</string>
-    <string name="dev_demo_infinite">Demo: infinite</string>
-    <string name="dev_restart_exploit">Restart exploit</string>
-    <string name="dev_catalog_loading">Loading catalog…</string>
     <string name="dev_catalog_error">Catalog unavailable</string>
-    <string name="dev_payloads">Payloads</string>
-    <string name="dev_payloads_empty">Nothing downloaded yet</string>
-    <string name="dev_payload_selected">Selected in catalog: %1$s</string>
-    <string name="ksu_selected">Selected: %s</string>
-    <string name="ksu_select">Choose KernelSU</string>
-    <string name="ksu_select_desc">All variants work via late-load with locked bootloader.</string>
     <string name="ksu_desc_kernelsu">The original. Stable.</string>
     <string name="ksu_desc_ksunext">Fork with susfs.</string>
     <string name="ksu_desc_sukisu">Active fork.</string>
@@ -79,34 +55,19 @@
     <string name="phase_download">Downloading files…</string>
     <string name="phase_deploy">Deploying exploit…</string>
     <string name="phase_exploit">Running exploit…</string>
-    <string name="phase_root_wait">Waiting for root…</string>
     <string name="phase_ksu">Installing KernelSU…</string>
     <string name="downloading">Downloading…</string>
-    <string name="log_title">rmv@neo — log</string>
 
     <string name="settings_title">Settings</string>
     <string name="settings_language">Language</string>
-    <string name="lang_system">Auto</string>
-    <string name="lang_ru">Русский</string>
-    <string name="lang_en">English</string>
-    <string name="lang_zh">中文</string>
     <string name="settings_appearance">Appearance</string>
     <string name="theme_auto">Auto</string>
     <string name="theme_light">Light</string>
     <string name="theme_dark">Dark</string>
     <string name="dynamic_colors">Material You</string>
     <string name="dynamic_colors_desc">Dynamic colors from the system (Android 12+)</string>
-    <string name="settings_root_manager">Root manager</string>
-    <string name="settings_root_manager_desc">Which KernelSU to install after the exploit</string>
     <string name="settings_updates">Updates</string>
     <string name="settings_catalog">Payload catalog</string>
-    <string name="settings_catalog_url">Catalog URL</string>
-    <string name="settings_catalog_hint">JSON describing supported devices</string>
-    <string name="settings_about">About</string>
-    <string name="about_version">Version</string>
-    <string name="about_author">Author</string>
-    <string name="about_source">Source code</string>
-    <string name="about_exploit">Exploit</string>
     <string name="disclaimer_title">⚠ Important</string>
     <string name="disclaimer_text">The app uses kernel vulnerabilities to get root on devices with a locked bootloader. Kernel panics are possible (the device will reboot — that\'s normal, not a brick). Use only on your own device.</string>
 <string name="settings_theme">Theme</string>
@@ -116,8 +77,6 @@
     <string name="lang_zh_full">中文</string>
     <string name="action_close">Close</string>
     <string name="action_retry">Retry</string>
-    <string name="action_full_reboot">Reboot device</string>
-    <string name="ksu_selected_desc">Which KernelSU to install after the exploit</string>
     <string name="flow_fail_no_transport">No transport: start Shizuku and grant permission</string>
     <string name="flow_fail_no_payload">No payload found for this device</string>
     <string name="flow_fail_download">File download failed</string>
@@ -126,10 +85,7 @@
     <string name="flow_fail_timeout">Timed out waiting for root</string>
     <string name="flow_fail_stopped">Stopped by user</string>
     <string name="flow_fail_ksu">KernelSU did not activate</string>
-    <string name="flow_fail_system_broken">System is damaged</string>
-    <string name="hint_system_broken">The exploit damaged the system: new apps cannot start. A full reboot is required — root will be lost, get it again after boot.</string>
     <string name="flow_fail_other">Unknown error</string>
-<string name="status_transport">Transport</string>
     <string name="status_payload">Payload</string>
     <string name="confirm_softreboot_text">A userspace reboot will restart the system interface: apps will close, no data will be lost.</string>
     <string name="confirm_softreboot_title">Restart the interface?</string>
@@ -141,22 +97,14 @@
     <string name="logs_failed">Failed</string>
     <string name="logs_duration">%1$d s</string>
     <string name="logs_lines">%1$d lines</string>
-    <string name="transport_short_adb">ADB tcp</string>
-    <string name="transport_short_shizuku">Shizuku</string>
-    <string name="transport_short_perm">Permission needed</string>
-    <string name="transport_short_none">None</string>
     <string name="payload_short_searching">Searching…</string>
-    <string name="payload_short_error">Error</string>
 <string name="transport_via_adb">via ADB tcp</string>
     <string name="transport_via_shizuku">via Shizuku</string>
     <!-- Log -->
     <string name="log_started">Starting the root process</string>
-    <string name="log_catalog_count">Catalog loaded: %1$d devices</string>
     <string name="log_payload">Using payload: %1$s</string>
     <string name="log_download_start">Downloading %1$s (%2$d KB)…</string>
     <string name="log_download_ok">%1$s downloaded</string>
-    <string name="log_transport_adb">Transport: ADB tcp (5555)</string>
-    <string name="log_transport_shizuku">Transport: Shizuku (shell)</string>
     <string name="log_deploy_ok">Exploit deployed to /data/local/tmp/rmv</string>
     <string name="log_exploit_start">Running exploit…</string>
     <string name="log_root_already">Root is already active</string>
@@ -164,14 +112,11 @@
     <string name="log_exploit_empty">No exploit output</string>
     <string name="log_exploit_resumed">Running exploit detected — resuming it instead of starting a new one</string>
     <string name="log_exploit_counter">Running exploit · %1$d/%2$d</string>
-    <string name="log_download_progress">%1$s: %2$d%%</string>
     <string name="log_root_obtained">Root obtained in %1$d s</string>
     <string name="log_verify">Verification: %1$s</string>
     <string name="log_persist_start">Persisting: permanent ADB and auth key…</string>
     <string name="log_persist_ok">ADB persisted — no Shizuku needed after reboots</string>
     <string name="log_persist_fail">Failed to persist ADB (not critical)</string>
-    <string name="log_ksu_skip">KernelSU skipped: ksud not available in catalog</string>
-    <string name="log_ksu_skip2">Root daemon is active; KernelSU can be installed later</string>
     <string name="log_ksu_download">Downloading kernel module (%1$s)…</string>
     <string name="log_ksu_download_fail">Failed to download the kernel module</string>
     <string name="log_ksu_vermagic">Adapting vermagic to the current kernel…</string>
@@ -200,7 +145,6 @@
     <string name="hint_timeout">Reboot the phone and try again</string>
     <string name="hint_ksu">A userspace reboot may activate the module</string>
     <!-- Warning -->
-    <string name="warning_soft_reboot">A userspace reboot is required to activate KernelSU</string>
     <!-- Notifications -->
     <string name="notif_channel">Root status</string>
     <string name="notif_root_active_title">Root obtained</string>
@@ -208,7 +152,6 @@
     <string name="notif_root_lost_title">Root was reset by reboot</string>
     <string name="notif_root_lost_text">Open the app — root will be back in a couple of taps</string>
 
-    <string name="settings_dev_unlocked">Developer menu unlocked</string>
     <string name="log_softreboot_perform">Performing userspace reboot…</string>
     <string name="notif_root_running">Getting root access…</string>
     <string name="notif_boot_restore_running">Restoring root after reboot…</string>
@@ -216,8 +159,6 @@
     <string name="notif_boot_restore_ok_text">KernelSU is active again</string>
     <string name="notif_boot_restore_fail_title">Root restore failed</string>
     <string name="notif_boot_restore_fail_text">Open the app and start the process manually</string>
-    <string name="log_full_reboot">Rebooting device…</string>
-    <string name="log_softreboot_broken">System is damaged — a userspace reboot would hang. Performing full reboot…</string>
     <string name="log_softreboot_fail">Userspace reboot failed — restart the interface manually and root will activate</string>
 <string name="log_ksud_download">Downloading ksud…</string>
     <string name="log_ksud_fail">Failed to download ksud — KernelSU skipped, root daemon is active</string>
@@ -228,7 +169,6 @@
     <string name="warn_go">Let\'s go</string>
     <string name="warn_cancel">Cancel</string>
 <string name="warn_dont_show">Don\'t show again</string>
-    <string name="view_last_log">Last run log</string>
     <string name="copy_log">Copy log</string>
     <string name="log_copied">Log copied to clipboard</string>
 
@@ -240,8 +180,6 @@
     <string name="update_button">Update</string>
     <string name="update_cancel">Cancel</string>
     <string name="update_downloading">Downloading update…</string>
-    <string name="update_download_fail">Download failed — check your connection and try again</string>
-    <string name="update_installing">Installer opened — finish the installation</string>
     <string name="update_retry_install">Install</string>
     <string name="settings_autoupdate">Auto-check for updates</string>
     <string name="settings_autoupdate_desc">Check for app updates after every run</string>
@@ -264,17 +202,10 @@
     <string name="about_repo_exploit">Exploit</string>
     <string name="settings_other">Other</string>
     <string name="settings_other_desc">Demo flow and payload catalog</string>
-    <string name="other_demo">Demo</string>
     <string name="theme_screen_title">Theme</string>
     <string name="theme_screen_style">Style</string>
     <string name="theme_name_monet">Monet</string>
-    <string name="theme_name_monet_desc">Material 3 Expressive: side windows, predictive gestures, smooth dialogs</string>
-    <string name="theme_name_monet_old">Monet Old</string>
-    <string name="theme_name_monet_old_desc">The previous look, no behavioral changes</string>
     <string name="theme_name_originos">OriginOS</string>
-    <string name="theme_name_originos_desc">Gray base — work in progress</string>
-    <string name="settings_predictive_back">Predictive gestures</string>
-    <string name="settings_predictive_back_desc">The window shrinks along with the back swipe</string>
     <string name="other_demo_run">Exploit demonstration</string>
     <string name="settings_root">Root</string>
     <string name="home_pick_payload">Choose custom .so</string>
@@ -296,7 +227,6 @@
     <string name="log_traces_failed">Failed to remove temporary files</string>
     <string name="log_custom_not_so">Selected file is not a .so library — cannot run</string>
     <string name="payload_not_found">Not found</string>
-    <string name="toast_unsupported_file">Unsupported file type</string>
     <string name="other_section_process">Process</string>
 
     <!-- First-run Telegram promo -->

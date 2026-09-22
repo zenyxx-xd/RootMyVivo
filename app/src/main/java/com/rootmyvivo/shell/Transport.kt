@@ -88,9 +88,14 @@ object Transport {
             }
             Shizuku.shouldShowRequestPermissionRationale() -> false
             else -> {
-                Shizuku.addRequestPermissionResultListener(Shizuku.OnRequestPermissionResultListener { _, grantResult ->
-                    if (grantResult == PackageManager.PERMISSION_GRANTED) onGranted()
-                })
+                lateinit var listener: Shizuku.OnRequestPermissionResultListener
+                listener = Shizuku.OnRequestPermissionResultListener { _, grantResult ->
+                    if (grantResult == PackageManager.PERMISSION_GRANTED) {
+                        runCatching { Shizuku.removeRequestPermissionResultListener(listener) }
+                        onGranted()
+                    }
+                }
+                Shizuku.addRequestPermissionResultListener(listener)
                 Shizuku.requestPermission(requestCode)
                 false
             }
@@ -105,6 +110,7 @@ object Transport {
     @Volatile
     private var shizukuService: IShellService? = null
 
+    @Synchronized
     fun bindShizukuService(context: Context): Boolean {
         shizukuService?.let { return true }
         if (!shizukuAlive || !shizukuPermissionGranted()) return false
@@ -139,8 +145,9 @@ object Transport {
     }
 
     private fun execShizuku(ctx: Context, command: String): Pair<Int, String> = try {
-        val svc = shizukuService ?: bindShizukuService(ctx)?.let { shizukuService }
-            ?: return -1 to "Shizuku service not connected"
+        var svc = shizukuService
+        if (svc == null && bindShizukuService(ctx)) svc = shizukuService
+        if (svc == null) return -1 to "Shizuku service not connected"
         val output = svc.exec(command)
         val exit = Regex("EXIT=(-?\\d+)").find(output)?.groupValues?.get(1)?.toIntOrNull() ?: -1
         exit to output.removePrefix("EXIT=$exit\n")
@@ -155,8 +162,11 @@ object Transport {
         localPath: String,
         remotePath: String,
     ): Pair<Boolean, String> {
-        val svc = shizukuService ?: bindShizukuService(ctx)?.let { shizukuService }
-            ?: return false to ctx.getString(com.rootmyvivo.R.string.deploy_err_shizuku_bind)
+        var svc = shizukuService
+        if (svc == null && bindShizukuService(ctx)) svc = shizukuService
+        if (svc == null) {
+            return false to ctx.getString(com.rootmyvivo.R.string.deploy_err_shizuku_bind)
+        }
         return try {
             val data = File(localPath).readBytes()
             var offset = 0L
@@ -177,6 +187,14 @@ object Transport {
 
     // ─────────── ADB wire ───────────
 
+    /**
+     * ADB-канал пригоден к работе. Живой авторизованный сокет — дешевле
+     * нового roundtrip-пробеса; проверяем порт (без диалога) только когда
+     * сокета нет.
+     */
+    private fun adbUsable(ctx: Context): Boolean =
+        AdbWire.isConnected() || adbAlive(ctx)
+
     private fun adbAlive(ctx: Context): Boolean = try {
         val (code, out) = AdbWire.shell(ctx, "echo RMV_OK", timeoutMs = 8000, allowDialog = false)
         code == 0 && out.contains("RMV_OK")
@@ -191,7 +209,6 @@ object Transport {
      * upstream — в /apex (в PATH). Пробуем оба: сначала локальный, потом PATH.
      */
     const val SU = "/data/local/tmp/su"
-    const val SU_CMD = "$SU -c"
 
     /**
      * Прямой вызов su-клиента эксплойта из процесса приложения — без транспорта.
@@ -218,6 +235,14 @@ object Transport {
      *  менеджера) — в этом режиме только через транспорт (shell-домен, allow_shell). */
     private fun ksuSuPresent(): Boolean = File("/system/bin/su").exists()
 
+    /**
+     * su-команда в одинарных кавычках с корректным экранированием вложенных
+     * `'` (закрытие → escaped-кавычка → открытие). Простая обёртка `'...'`
+     * ломалась на командах с внутренними кавычками (unzip '...').
+     */
+    private fun suWrapped(bin: String, command: String): String =
+        "$bin -c '" + command.replace("'", "'\\''") + "'"
+
     /** Выполнить команду через su: напрямую из приложения, затем через транспорт. */
     suspend fun su(ctx: Context, command: String, timeoutSec: Int = 300): Pair<Int, String> {
         // 1. Напрямую через демон эксплойта — пока KSU не перехватил su
@@ -226,13 +251,13 @@ object Transport {
             if (local.first == 0) return local
         }
         // 2. Через транспорт (shell-домен): наш su, а после KSU — PATH-su (allow_shell)
-        val r1 = exec(ctx, "$SU -c '$command'", timeoutSec)
+        val r1 = exec(ctx, suWrapped(SU, command), timeoutSec)
         if (r1.first == 0) return r1
-        return exec(ctx, "su -c '$command'", timeoutSec)
+        return exec(ctx, suWrapped("su", command), timeoutSec)
     }
 
     fun detectBlocking(ctx: Context): TransportState {
-        if (prefs.firstRootDone && adbAlive(ctx)) return TransportState.Adb
+        if (prefs.firstRootDone && adbUsable(ctx)) return TransportState.Adb
         return when {
             shizukuAlive && shizukuPermissionGranted() -> TransportState.Shizuku
             shizukuAlive -> TransportState.ShizukuNeedsPermission
@@ -240,37 +265,67 @@ object Transport {
         }
     }
 
+    /**
+     * Быстрая локальная проверка «root есть» без транспорта. Пока KSU не
+     * перехватил su — спрашиваем демон (suLocal, с таймаутом). После KSU
+     * локальный su-клиент форвардится в PATH-su и мог бы висеть на
+     * подтверждении менеджера — там доказательством служит модуль в ядре.
+     */
+    fun rootActiveQuick(ctx: Context): Boolean {
+        if (!File("/system/bin/su").exists()) {
+            val (code, out) = try {
+                suLocal("id", timeoutSec = 5)
+            } catch (_: Exception) {
+                -1 to ""
+            }
+            return code == 0 && out.contains("uid=0")
+        }
+        return try {
+            File("/proc/modules").readText().contains("kernelsu", ignoreCase = true)
+        } catch (_: Exception) {
+            false
+        }
+    }
+
     /** Выполнить команду в shell-домене по политике транспорта. */
     suspend fun exec(ctx: Context, command: String, timeoutSec: Int = 300): Pair<Int, String> =
         withContext(Dispatchers.IO) {
-            when {
-                prefs.firstRootDone && adbAlive(ctx) ->
-                    try {
-                        AdbWire.shell(ctx, command, timeoutMs = timeoutSec * 1000L, allowDialog = true)
-                    } catch (e: Exception) {
-                        -1 to (e.message ?: "adb error")
-                    }
-
-                shizukuAlive && shizukuPermissionGranted() -> execShizuku(ctx, command)
-                else -> -1 to "no transport"
+            if (prefs.firstRootDone && adbUsable(ctx)) {
+                try {
+                    return@withContext AdbWire.shell(ctx, command, timeoutMs = timeoutSec * 1000L, allowDialog = true)
+                } catch (e: Exception) {
+                    // канал умер между пробой и командой — фолбэк на Shizuku
+                    Log.w(TAG, "adb exec failed: ${e.message}")
+                }
+            }
+            if (shizukuAlive && shizukuPermissionGranted()) {
+                execShizuku(ctx, command)
+            } else {
+                -1 to "no transport"
             }
         }
 
     /**
      * Передать файл в /data/local/tmp по политике транспорта.
      * (успех, причина-текст): false — вторая строка объясняет что именно
-     * не так (исключение канала, обрыв передачи, битый сервис) — это уходит
-     * в лог процесса вместо безликого «не удалось задеплоить».
+     * не так (обрыв канала, привязка Shizuku, исключение передачи) — это
+     * уходит в лог процесса вместо безликого «не удалось задеплоить».
      */
     suspend fun deploy(ctx: Context, localPath: String, remotePath: String): Pair<Boolean, String> =
         withContext(Dispatchers.IO) {
-            when {
-                prefs.firstRootDone && adbAlive(ctx) -> {
-                    val err = AdbWire.deploy(ctx, localPath, remotePath)
-                    if (err == null) true to "" else false to err
-                }
-                shizukuAlive && shizukuPermissionGranted() -> deployShizuku(ctx, localPath, remotePath)
-                else -> false to ctx.getString(com.rootmyvivo.R.string.deploy_err_no_transport)
+            var adbErr: String? = null
+            if (prefs.firstRootDone && adbUsable(ctx)) {
+                val err = AdbWire.deploy(ctx, localPath, remotePath)
+                if (err == null) return@withContext true to ""
+                adbErr = err
+                Log.w(TAG, "adb deploy failed: $err — trying shizuku")
+            }
+            if (shizukuAlive && shizukuPermissionGranted()) {
+                val (ok, detail) = deployShizuku(ctx, localPath, remotePath)
+                if (ok) return@withContext true to ""
+                false to (adbErr?.plus(" | ") ?: "") + detail
+            } else {
+                false to (adbErr ?: ctx.getString(com.rootmyvivo.R.string.deploy_err_no_transport))
             }
         }
 
@@ -327,35 +382,6 @@ object Transport {
             Log.w(TAG, "adbd did not come up on 5555 (port prop=$recheck)")
         }
         portOk
-    }
-
-    /**
-     * Детектор сломанной системы (холодный старт через ProbeActivity).
-     * Временно выключен: включить обратно — выставить true.
-     */
-    private const val SYSTEM_HEALTH_DETECTION = false
-
-    /**
-     * Проверка здоровья системы: холодный старт (ProbeActivity в отдельном
-     * процессе). Перед пробей убиваем кэшированный :probe — иначе активити
-     * стартует в живом процессе без форка от зиготы и проба всегда «успешна».
-     * am kill трогает только кэшированные процессы: главный процесс приложения
-     * (activity + foreground service) не затрагивается.
-     * Если эксплойт зациклил зиготу — процесс не ответвится, команда зависнет
-     * или упадёт → система повреждена.
-     */
-    suspend fun systemHealthy(ctx: Context): Boolean = withContext(Dispatchers.IO) {
-        if (!SYSTEM_HEALTH_DETECTION) return@withContext true
-        try {
-            val (code, out) = exec(
-                ctx,
-                "am kill com.rootmyvivo; am start -W -n com.rootmyvivo/.ProbeActivity",
-                timeoutSec = 30,
-            )
-            code == 0 && out.contains("Status: ok")
-        } catch (_: Exception) {
-            false
-        }
     }
 
     /** Диагностика adb-канала (не запускает эксплойт). */

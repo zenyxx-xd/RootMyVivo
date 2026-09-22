@@ -1,6 +1,7 @@
 package com.rootmyvivo.vm
 
 import com.rootmyvivo.data.DeviceInfo
+import com.rootmyvivo.data.PayloadCatalog
 import com.rootmyvivo.data.PayloadMatch
 import com.rootmyvivo.data.Settings
 import com.rootmyvivo.root.KsuVariant
@@ -68,6 +69,9 @@ data class UiState(
     /** Найденный живой пейлоад: тело + готовая сборка ядра из каталога v5. */
     val payload: PayloadMatch? = null,
     val catalogState: CatalogState = CatalogState.LOADING,
+    /** Последний загруженный каталог: экран поддерживаемых устройств
+     *  переиспользует его вместо второй сетевой загрузки. */
+    val catalogData: PayloadCatalog? = null,
     /** Тело пользователя есть в каталоге (независимо от ядра) — для
      *  «Устройство не поддерживается» vs «Ядро … не поддерживается». */
     val deviceInCatalog: Boolean = false,
@@ -110,7 +114,6 @@ data class UiState(
     val lastLog: List<LogEntry> = emptyList(),
     /** Live-лог эксплойта для просмотра из истории */
     val lastExploitLog: List<String> = emptyList(),
-    val logViewerOpen: Boolean = false,
     /** История запусков (до 5 последних) */
     val logHistory: List<LogRunInfo> = emptyList(),
 )

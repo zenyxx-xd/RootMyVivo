@@ -23,10 +23,6 @@
     <string name="home_btn_need_transport">Нужен Shizuku или ADB</string>
 
     <!-- Транспорт -->
-    <string name="transport_adb">Транспорт: adb tcp (5555)</string>
-    <string name="transport_adb_desc">Постоянное подключение — Shizuku не нужен</string>
-    <string name="transport_shizuku">Транспорт: Shizuku (shell)</string>
-    <string name="transport_shizuku_desc">После первого рута переключимся на adb tcp</string>
     <string name="transport_shizuku_perm">Shizuku: нужно разрешение</string>
     <string name="transport_shizuku_perm_desc">Нажми кнопку — Shizuku покажет диалог</string>
     <string name="transport_none">Нет транспорта</string>
@@ -35,40 +31,20 @@
     <string name="action_open_shizuku">Перейти в Shizuku</string>
 
     <!-- Пейлоад -->
-    <string name="payload_searching">Ищем пейлоад для устройства…</string>
-    <string name="payload_verified">проверен: %s</string>
     <string name="catalog_error">Каталог не загрузился — проверь интернет</string>
 
     <!-- Устройство -->
-    <string name="device_title">Устройство</string>
     <string name="device_model">Модель</string>
     <string name="device_rom">ROM</string>
     <string name="device_kernel">Ядро</string>
-    <string name="device_kmi">KMI</string>
     <string name="device_patch">Патч</string>
     <string name="device_soc">SoC</string>
 
     <!-- KernelSU -->
     <string name="ksu_title">Рут-менеджер</string>
-    <string name="settings_dev">Для разработчика</string>
-    <string name="settings_dev_desc">Демо-процесс, пейлоады, логи</string>
     <string name="settings_boot_restore">Восстанавливать root после перезагрузки</string>
     <string name="settings_boot_restore_desc">Автоматически перезапускает эксплойт и загружает модуль KernelSU</string>
-    <string name="dev_title">Разработчику</string>
-    <string name="dev_demo_title">Демо-процесс рута (заглушка вместо эксплойта)</string>
-    <string name="dev_demo_success">Демо: успех</string>
-    <string name="dev_demo_failure">Демо: провал</string>
-    <string name="dev_demo_broken">Демо: система сломана</string>
-    <string name="dev_demo_infinite">Демо: бесконечный</string>
-    <string name="dev_restart_exploit">Перезапуск эксплойта</string>
-    <string name="dev_catalog_loading">Загрузка каталога…</string>
     <string name="dev_catalog_error">Каталог недоступен</string>
-    <string name="dev_payloads">Пейлоады</string>
-    <string name="dev_payloads_empty">Ничего не скачано</string>
-    <string name="dev_payload_selected">Выбран в каталоге: %1$s</string>
-    <string name="ksu_selected">Выбран: %s</string>
-    <string name="ksu_select">Выбор KernelSU</string>
-    <string name="ksu_select_desc">Все варианты работают через late-load на залоченном BL.</string>
     <string name="ksu_desc_kernelsu">Оригинал. Стабильный.</string>
     <string name="ksu_desc_ksunext">Форк с susfs.</string>
     <string name="ksu_desc_sukisu">Активный форк.</string>
@@ -82,7 +58,6 @@
     <string name="flow_failed">Не удалось получить root</string>
     <string name="action_back">Назад</string>
     <string name="downloading">Скачивание…</string>
-    <string name="log_title">rootmyvivo@localhost</string>
 
     <!-- Фазы -->
     <string name="phase_catalog">Загрузка каталога</string>
@@ -90,33 +65,19 @@
     <string name="phase_download">Скачивание файлов</string>
     <string name="phase_deploy">Деплой эксплойта</string>
     <string name="phase_exploit">Запуск эксплойта</string>
-    <string name="phase_root_wait">Ожидание root</string>
     <string name="phase_ksu">Установка KernelSU</string>
 
     <!-- Настройки -->
     <string name="settings_title">Настройки</string>
     <string name="settings_language">Язык</string>
-    <string name="lang_system">Авто</string>
-    <string name="lang_ru">Рус</string>
-    <string name="lang_en">English</string>
-    <string name="lang_zh">中文</string>
     <string name="settings_appearance">Внешний вид</string>
     <string name="theme_auto">Авто</string>
     <string name="theme_light">Светлая</string>
     <string name="theme_dark">Тёмная</string>
     <string name="dynamic_colors">Material You</string>
     <string name="dynamic_colors_desc">Динамические цвета системы (Android 12+)</string>
-    <string name="settings_root_manager">Рут-менеджер</string>
-    <string name="settings_root_manager_desc">Какой KernelSU устанавливать после эксплойта</string>
     <string name="settings_updates">Обновления</string>
     <string name="settings_catalog">Каталог пейлоадов</string>
-    <string name="settings_catalog_url">URL каталога</string>
-    <string name="settings_catalog_hint">JSON с описанием поддерживаемых устройств</string>
-    <string name="settings_about">О приложении</string>
-    <string name="about_version">Версия</string>
-    <string name="about_author">Автор</string>
-    <string name="about_source">Исходники</string>
-    <string name="about_exploit">Эксплойт</string>
     <string name="action_save">Сохранить</string>
 
     <!-- Дисклеймер -->
@@ -129,8 +90,6 @@
     <string name="lang_zh_full">中文</string>
     <string name="action_close">Закрыть</string>
     <string name="action_retry">Повторить</string>
-    <string name="action_full_reboot">Перезагрузить устройство</string>
-    <string name="ksu_selected_desc">Какой KernelSU установить после эксплойта</string>
     <string name="flow_fail_no_transport">Нет транспорта: запусти Shizuku и выдай разрешение</string>
     <string name="flow_fail_no_payload">Пейлоад для устройства не найден</string>
     <string name="flow_fail_download">Ошибка скачивания файлов</string>
@@ -139,10 +98,7 @@
     <string name="flow_fail_timeout">Таймаут ожидания root</string>
     <string name="flow_fail_stopped">Остановлено пользователем</string>
     <string name="flow_fail_ksu">KernelSU не активировался</string>
-    <string name="flow_fail_system_broken">Система повреждена</string>
-    <string name="hint_system_broken">Эксплойт нарушил работу системы: новые приложения не запускаются. Нужна полная перезагрузка — рут слетит, после загрузки получи его снова.</string>
     <string name="flow_fail_other">Неизвестная ошибка</string>
-<string name="status_transport">Транспорт</string>
     <string name="status_payload">Пейлоад</string>
     <string name="confirm_softreboot_text">Перезагрузка userspace перезапустит системный интерфейс: приложения закроются, данные не потеряются.</string>
     <string name="confirm_softreboot_title">Перезапустить интерфейс?</string>
@@ -154,22 +110,14 @@
     <string name="logs_failed">Не удалось</string>
     <string name="logs_duration">%1$d с</string>
     <string name="logs_lines">%1$d строк</string>
-    <string name="transport_short_adb">ADB tcp</string>
-    <string name="transport_short_shizuku">Shizuku</string>
-    <string name="transport_short_perm">Нужно разрешение</string>
-    <string name="transport_short_none">Нет</string>
     <string name="payload_short_searching">Поиск…</string>
-    <string name="payload_short_error">Ошибка</string>
 <string name="transport_via_adb">через ADB tcp</string>
     <string name="transport_via_shizuku">через Shizuku</string>
     <!-- Лог -->
     <string name="log_started">Запуск процесса получения root</string>
-    <string name="log_catalog_count">Каталог загружен: %1$d устройств</string>
     <string name="log_payload">Используется пейлоад: %1$s</string>
     <string name="log_download_start">Скачивание %1$s (%2$d КБ)…</string>
     <string name="log_download_ok">%1$s скачан</string>
-    <string name="log_transport_adb">Транспорт: ADB tcp (5555)</string>
-    <string name="log_transport_shizuku">Транспорт: Shizuku (shell)</string>
     <string name="log_deploy_ok">Эксплойт развёрнут в /data/local/tmp/rmv</string>
     <string name="log_exploit_start">Запуск эксплойта…</string>
     <string name="log_root_already">Root уже активен</string>
@@ -177,14 +125,11 @@
     <string name="log_exploit_empty">Нет вывода эксплойта</string>
     <string name="log_exploit_resumed">Обнаружен работающий эксплойт — продолжаю наблюдение вместо нового запуска</string>
     <string name="log_exploit_counter">Запуск эксплойта · %1$d/%2$d</string>
-    <string name="log_download_progress">%1$s: %2$d%%</string>
     <string name="log_root_obtained">Root получен за %1$d с</string>
     <string name="log_verify">Проверка: %1$s</string>
     <string name="log_persist_start">Закрепление: постоянный ADB и ключ авторизации…</string>
     <string name="log_persist_ok">ADB закреплён — после перезагрузок Shizuku не нужен</string>
     <string name="log_persist_fail">Не удалось закрепить ADB (не критично)</string>
-    <string name="log_ksu_skip">KernelSU пропущен: ksud недоступен в каталоге</string>
-    <string name="log_ksu_skip2">Root-демон активен; KernelSU можно установить позже</string>
     <string name="log_ksu_download">Скачивание модуля ядра (%1$s)…</string>
     <string name="log_ksu_download_fail">Не удалось скачать модуль ядра</string>
     <string name="log_ksu_vermagic">Адаптация vermagic под текущее ядро…</string>
@@ -213,7 +158,6 @@
     <string name="hint_timeout">Перезагрузи телефон и попробуй ещё раз</string>
     <string name="hint_ksu">Перезагрузка userspace может активировать модуль</string>
     <!-- Предупреждение -->
-    <string name="warning_soft_reboot">Сейчас потребуется перезагрузка userspace для активации KernelSU</string>
     <!-- Уведомления -->
     <string name="notif_channel">Root-статус</string>
     <string name="notif_root_active_title">Root получен</string>
@@ -221,7 +165,6 @@
     <string name="notif_root_lost_title">Root сброшен перезагрузкой</string>
     <string name="notif_root_lost_text">Открой приложение — root вернётся за пару касаний</string>
 
-    <string name="settings_dev_unlocked">Меню разработчика разблокировано</string>
     <string name="log_softreboot_perform">Выполняю перезагрузку userspace…</string>
     <string name="notif_root_running">Получение root-доступа…</string>
     <string name="notif_boot_restore_running">Восстановление root после перезагрузки…</string>
@@ -229,8 +172,6 @@
     <string name="notif_boot_restore_ok_text">KernelSU снова активен</string>
     <string name="notif_boot_restore_fail_title">Root не восстановился</string>
     <string name="notif_boot_restore_fail_text">Открой приложение и запусти процесс вручную</string>
-    <string name="log_full_reboot">Перезагружаю устройство…</string>
-    <string name="log_softreboot_broken">Система повреждена — перезагрузка userspace зависнет. Выполняю полную перезагрузку…</string>
     <string name="log_softreboot_fail">Перезагрузка userspace не удалась — перезапусти интерфейс вручную и рут активируется</string>
 <string name="log_ksud_download">Скачивание ksud…</string>
     <string name="log_ksud_fail">Не удалось скачать ksud — KernelSU пропущен, root-демон активен</string>
@@ -241,7 +182,6 @@
     <string name="warn_go">Поехали</string>
     <string name="warn_cancel">Отмена</string>
 <string name="warn_dont_show">Больше не показывать</string>
-    <string name="view_last_log">Последний лог запуска</string>
     <string name="copy_log">Копировать лог</string>
     <string name="log_copied">Лог скопирован в буфер</string>
 
@@ -253,8 +193,6 @@
     <string name="update_button">Обновить</string>
     <string name="update_cancel">Отмена</string>
     <string name="update_downloading">Скачивание обновления…</string>
-    <string name="update_download_fail">Не удалось скачать обновление — проверьте сеть и попробуйте снова</string>
-    <string name="update_installing">Открыт установщик — завершите установку</string>
     <string name="update_retry_install">Установить</string>
     <string name="settings_autoupdate">Автопоиск обновлений</string>
     <string name="settings_autoupdate_desc">Проверять обновления приложения после каждого запуска</string>
@@ -277,17 +215,10 @@
     <string name="about_repo_exploit">Эксплойт</string>
     <string name="settings_other">Другое</string>
     <string name="settings_other_desc">Демо-флоу и каталог пейлоадов</string>
-    <string name="other_demo">Демо</string>
     <string name="theme_screen_title">Тема</string>
     <string name="theme_screen_style">Оформление</string>
     <string name="theme_name_monet">Monet</string>
-    <string name="theme_name_monet_desc">Material 3 Expressive: боковые окна, предиктивные жесты, плавные диалоги</string>
-    <string name="theme_name_monet_old">Monet Old</string>
-    <string name="theme_name_monet_old_desc">Прежний вид, без behavioural-обновлений</string>
     <string name="theme_name_originos">OriginOS</string>
-    <string name="theme_name_originos_desc">Серая база — в разработке</string>
-    <string name="settings_predictive_back">Предиктивные жесты</string>
-    <string name="settings_predictive_back_desc">Окно сжимается вслед за свайпом «назад»</string>
     <string name="other_demo_run">Демонстрация эксплоита</string>
     <string name="settings_root">Рут</string>
     <string name="home_pick_payload">Выбрать кастомный .so</string>
@@ -309,7 +240,6 @@
     <string name="log_traces_failed">Не удалось очистить временные файлы</string>
     <string name="log_custom_not_so">Выбранный файл не является .so — запуск невозможен</string>
     <string name="payload_not_found">Не найден</string>
-    <string name="toast_unsupported_file">Неподдерживаемый тип файла</string>
     <string name="other_section_process">Процесс</string>
 
     <!-- Плашка Telegram (первый запуск) -->

@@ -56,15 +56,6 @@
             </intent-filter>
         </activity>
 
-        <!-- Детектор сломанной системы: запуск требует свежего fork от зиготы -->
-        <activity
-            android:name=".ProbeActivity"
-            android:exported="true"
-            android:process=":probe"
-            android:theme="@android:style/Theme.NoDisplay"
-            android:noHistory="true"
-            android:excludeFromRecents="true" />
-
         <!-- Foreground на время процесса рута: не даёт заморозить приложение в фоне -->
         <service
             android:name=".ExploitService"

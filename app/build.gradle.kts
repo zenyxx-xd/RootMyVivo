@@ -1,7 +1,17 @@
-﻿plugins {
+﻿import java.io.FileInputStream
+import java.util.Properties
+
+plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.plugin.compose")
     id("org.jetbrains.kotlin.plugin.serialization")
+}
+
+// Секреты подписи вне репозитория: keystore.properties в корне проекта
+// (gitignore). Без него релиз собирается неподписанным — CI это легально.
+val keystoreProps = Properties().apply {
+    val f = rootProject.file("keystore.properties")
+    if (f.exists()) FileInputStream(f).use { load(it) }
 }
 
 android {
@@ -18,11 +28,13 @@ android {
     }
 
     signingConfigs {
-        create("release") {
-            storeFile = file("C:/neo11/rmv-release.jks")
-            storePassword = "rmv-beta-2026"
-            keyAlias = "rmv"
-            keyPassword = "rmv-beta-2026"
+        if (keystoreProps.isNotEmpty()) {
+            create("release") {
+                storeFile = file(keystoreProps.getProperty("storeFile"))
+                storePassword = keystoreProps.getProperty("storePassword")
+                keyAlias = keystoreProps.getProperty("keyAlias")
+                keyPassword = keystoreProps.getProperty("keyPassword")
+            }
         }
     }
 
@@ -36,7 +48,9 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro",
             )
-            signingConfig = signingConfigs.getByName("release")
+            if (keystoreProps.isNotEmpty()) {
+                signingConfig = signingConfigs.getByName("release")
+            }
         }
     }
 

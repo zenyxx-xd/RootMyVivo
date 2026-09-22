@@ -109,7 +109,7 @@ private val SideTransition: NavTransition = navGraphicsTransition(
 @Composable
 fun App(vm: MainViewModel, state: UiState) {
     val nav = rememberNavController<RmvRoute>(RmvRoute.Main)
-    val onBack: () -> Unit = remember(nav) { { nav.pop(); Unit } }
+    val onBack: () -> Unit = remember(nav) { { nav.pop() } }
     var flowOpen by rememberSaveable { mutableStateOf(false) }
 
     // Быстрый двойной тап по пункту дважды пушит один и тот же ключ —
@@ -162,7 +162,6 @@ fun App(vm: MainViewModel, state: UiState) {
             entry<RmvRoute.Supported>(swipeDismiss = NavSwipeDirection.LeftToRight) {
                 com.rootmyvivo.ui.home.SupportedDevicesScreen(
                     state = state,
-                    catalogUrl = state.settings.catalogUrl,
                     onClose = onBack,
                 )
             }
@@ -207,7 +206,6 @@ fun App(vm: MainViewModel, state: UiState) {
                     onRetry = {},
                     onSoftReboot = {},
                     onDismissSoftReboot = {},
-                    onFullReboot = {},
                     fog = false,
                 )
             }
@@ -244,7 +242,6 @@ fun App(vm: MainViewModel, state: UiState) {
                 onRetry = { vm.startRoot() },
                 onSoftReboot = { vm.performSoftReboot() },
                 onDismissSoftReboot = { vm.dismissSoftReboot() },
-                onFullReboot = { vm.performFullReboot() },
             )
         }
 

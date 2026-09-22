@@ -13,7 +13,6 @@ import java.io.File
 import java.io.IOException
 import java.net.HttpURLConnection
 import java.net.URL
-import java.util.concurrent.TimeUnit
 
 /** Найденное обновление приложения. */
 data class AppUpdate(
@@ -39,8 +38,9 @@ object AppUpdater {
 
     /** Текущий versionCode установки. */
     fun currentVersionCode(ctx: Context): Long = try {
+        // minSdk 31 — longVersionCode доступен всегда
         val pi = ctx.packageManager.getPackageInfo(ctx.packageName, 0)
-        if (Build.VERSION.SDK_INT >= 28) pi.longVersionCode else pi.versionCode.toLong()
+        pi.longVersionCode
     } catch (_: Exception) {
         0L
     }
@@ -138,7 +138,12 @@ object AppUpdater {
             }
             if (tmp.length() == 0L) throw IOException("empty response")
             if (total > 0 && tmp.length() != total) throw IOException("incomplete download")
-            tmp.renameTo(dest)
+            // renameTo молча падает на переходе между ФС (внутренний кэш → внешний):
+            // тогда переписываем поток и чистим tmp, иначе установщик получит пустоту
+            if (!tmp.renameTo(dest)) {
+                tmp.inputStream().use { i -> dest.outputStream().use { o -> i.copyTo(o) } }
+                tmp.delete()
+            }
             dest
         } catch (e: Exception) {
             tmp.delete()
@@ -162,8 +167,4 @@ object AppUpdater {
             false
         }
     }
-
-    /** Отдавать время сборки APK для диагностики (не используется в UI). */
-    fun apkAgeMs(f: File): Long = TimeUnit.MILLISECONDS.convert(
-        System.currentTimeMillis() - f.lastModified(), TimeUnit.MILLISECONDS)
 }

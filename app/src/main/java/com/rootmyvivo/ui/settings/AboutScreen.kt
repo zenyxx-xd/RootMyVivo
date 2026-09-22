@@ -1,4 +1,4 @@
-package com.rootmyvivo.ui.settings
+﻿package com.rootmyvivo.ui.settings
 
 import android.content.Context
 import android.content.Intent
@@ -26,8 +26,8 @@ import androidx.compose.material.icons.rounded.Bolt
 import androidx.compose.material.icons.rounded.CloudDownload
 import androidx.compose.material.icons.rounded.CloudSync
 import androidx.compose.material.icons.rounded.Code
-import androidx.compose.material.icons.rounded.OpenInNew
-import androidx.compose.material.icons.rounded.Send
+import androidx.compose.material.icons.automirrored.rounded.OpenInNew
+import androidx.compose.material.icons.automirrored.rounded.Send
 import androidx.compose.material.icons.rounded.SystemUpdate
 import androidx.compose.material.icons.rounded.Warning
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -186,7 +186,7 @@ fun AboutScreen(vm: MainViewModel, state: UiState, onClose: () -> Unit) {
                 RepoRow(
                     title = stringResource(R.string.about_tg_channel),
                     url = "https://t.me/${TELEGRAM_CHANNEL}",
-                    icon = Icons.Rounded.Send,
+                    icon = Icons.AutoMirrored.Rounded.Send,
                 )
             }
 
@@ -250,7 +250,7 @@ private fun RepoRow(title: String, url: String, icon: androidx.compose.ui.graphi
         onClick = { openUrl(context, url) },
         trailing = {
             Icon(
-                Icons.Rounded.OpenInNew, null,
+                Icons.AutoMirrored.Rounded.OpenInNew, null,
                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.size(18.dp),
             )

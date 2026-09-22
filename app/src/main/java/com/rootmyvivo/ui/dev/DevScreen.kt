@@ -44,9 +44,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.rootmyvivo.R
 import com.rootmyvivo.data.Catalog
+import com.rootmyvivo.root.FlowEvent
+import com.rootmyvivo.root.LogLevel
+import com.rootmyvivo.root.Phase
 import com.rootmyvivo.ui.flow.FlowScreen
-import com.rootmyvivo.vm.LogEntry
-import com.rootmyvivo.vm.LogKind
+import com.rootmyvivo.ui.flow.FlowUiReducer
 import com.rootmyvivo.vm.MainViewModel
 import com.rootmyvivo.vm.RootState
 import com.rootmyvivo.vm.UiState
@@ -62,13 +64,14 @@ fun DevScreen(vm: MainViewModel, state: UiState, onClose: () -> Unit, onRootStar
     var demoState by remember { mutableStateOf<UiState?>(null) }
     val scope = rememberCoroutineScope()
     val ctx = LocalContext.current
-    demoContext = ctx.applicationContext
+    val appCtx = remember(ctx) { ctx.applicationContext }
     val demoEnabled = state.payload != null && !state.flowRunning
     val rooted = state.rootState == RootState.ROOTED
-
     val closeDemo = {
         demoState = null
     }
+    /** Тот же редьюсер, что у боевого процесса: демо показывает ровно тот же UI */
+    val demoUi = remember(appCtx) { FlowUiReducer(appCtx) }
 
     // Демо-флоу рендерится тем же экраном процесса
     demoState?.let { demo ->
@@ -76,10 +79,9 @@ fun DevScreen(vm: MainViewModel, state: UiState, onClose: () -> Unit, onRootStar
             state = demo,
             canClose = true,
             onClose = closeDemo,
-            onRetry = { runDemo(scope) { demoState = it } },
+            onRetry = { runDemo(demoUi, scope, appCtx) { demoState = it } },
             onSoftReboot = { closeDemo() },
             onDismissSoftReboot = { demoState = demo.copy(softRebootPrompt = false) },
-            onFullReboot = { closeDemo() },
         )
         return
     }
@@ -121,7 +123,7 @@ fun DevScreen(vm: MainViewModel, state: UiState, onClose: () -> Unit, onRootStar
                     Text(stringResource(R.string.home_restart_exploit), maxLines = 1)
                 }
                 OutlinedButton(
-                    onClick = { runDemo(scope) { demoState = it } },
+                    onClick = { runDemo(demoUi, scope, appCtx) { demoState = it } },
                     modifier = Modifier.fillMaxWidth(),
                     shape = MaterialTheme.shapes.large,
                 ) {
@@ -225,127 +227,46 @@ private fun SectionCaption(text: String) {
 
 /**
  * Демо-флоу успеха: копия реального процесса, живой лог пишет заглушка.
+ * Состояние ведёт общий FlowUiReducer — тот же, что у боевого запуска.
  * Единственный вариант — успех.
  */
 private fun runDemo(
+    ui: FlowUiReducer,
     scope: kotlinx.coroutines.CoroutineScope,
+    ctx: android.content.Context,
     update: (UiState) -> Unit,
 ) {
     scope.launch {
-        val appCtx = demoContext ?: return@launch
-        var id = 0L
-        var idCounter = 0L
         var s = UiState(flowRunning = true)
-
-        suspend fun apply(event: com.rootmyvivo.root.FlowEvent) {
-            s = when (event) {
-                is com.rootmyvivo.root.FlowEvent.Step -> s.copy(
-                    flowPhase = event.phase,
-                    stepIndex = event.index,
-                    stepTotal = event.total,
-                    downloadProgress = null,
-                )
-                is com.rootmyvivo.root.FlowEvent.Log ->
-                    s.copy(log = s.log + LogEntry(++id, event.line, event.level))
-                is com.rootmyvivo.root.FlowEvent.Progress -> {
-                    val closed = s.log.map { if (it.status == LogLevel.RUNNING) it.copy(status = LogLevel.OK) else it }
-                    val kind = if (event.exploit) LogKind.EXPLOIT else LogKind.NORMAL
-                    s.copy(log = closed + LogEntry(++id, event.text, LogLevel.RUNNING, kind))
-                }
-                is com.rootmyvivo.root.FlowEvent.ProgressUpdate -> {
-                    val idx = s.log.indexOfLast { it.status == LogLevel.RUNNING }
-                    if (idx >= 0) s.copy(log = s.log.toMutableList().apply { set(idx, s.log[idx].copy(text = event.text)) }) else s
-                }
-                is com.rootmyvivo.root.FlowEvent.Complete -> {
-                    val idx = s.log.indexOfLast { it.status == LogLevel.RUNNING }
-                    if (idx >= 0) {
-                        val e = s.log[idx]
-                        val upd = e.copy(status = if (event.ok) LogLevel.OK else LogLevel.ERROR, text = event.text ?: e.text)
-                        s.copy(log = s.log.toMutableList().apply { set(idx, upd) })
-                    } else if (event.text != null) {
-                        s.copy(log = s.log + LogEntry(++id, event.text, if (event.ok) LogLevel.OK else LogLevel.ERROR))
-                    } else {
-                        s
-                    }
-                }
-                is com.rootmyvivo.root.FlowEvent.Download ->
-                    s.copy(downloadProgress = if (event.total > 0) event.read.toFloat() / event.total else null)
-                is com.rootmyvivo.root.FlowEvent.ExploitLive -> {
-                    val idx = s.log.indexOfLast { it.status == LogLevel.RUNNING && it.kind == LogKind.EXPLOIT }
-                    val text = if (event.max != null && event.attempt != null) {
-                        appCtx.getString(R.string.log_exploit_counter, event.attempt, event.max)
-                    } else {
-                        appCtx.getString(R.string.log_exploit_start)
-                    }
-                    val prev = s.exploitLive.lines
-                    val incoming = event.lines
-                    fun knownPrefix(k: Int): Boolean {
-                        for (i in 0 until k) {
-                            if (incoming[i] != prev[prev.size - k + i].text) return false
-                        }
-                        return true
-                    }
-                    var k = minOf(incoming.size, prev.size)
-                    while (k > 0 && !knownPrefix(k)) {
-                        k--
-                    }
-                    val acc = (prev + incoming.drop(k).map { com.rootmyvivo.vm.LiveLogLine(++idCounter, it) }).takeLast(500)
-                    s.copy(
-                        log = if (idx >= 0) s.log.toMutableList().apply { set(idx, s.log[idx].copy(text = text)) } else s.log,
-                        exploitLive = com.rootmyvivo.vm.ExploitLiveState(event.attempt, event.max, acc),
-                    )
-                }
-                is com.rootmyvivo.root.FlowEvent.Success -> s.copy(
-                    flowRunning = false,
-                    flowResult = com.rootmyvivo.vm.FlowResult.Success,
-                    rootState = com.rootmyvivo.vm.RootState.ROOTED,
-                    downloadProgress = null,
-                    softRebootPrompt = event.softRebootRecommended,
-                    lastLog = s.log,
-                )
-                com.rootmyvivo.root.FlowEvent.NeedsSoftReboot -> s.copy(
-                    flowRunning = false,
-                    flowResult = com.rootmyvivo.vm.FlowResult.Success,
-                    rootState = com.rootmyvivo.vm.RootState.ROOTED,
-                    downloadProgress = null,
-                    softRebootPrompt = true,
-                    lastLog = s.log,
-                )
-                is com.rootmyvivo.root.FlowEvent.Failure -> s.copy(
-                    flowRunning = false,
-                    flowResult = com.rootmyvivo.vm.FlowResult.Failure(event.reason),
-                    rootState = com.rootmyvivo.vm.RootState.FAILED,
-                    downloadProgress = null,
-                    lastLog = s.log,
-                )
-            }
+        fun apply(event: FlowEvent) {
+            s = ui.apply(s, event)
             update(s)
         }
 
         // ═══ Точная последовательность успешного ExploitEngine.run() ═══
-        apply(com.rootmyvivo.root.FlowEvent.Log(appCtx.getString(R.string.log_started)))
+        apply(FlowEvent.Log(ctx.getString(R.string.log_started)))
 
-        apply(com.rootmyvivo.root.FlowEvent.Step(Phase.CATALOG, 1, 6))
+        apply(FlowEvent.Step(Phase.CATALOG, 1, 6))
         kotlinx.coroutines.delay(600)
 
-        apply(com.rootmyvivo.root.FlowEvent.Step(Phase.PAYLOAD, 2, 6))
-        apply(com.rootmyvivo.root.FlowEvent.Log(appCtx.getString(R.string.log_payload, "iQOO Neo 11 | SM8750"), LogLevel.OK))
+        apply(FlowEvent.Step(Phase.PAYLOAD, 2, 6))
+        apply(FlowEvent.Log(ctx.getString(R.string.log_payload, "iQOO Neo 11 | SM8750"), LogLevel.OK))
         kotlinx.coroutines.delay(400)
 
-        apply(com.rootmyvivo.root.FlowEvent.Step(Phase.DOWNLOAD, 3, 6))
-        apply(com.rootmyvivo.root.FlowEvent.Progress(appCtx.getString(R.string.log_download_start, "preload-rmv.so", 137)))
+        apply(FlowEvent.Step(Phase.DOWNLOAD, 3, 6))
+        apply(FlowEvent.Progress(ctx.getString(R.string.log_download_start, "preload-rmv.so", 137)))
         for (p in 1..6) {
             kotlinx.coroutines.delay(160)
-            apply(com.rootmyvivo.root.FlowEvent.Download("preload-rmv.so", p.toLong(), 6L))
+            apply(FlowEvent.Download("preload-rmv.so", p.toLong(), 6L))
         }
-        apply(com.rootmyvivo.root.FlowEvent.Complete(true, appCtx.getString(R.string.log_download_ok, "preload-rmv.so")))
+        apply(FlowEvent.Complete(true, ctx.getString(R.string.log_download_ok, "preload-rmv.so")))
 
-        apply(com.rootmyvivo.root.FlowEvent.Step(Phase.DEPLOY, 4, 6))
+        apply(FlowEvent.Step(Phase.DEPLOY, 4, 6))
         kotlinx.coroutines.delay(500)
 
         // ── Эксплойт: живой лог ──
-        apply(com.rootmyvivo.root.FlowEvent.Step(Phase.EXPLOIT, 5, 6))
-        apply(com.rootmyvivo.root.FlowEvent.Progress(appCtx.getString(R.string.log_exploit_start), exploit = true))
+        apply(FlowEvent.Step(Phase.EXPLOIT, 5, 6))
+        apply(FlowEvent.Progress(ctx.getString(R.string.log_exploit_start), exploit = true))
 
         val boot = listOf(
             "[+] rmv preload starting pid=20711",
@@ -359,59 +280,52 @@ private fun runDemo(
             "[*] quiesce: loadavg=2.31",
         )
         val lines = boot.toMutableList()
-        apply(com.rootmyvivo.root.FlowEvent.ExploitLive(attempt = null, max = null, lines = lines.toList()))
+        apply(FlowEvent.ExploitLive(attempt = null, max = null, lines = lines.toList()))
         kotlinx.coroutines.delay(900)
 
         // счётчик — главные попытки (как в реальном логе после фикса)
         for (step in 1..8) {
             kotlinx.coroutines.delay(170)
             lines += "[*] pselect cfi attempt=$step/24 ret=6 errno=0"
-            apply(
-                com.rootmyvivo.root.FlowEvent.ExploitLive(attempt = 1, max = 3, lines = lines.takeLast(30)),
-            )
+            apply(FlowEvent.ExploitLive(attempt = 1, max = 3, lines = lines.takeLast(30)))
         }
 
         lines += "[+] phys step pipe probe found=1 pipebuf=ffffff8881fd0000 idx=40 scan=1/1/1"
         lines += "[+] cred patched pid=20713"
         lines += "[+] posture done"
-        apply(com.rootmyvivo.root.FlowEvent.ExploitLive(attempt = 1, max = 3, lines = lines.takeLast(30)))
+        apply(FlowEvent.ExploitLive(attempt = 1, max = 3, lines = lines.takeLast(30)))
         kotlinx.coroutines.delay(500)
 
-        apply(com.rootmyvivo.root.FlowEvent.Complete(true))
+        apply(FlowEvent.Complete(true))
         kotlinx.coroutines.delay(300)
-        apply(com.rootmyvivo.root.FlowEvent.Log(appCtx.getString(R.string.log_root_obtained, 42), LogLevel.OK))
+        apply(FlowEvent.Log(ctx.getString(R.string.log_root_obtained, 42), LogLevel.OK))
 
         // ═══ finishRoot ═══
-        apply(com.rootmyvivo.root.FlowEvent.Log(appCtx.getString(R.string.log_verify, "uid=0(root) gid=0(root) context=u:r:kernel:s0"), LogLevel.OK))
-        apply(com.rootmyvivo.root.FlowEvent.Step(Phase.KSU, 6, 6))
-        apply(com.rootmyvivo.root.FlowEvent.Progress(appCtx.getString(R.string.log_persist_start)))
+        apply(FlowEvent.Log(ctx.getString(R.string.log_verify, "uid=0(root) gid=0(root) context=u:r:kernel:s0"), LogLevel.OK))
+        apply(FlowEvent.Step(Phase.KSU, 6, 6))
+        apply(FlowEvent.Progress(ctx.getString(R.string.log_persist_start)))
         kotlinx.coroutines.delay(700)
-        apply(com.rootmyvivo.root.FlowEvent.Complete(true, appCtx.getString(R.string.log_persist_ok)))
+        apply(FlowEvent.Complete(true, ctx.getString(R.string.log_persist_ok)))
 
-        apply(com.rootmyvivo.root.FlowEvent.Progress(appCtx.getString(R.string.log_ksud_download)))
+        apply(FlowEvent.Progress(ctx.getString(R.string.log_ksud_download)))
         kotlinx.coroutines.delay(600)
-        apply(com.rootmyvivo.root.FlowEvent.Complete(true))
-        apply(com.rootmyvivo.root.FlowEvent.Progress(appCtx.getString(R.string.log_ksu_download, "android15-6.6")))
+        apply(FlowEvent.Complete(true))
+        apply(FlowEvent.Progress(ctx.getString(R.string.log_ksu_download, "android15-6.6")))
         kotlinx.coroutines.delay(600)
-        apply(com.rootmyvivo.root.FlowEvent.Progress(appCtx.getString(R.string.log_ksu_vermagic)))
+        apply(FlowEvent.Progress(ctx.getString(R.string.log_ksu_vermagic)))
         kotlinx.coroutines.delay(500)
-        apply(com.rootmyvivo.root.FlowEvent.Progress(appCtx.getString(R.string.log_ksu_load)))
+        apply(FlowEvent.Progress(ctx.getString(R.string.log_ksu_load)))
         kotlinx.coroutines.delay(700)
-        apply(com.rootmyvivo.root.FlowEvent.Log(appCtx.getString(R.string.log_ksu_verify)))
+        apply(FlowEvent.Log(ctx.getString(R.string.log_ksu_verify)))
         kotlinx.coroutines.delay(500)
 
-        apply(com.rootmyvivo.root.FlowEvent.Progress(appCtx.getString(R.string.log_manager_download, "ReSukiSU")))
+        apply(FlowEvent.Progress(ctx.getString(R.string.log_manager_download, "ReSukiSU")))
         kotlinx.coroutines.delay(600)
-        apply(com.rootmyvivo.root.FlowEvent.Log(appCtx.getString(R.string.log_manager_already, "ReSukiSU"), LogLevel.OK))
+        apply(FlowEvent.Log(ctx.getString(R.string.log_manager_already, "ReSukiSU"), LogLevel.OK))
         kotlinx.coroutines.delay(400)
-        apply(com.rootmyvivo.root.FlowEvent.Complete(true, appCtx.getString(R.string.log_ksu_active, "ReSukiSU")))
+        apply(FlowEvent.Complete(true, ctx.getString(R.string.log_ksu_active, "ReSukiSU")))
 
-        apply(com.rootmyvivo.root.FlowEvent.Success(softRebootRecommended = true))
+        apply(FlowEvent.Success(softRebootRecommended = true))
+        update(s.copy(flowRunning = false, lastLog = s.log))
     }
 }
-
-/** Контекст приложения для строк в демо-корутине. */
-private var demoContext: android.content.Context? = null
-
-private typealias Phase = com.rootmyvivo.root.Phase
-private typealias LogLevel = com.rootmyvivo.root.LogLevel

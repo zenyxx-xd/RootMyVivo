@@ -13,15 +13,14 @@ import com.rootmyvivo.data.Catalog
 import com.rootmyvivo.data.DeviceInfo
 import com.rootmyvivo.data.Prefs
 import com.rootmyvivo.data.Settings
-import com.rootmyvivo.data.checkSupport
 import com.rootmyvivo.root.ExploitEngine
 import com.rootmyvivo.root.FlowEvent
 import com.rootmyvivo.root.LogLevel
 import com.rootmyvivo.root.KsuVariant
-import com.rootmyvivo.root.Phase
 import com.rootmyvivo.root.RootTraces
 import com.rootmyvivo.shell.Transport
 import com.rootmyvivo.shell.TransportState
+import com.rootmyvivo.ui.flow.FlowUiReducer
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -35,6 +34,8 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
 
     private val prefs = Prefs(app)
     private val catalog = Catalog()
+    /** Общий редьюсер потока рута: боевой процесс и демо из «Другое» — один UI-код. */
+    private val ui by lazy { FlowUiReducer(app) }
     private var engine: ExploitEngine? = null
     private var updateCheckJob: kotlinx.coroutines.Job? = null
 
@@ -43,12 +44,6 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         Catalog.initCache(app.filesDir)
         _state.value = _state.value.copy(
             settings = prefs.settings(),
-            selectedKsu = KsuVariant.byId("resukisu"),
-        )
-        if (_state.value.settings.catalogUrl.contains("/devices.json")) {
-            catalog.url = _state.value.settings.catalogUrl
-        }
-        _state.value = _state.value.copy(
             selectedKsu = KsuVariant.byId(prefs.selectedKsu),
             needsSoftReboot = prefs.softRebootPendingActual(),
             logHistory = loadLogHistory(),
@@ -69,44 +64,33 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             _state.value = _state.value.copy(rootState = RootState.CHECKING)
 
             val device = withContext(Dispatchers.IO) { DeviceInfo.detect() }
-            val check = withContext(Dispatchers.IO) {
-                val appCtx = getApplication<Application>()
-                checkSupport(device) {
-                    // Локально: демон эксплойта (до загрузки KSU).
-                    // После KSU рут доступен только shell-домену (allow_shell) —
-                    // проверяем ещё и через транспорт, иначе после софт-ребута
-                    // живой рут выглядит пропавшим
-                    val local = try {
-                        Runtime.getRuntime().exec(arrayOf("su", "-c", "true")).waitFor() == 0
-                    } catch (_: Exception) {
-                        false
-                    }
-                    val viaTransport = try {
-                        kotlinx.coroutines.runBlocking { Transport.su(appCtx, "true").first == 0 }
-                    } catch (_: Exception) {
-                        false
-                    }
-                    local || viaTransport
-                }
+            val rooted = withContext(Dispatchers.IO) {
+                val ctx = getApplication<Application>()
+                // Локально: демон эксплойта (до загрузки KSU). После KSU рут
+                // доступен только shell-домену (allow_shell) — проверяем ещё и
+                // через транспорт, иначе после софт-ребута живой рут выглядел бы пропавшим
+                Transport.rootActiveQuick(ctx) ||
+                    runCatching { Transport.su(ctx, "true", timeoutSec = 15).first == 0 }.getOrDefault(false)
             }
-            if (check.rootAlreadyActive) prefs.firstRootDone = true
+            if (rooted) prefs.firstRootDone = true
 
             // Устройство показываем сразу — каталог не должен блокировать UI
             _state.value = _state.value.copy(
                 device = device,
-                rootState = if (check.rootAlreadyActive) RootState.ROOTED else RootState.NOT_ROOTED,
+                rootState = if (rooted) RootState.ROOTED else RootState.NOT_ROOTED,
             )
 
             // Каталог в фоне
             if (_state.value.settings.catalogUrl.contains("/devices.json")) {
-            catalog.url = _state.value.settings.catalogUrl
-        }
+                catalog.url = _state.value.settings.catalogUrl
+            }
             val result = catalog.fetch()
             val cat = result.getOrNull()
             val catDev = cat?.let { catalog.findDevice(it, device) }
             _state.value = _state.value.copy(
                 payload = cat?.let { catalog.findPayload(it, device) },
                 catalogState = if (cat != null) CatalogState.READY else CatalogState.ERROR,
+                catalogData = cat,
                 deviceInCatalog = catDev != null,
                 catalogMarketName = catDev?.marketName?.takeIf { it.isNotEmpty() },
             )
@@ -154,42 +138,8 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
 
     fun startRoot() {
         val device = _state.value.device ?: return
+        if (_state.value.flowRunning) return
         val ctx = getApplication<Application>()
-        val custom = _state.value.customPayload
-        // Кастомный пейлоад: минимальный движок без каталога и загрузок,
-        // деплоит выбранный пользователем файл как есть
-        if (custom != null) {
-            engine = ExploitEngine(ctx, device, catalog)
-            runStartedAt = System.currentTimeMillis()
-            _state.value = _state.value.copy(
-                flowRunning = true,
-                log = emptyList(),
-                exploitLive = ExploitLiveState(),
-                flowResult = null,
-                downloadProgress = null,
-                softRebootPrompt = false,
-            )
-            com.rootmyvivo.ExploitService.start(ctx, ctx.getString(R.string.notif_root_running))
-            val localFile = custom.file
-            viewModelScope.launch {
-                val variant = _state.value.selectedKsu
-                // Эксплойт мог остаться жить с прошлого запуска — подхватываем его,
-                // как в обычном пути, вместо параллельного второго процесса
-                val alreadyRunning = withContext(Dispatchers.IO) { engine!!.detectRunning() }
-                val ok = if (alreadyRunning) {
-                    engine!!.runAttached(variant) { event -> applyFlowEvent(event) }
-                } else {
-                    engine!!.runCustomPreload(localFile, variant) { event -> applyFlowEvent(event) }
-                }
-                _state.value = _state.value.copy(flowRunning = false)
-                com.rootmyvivo.ExploitService.stop(ctx)
-                if (ok) {
-                    prefs.firstRootDone = true
-                    refreshTransport()
-                }
-            }
-            return
-        }
         engine = ExploitEngine(ctx, device, catalog)
         runStartedAt = System.currentTimeMillis()
         _state.value = _state.value.copy(
@@ -206,13 +156,26 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
 
         viewModelScope.launch {
             val variant = _state.value.selectedKsu
+            val custom = _state.value.customPayload
             // Эксплойт уже работает (приложение вылетело/перезапущено)?
-            // Подхватываем его живой лог вместо запуска нового
-            val alreadyRunning = withContext(Dispatchers.IO) { engine!!.detectRunning() }
-            val ok = if (alreadyRunning) {
-                engine!!.runAttached(variant) { event -> applyFlowEvent(event) }
-            } else {
-                engine!!.run(variant) { event -> applyFlowEvent(event) }
+            // Подхватываем его живой лог вместо запуска нового параллельного процесса
+            val alreadyRunning = withContext(Dispatchers.IO) {
+                runCatching { engine!!.detectRunning() }.getOrDefault(false)
+            }
+            val ok = try {
+                when {
+                    alreadyRunning -> engine!!.runAttached(variant) { e -> applyFlowEvent(e) }
+                    // Кастомный пейлоад: минимальный путь без каталога и загрузок,
+                    // деплоит выбранный пользователем файл как есть
+                    custom != null -> engine!!.runCustomPreload(custom.file, variant) { e -> applyFlowEvent(e) }
+                    else -> engine!!.run(variant) { e -> applyFlowEvent(e) }
+                }
+            } catch (e: Exception) {
+                // Сетевая/иная авария внутри движка: превращаем в явный сбой,
+                // иначе кнопка «в процессе» висела бы вечно
+                Log.e(TAG, "root flow crashed", e)
+                applyFlowEvent(FlowEvent.Failure(FlowEvent.Reason.OTHER))
+                false
             }
             _state.value = _state.value.copy(flowRunning = false)
             com.rootmyvivo.ExploitService.stop(ctx)
@@ -482,13 +445,6 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     fun performSoftReboot() {
         val ctx = getApplication<Application>()
         viewModelScope.launch {
-            // Система сломана → soft reboot зависнет на глазах; сразу полная перезагрузка
-            val healthy = withContext(Dispatchers.IO) { Transport.systemHealthy(ctx) }
-            if (!healthy) {
-                addLog(ctx.getString(R.string.log_softreboot_broken))
-                withContext(Dispatchers.IO) { Transport.su(ctx, "reboot") }
-                return@launch
-            }
             addLog(ctx.getString(R.string.log_softreboot_perform))
             // SIGKILL, как в оригинальном эксплойте: мгновенная смерть system_server —
             // зигота сразу перезапускает интерфейс. SIGTERM виснет на минуты
@@ -496,12 +452,13 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                 Transport.su(ctx, "kill -9 \$(pidof system_server)")
             }
             if (code != 0) {
-                Log.w("NeoVM", "soft reboot via kill failed: ${out.take(100)}")
+                Log.w(TAG, "soft reboot via kill failed: ${out.take(100)}")
                 code = withContext(Dispatchers.IO) { Transport.su(ctx, "stop").first }
                 if (code == 0) code = withContext(Dispatchers.IO) { Transport.su(ctx, "start").first }
             }
             if (code != 0) {
                 addLog(ctx.getString(R.string.log_softreboot_fail))
+                // Плашку оставляем: можно попробовать ещё раз
                 _state.value = _state.value.copy(softRebootPrompt = false)
             } else {
                 // Интерфейс перезапускается — ядро чистое, статус сбрасываем насовсем
@@ -514,22 +471,8 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    /** Полная перезагрузка устройства (кнопка на карточке сломанной системы). */
-    fun performFullReboot() {
-        val ctx = getApplication<Application>()
-        viewModelScope.launch {
-            addLog(ctx.getString(R.string.log_full_reboot))
-            withContext(Dispatchers.IO) { Transport.su(ctx, "reboot") }
-        }
-    }
-
     fun dismissSoftReboot() {
         _state.value = _state.value.copy(softRebootPrompt = false)
-    }
-
-    /** Показать/скрыть просмотр лога из истории */
-    fun toggleLogViewer() {
-        _state.value = _state.value.copy(logViewerOpen = !_state.value.logViewerOpen)
     }
 
     /** Открыть лог конкретного запуска из истории. */
@@ -559,7 +502,6 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         _state.value = _state.value.copy(
             lastLog = entries,
             lastExploitLog = exploit,
-            logViewerOpen = true,
         )
     }
 
@@ -629,178 +571,59 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     /** Время старта текущего/последнего запуска — для метаданных истории. */
     private var runStartedAt = System.currentTimeMillis()
 
-    private var logId = 0L
-    private var liveId = 0L
-
-    /** Финальная строка успешного процесса — «Готово». */
-    private fun appendDoneLine() {
-        _state.value = _state.value.copy(
-            log = _state.value.log + LogEntry(
-                ++logId,
-                getApplication<Application>().getString(R.string.log_done),
-                LogLevel.OK,
-            ),
-        )
-    }
-
-    /** Root получен: запоминаем, что soft reboot ещё не выполнялся (до перезагрузки устройства). */
-    private fun markSoftRebootPending() {
-        prefs.softRebootPending = true
-        prefs.rootBootId = prefs.currentBootId()
-        _state.value = _state.value.copy(needsSoftReboot = true)
-    }
-
     private fun applyFlowEvent(event: FlowEvent) {
+        var s = ui.apply(_state.value, event)
         when (event) {
-            is FlowEvent.Step -> {
-                _state.value = _state.value.copy(
-                    flowPhase = event.phase,
-                    stepIndex = event.index,
-                    stepTotal = event.total,
-                    downloadProgress = null, // новый шаг — прогресс загрузки сброшен
-                )
-                com.rootmyvivo.ExploitService.update(getApplication(), phaseName(event.phase))
-            }
-            is FlowEvent.Log -> _state.value = _state.value.copy(
-                log = _state.value.log + LogEntry(++logId, event.line, event.level),
+            is FlowEvent.Step ->
+                com.rootmyvivo.ExploitService.update(getApplication(), ui.phaseText(event.phase))
+
+            is FlowEvent.ExploitLive ->
+                com.rootmyvivo.ExploitService.update(getApplication(), ui.exploitText(event.attempt, event.max))
+
+            is FlowEvent.Success ->
+                s = finishRun(s, success = true, failReason = null, suggestReboot = event.softRebootRecommended)
+
+            FlowEvent.NeedsSoftReboot ->
+                s = finishRun(s, success = true, failReason = null, suggestReboot = true)
+
+            is FlowEvent.Failure ->
+                s = finishRun(s, success = false, failReason = event.reason.name, suggestReboot = false)
+
+            else -> {}
+        }
+        _state.value = s
+    }
+
+    /** Хвост запуска: «Готово» при успехе, история на диск, флаг софт-ребута. */
+    private fun finishRun(
+        s: UiState,
+        success: Boolean,
+        failReason: String?,
+        suggestReboot: Boolean,
+    ): UiState {
+        var st = s
+        if (success) {
+            st = st.copy(
+                log = st.log + LogEntry(
+                    ui.nextLogId(),
+                    getApplication<Application>().getString(R.string.log_done),
+                    LogLevel.OK,
+                ),
             )
-            is FlowEvent.Progress -> {
-                // Новый шаг начинается — предыдущие RUNNING закрываются галочкой,
-                // иначе они остаются крутиться вечно
-                val logList = _state.value.log
-                val closed = logList.map {
-                    if (it.status == LogLevel.RUNNING) it.copy(status = LogLevel.OK) else it
-                }
-                val kind = if (event.exploit) LogKind.EXPLOIT else LogKind.NORMAL
-                _state.value = _state.value.copy(
-                    log = closed + LogEntry(++logId, event.text, LogLevel.RUNNING, kind),
-                )
-            }
-            is FlowEvent.ExploitLive -> {
-                val ctx = getApplication<Application>()
-                val logList = _state.value.log
-                val idx = logList.indexOfLast { it.status == LogLevel.RUNNING && it.kind == LogKind.EXPLOIT }
-                val text = if (event.max != null && event.attempt != null) {
-                    ctx.getString(R.string.log_exploit_counter, event.attempt, event.max)
-                } else {
-                    ctx.getString(R.string.log_exploit_start)
-                }
-                // Живой лог: движок присылает окно из хвоста — накапливаем с
-                // устойчивыми id, чтобы каждая строка анимировалась один раз
-                val prev = _state.value.exploitLive.lines
-                val incoming = event.lines
-                // Диф: префикс нового окна совпадает с суффиксом накопленного —
-                // это уже известные строки; свежие — только хвост после него
-                fun knownPrefix(k: Int): Boolean {
-                    for (i in 0 until k) {
-                        if (incoming[i] != prev[prev.size - k + i].text) return false
-                    }
-                    return true
-                }
-                var k = minOf(incoming.size, prev.size)
-                while (k > 0 && !knownPrefix(k)) {
-                    k--
-                }
-                val fresh = incoming.drop(k)
-                val acc = (prev + fresh.map { LiveLogLine(++liveId, it) }).takeLast(500)
-                _state.value = _state.value.copy(
-                    log = if (idx >= 0) {
-                        logList.toMutableList().apply { set(idx, logList[idx].copy(text = text)) }
-                    } else {
-                        logList
-                    },
-                    exploitLive = ExploitLiveState(event.attempt, event.max, acc),
-                )
-                com.rootmyvivo.ExploitService.update(ctx, text)
-            }
-            is FlowEvent.ProgressUpdate -> {
-                val logList = _state.value.log
-                val idx = logList.indexOfLast { it.status == LogLevel.RUNNING }
-                if (idx >= 0) {
-                    _state.value = _state.value.copy(
-                        log = logList.toMutableList().apply {
-                            set(idx, logList[idx].copy(text = event.text))
-                        },
-                    )
-                }
-            }
-            is FlowEvent.Complete -> {
-                val logList = _state.value.log
-                val idx = logList.indexOfLast { it.status == LogLevel.RUNNING }
-                if (idx >= 0) {
-                    val entry = logList[idx]
-                    val updated = entry.copy(
-                        status = if (event.ok) LogLevel.OK else LogLevel.ERROR,
-                        text = event.text ?: entry.text,
-                    )
-                    _state.value = _state.value.copy(
-                        log = logList.toMutableList().apply { set(idx, updated) },
-                    )
-                } else if (event.text != null) {
-                    // Незакрытых шагов нет — итог выводим новой строкой, иначе он потеряется
-                    _state.value = _state.value.copy(
-                        log = logList + LogEntry(
-                            ++logId,
-                            event.text,
-                            if (event.ok) LogLevel.OK else LogLevel.ERROR,
-                        ),
-                    )
-                }
-            }
-            is FlowEvent.Download -> _state.value = _state.value.copy(
-                downloadProgress = if (event.total > 0) event.read.toFloat() / event.total else null,
-            )
-            is FlowEvent.Success -> {
-                appendDoneLine()
-                saveLogHistory(success = true, failReason = null)
-                // Софт-ребут рекомендуем только когда KSU реально загрузился
-                if (event.softRebootRecommended) markSoftRebootPending()
-                _state.value = _state.value.copy(
-                    flowResult = FlowResult.Success,
-                    rootState = RootState.ROOTED,
-                    downloadProgress = null,
-                    softRebootPrompt = event.softRebootRecommended,
-                    lastLog = _state.value.log,
-                )
-            }
-            FlowEvent.NeedsSoftReboot -> {
-                appendDoneLine()
-                saveLogHistory(success = true, failReason = null)
-                markSoftRebootPending()
-                _state.value = _state.value.copy(
-                    flowResult = FlowResult.Success,
-                    rootState = RootState.ROOTED,
-                    downloadProgress = null,
-                    softRebootPrompt = true,
-                    lastLog = _state.value.log,
-                )
-            }
-            is FlowEvent.Failure -> {
-                saveLogHistory(success = false, failReason = event.reason.name)
-                _state.value = _state.value.copy(
-                    flowResult = FlowResult.Failure(event.reason),
-                    rootState = RootState.FAILED,
-                    downloadProgress = null,
-                    lastLog = _state.value.log,
-                )
+            // Софт-ребут рекомендуем только когда KSU реально загрузился
+            if (suggestReboot) {
+                prefs.softRebootPending = true
+                prefs.rootBootId = prefs.currentBootId()
+                st = st.copy(needsSoftReboot = true)
             }
         }
+        // История пишется из состояния — публикуем строку «Готово» до записи
+        _state.value = st
+        saveLogHistory(success, failReason)
+        return st.copy(lastLog = st.log)
     }
 
     // ─────────── Настройки ───────────
-
-    private fun phaseName(phase: Phase?): String = getApplication<Application>().getString(
-        when (phase) {
-            Phase.CATALOG -> R.string.phase_catalog
-            Phase.PAYLOAD -> R.string.phase_payload
-            Phase.DOWNLOAD -> R.string.phase_download
-            Phase.DEPLOY -> R.string.phase_deploy
-            Phase.EXPLOIT -> R.string.phase_exploit
-            Phase.ROOT_WAIT -> R.string.phase_root_wait
-            Phase.KSU -> R.string.phase_ksu
-            null -> R.string.flow_running
-        },
-    )
 
     fun selectKsu(variant: KsuVariant) {
         prefs.selectedKsu = variant.id
@@ -834,7 +657,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
 
     private fun addLog(text: String) {
         _state.value = _state.value.copy(
-            log = _state.value.log + LogEntry(++logId, text, com.rootmyvivo.root.LogLevel.PLAIN),
+            log = _state.value.log + LogEntry(ui.nextLogId(), text, LogLevel.PLAIN),
         )
     }
 

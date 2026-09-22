@@ -49,10 +49,9 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.rootmyvivo.R
-import com.rootmyvivo.data.Catalog
 import com.rootmyvivo.data.CatalogDevice
 import com.rootmyvivo.data.DeviceKernel
-import com.rootmyvivo.data.PayloadCatalog
+import com.rootmyvivo.vm.CatalogState
 import com.rootmyvivo.vm.UiState
 
 /**
@@ -60,23 +59,16 @@ import com.rootmyvivo.vm.UiState
  * живой сборкой показывают список ядер чипами «6.6.89-1f718» (версия +
  * git-хэш, переносятся строкой ниже, не обрезаются). Тела вообще без ядер —
  * «временно отключено». Тела, у которых ядра есть, но все мёртвые, не
- * показываем.
+ * показываем. Каталог берём из состояния: главный экран уже загрузил его,
+ * второй сетевой запрос при открытии страницы не нужен.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SupportedDevicesScreen(
     state: UiState,
-    catalogUrl: String,
     onClose: () -> Unit,
 ) {
-    var catalog by remember(catalogUrl) { mutableStateOf<PayloadCatalog?>(null) }
-    var failed by remember(catalogUrl) { mutableStateOf(false) }
-    val client = remember(catalogUrl) { Catalog(catalogUrl) }
-    LaunchedEffect(client) {
-        client.fetch()
-            .onSuccess { catalog = it }
-            .onFailure { failed = true }
-    }
+    val cat = state.catalogData
 
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
@@ -102,16 +94,15 @@ fun SupportedDevicesScreen(
             Spacer(Modifier.height(4.dp))
 
             when {
-                failed -> Text(
+                state.catalogState == CatalogState.ERROR -> Text(
                     stringResource(R.string.dev_catalog_error),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
-                catalog == null -> Row(Modifier.padding(16.dp)) {
+                cat == null -> Row(Modifier.padding(16.dp)) {
                     LinearProgressIndicator(Modifier.fillMaxWidth())
                 }
                 else -> {
-                    val cat = catalog!!
                     val info = state.device
                     val myDevice = info?.let { i ->
                         cat.devices.firstOrNull { d ->
@@ -125,17 +116,20 @@ fun SupportedDevicesScreen(
                         cat.kernelsOf(it).isEmpty() || cat.isSupported(it)
                     }
                     // Карточка пользователя всегда первой, над всеми телами
-                    val ordered = if (myDevice == null) shown else
-                        shown.sortedByDescending { it.id == myDevice.id }
+                    val ordered = myDevice?.let { mine ->
+                        shown.sortedByDescending { it.id == mine.id }
+                    } ?: shown
                     // Живое ядро телефона: готовая сборка корпуса, паттерн
                     // которой совпадает с живым uname (подсветка чипа в карточке).
                     // Считаем по списку ядер корпуса, а не по state.payload:
                     // подсветка не должна зависеть от того, успел ли главный
                     // экран сматчить пейлоад
                     val myBuildId = remember(cat, myDevice, info) {
-                        if (myDevice == null || info == null || info.kernel.isEmpty()) null
-                        else cat.kernelsOf(myDevice)
-                            .firstOrNull { it.build.ready && it.build.specificity(info.kernel) > 0 }
+                        val dev = myDevice
+                        val kernel = info?.kernel?.takeIf { it.isNotEmpty() }
+                        if (dev == null || kernel == null) null
+                        else cat.kernelsOf(dev)
+                            .firstOrNull { it.build.ready && it.build.specificity(kernel) > 0 }
                             ?.build?.id
                     }
                     val kernelsTotal = shown.sumOf { cat.kernelsOf(it).size }

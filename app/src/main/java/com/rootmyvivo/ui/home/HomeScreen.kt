@@ -1,4 +1,4 @@
-package com.rootmyvivo.ui.home
+﻿package com.rootmyvivo.ui.home
 
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -43,13 +43,13 @@ import androidx.compose.material.icons.rounded.CloudDownload
 import androidx.compose.material.icons.rounded.Code
 import androidx.compose.material.icons.rounded.Description
 import androidx.compose.material.icons.rounded.FolderOpen
-import androidx.compose.material.icons.rounded.HelpOutline
+import androidx.compose.material.icons.automirrored.rounded.HelpOutline
 import androidx.compose.material.icons.rounded.LinkOff
 import androidx.compose.material.icons.rounded.PhoneAndroid
 import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material.icons.rounded.SearchOff
 import androidx.compose.material.icons.rounded.Security
-import androidx.compose.material.icons.rounded.Send
+import androidx.compose.material.icons.automirrored.rounded.Send
 import androidx.compose.material.icons.rounded.StopCircle
 import androidx.compose.material.icons.rounded.Usb
 import androidx.compose.material.icons.rounded.Verified
@@ -133,12 +133,8 @@ fun HomeScreen(
         }
     }
 
-    // Предупреждение перед запуском (или сразу запуск если скрыто)
-    if (warnDialog && warnDismissed) {
-        warnDialog = false
-    }
-
-    // Предупреждение перед запуском: паники, не выходить, перезапуск
+    // Предупреждение перед запуском (кнопка не открывает его, если отключено):
+    // паники, не выходить, перезапуск
     if (warnDialog && !warnDismissed) {
         androidx.compose.material3.AlertDialog(
             onDismissRequest = { warnDialog = false },
@@ -849,7 +845,7 @@ private fun CompactUpdateCard(
                         maxLines = 1,
                     )
                 }
-                if (downloading && download != null) {
+                if (downloading) {
                     val mb = "%.1f / %.1f МБ".format(
                         download.read / 1048576.0,
                         download.total / 1048576.0,
@@ -988,7 +984,7 @@ private fun TelegramPromoCard(vm: MainViewModel) {
                     contentAlignment = Alignment.Center,
                 ) {
                     Icon(
-                        Icons.Rounded.Send, null,
+                        Icons.AutoMirrored.Rounded.Send, null,
                         tint = MaterialTheme.colorScheme.onPrimary,
                         modifier = Modifier.size(26.dp),
                     )
@@ -1052,8 +1048,8 @@ private fun InfoGroup(state: UiState, onKsuClick: () -> Unit) {
             title = stringResource(R.string.status_payload),
             description = when {
                 state.customPayload != null ->
-                    stringResource(R.string.home_custom_payload_active, state.customPayload!!.displayName)
-                state.payload != null -> state.payload!!.displayName
+                    stringResource(R.string.home_custom_payload_active, state.customPayload.displayName)
+                state.payload != null -> state.payload.displayName
                 state.catalogState == CatalogState.LOADING ->
                     stringResource(R.string.payload_short_searching)
                 // каталог загружен, но записи для этого устройства нет —
@@ -1167,7 +1163,7 @@ private fun NavGroup(
         SettingsRow(
             title = stringResource(R.string.home_faq),
             description = stringResource(R.string.home_faq_desc),
-            icon = Icons.Rounded.HelpOutline,
+            icon = Icons.AutoMirrored.Rounded.HelpOutline,
             onClick = onOpenFaq,
             trailing = {
                 Icon(

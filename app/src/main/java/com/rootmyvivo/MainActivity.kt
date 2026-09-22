@@ -53,7 +53,7 @@ class MainActivity : ComponentActivity() {
             // Локаль приложения = выбранный язык; "" = системный
             val localizedContext = remember(state.settings.language) {
                 val locale = when (state.settings.language) {
-                    "en", "ru", "zh" -> Locale(state.settings.language)
+                    "en", "ru", "zh" -> Locale.forLanguageTag(state.settings.language)
                     else -> Locale.getDefault()
                 }
                 val config = android.content.res.Configuration(resources.configuration)

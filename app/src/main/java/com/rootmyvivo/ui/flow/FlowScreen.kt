@@ -110,7 +110,6 @@ fun FlowScreen(
     onRetry: () -> Unit,
     onSoftReboot: () -> Unit,
     onDismissSoftReboot: () -> Unit,
-    onFullReboot: () -> Unit = {},
     /** Туман (размытие + непрозрачность) в потоке лога; просмотр лога — без него */
     fog: Boolean = true,
 ) {
@@ -223,7 +222,7 @@ fun FlowScreen(
             }
 
             Box(Modifier.padding(horizontal = 20.dp)) {
-                ResultBanner(state, onRetry, onFullReboot)
+                ResultBanner(state, onRetry)
             }
 
             // Поток лога (Dopamine-стиль): новые снизу, туман у самого верха
@@ -309,7 +308,6 @@ private fun phaseName(phase: Phase?): String? = when (phase) {
     Phase.DOWNLOAD -> stringResource(R.string.phase_download)
     Phase.DEPLOY -> stringResource(R.string.phase_deploy)
     Phase.EXPLOIT -> stringResource(R.string.phase_exploit)
-    Phase.ROOT_WAIT -> stringResource(R.string.phase_root_wait)
     Phase.KSU -> stringResource(R.string.phase_ksu)
     null -> null
 }
@@ -317,7 +315,7 @@ private fun phaseName(phase: Phase?): String? = when (phase) {
 // ─────────── Результат ───────────
 
 @Composable
-private fun ResultBanner(state: UiState, onRetry: () -> Unit, onFullReboot: () -> Unit) {
+private fun ResultBanner(state: UiState, onRetry: () -> Unit) {
     AnimatedVisibility(
         visible = state.flowResult != null,
         enter = fadeIn(tween(280)) +
@@ -391,19 +389,10 @@ private fun ResultBanner(state: UiState, onRetry: () -> Unit, onFullReboot: () -
                             )
                         }
                         Spacer(Modifier.height(6.dp))
-                        if (result.reason == FlowEvent.Reason.SYSTEM_BROKEN) {
-                            // Система повреждена — единственный выход: полная перезагрузка
-                            Button(onClick = onFullReboot) {
-                                Icon(Icons.Rounded.Refresh, null, modifier = Modifier.size(18.dp))
-                                Spacer(Modifier.width(8.dp))
-                                Text(stringResource(R.string.action_full_reboot))
-                            }
-                        } else {
-                            Button(onClick = onRetry) {
-                                Icon(Icons.Rounded.Refresh, null, modifier = Modifier.size(18.dp))
-                                Spacer(Modifier.width(8.dp))
-                                Text(stringResource(R.string.action_retry))
-                            }
+                        Button(onClick = onRetry) {
+                            Icon(Icons.Rounded.Refresh, null, modifier = Modifier.size(18.dp))
+                            Spacer(Modifier.width(8.dp))
+                            Text(stringResource(R.string.action_retry))
                         }
                     }
                 }
@@ -423,7 +412,6 @@ private fun failureHint(f: FlowResult.Failure): String? = when (f.reason) {
     FlowEvent.Reason.TIMEOUT -> stringResource(R.string.hint_timeout)
     FlowEvent.Reason.STOPPED -> null
     FlowEvent.Reason.KSU -> stringResource(R.string.hint_ksu)
-    FlowEvent.Reason.SYSTEM_BROKEN -> stringResource(R.string.hint_system_broken)
     FlowEvent.Reason.OTHER -> null
 }
 
@@ -438,7 +426,6 @@ private fun failureText(f: FlowResult.Failure): String = stringResource(
         FlowEvent.Reason.TIMEOUT -> R.string.flow_fail_timeout
         FlowEvent.Reason.STOPPED -> R.string.flow_fail_stopped
         FlowEvent.Reason.KSU -> R.string.flow_fail_ksu
-        FlowEvent.Reason.SYSTEM_BROKEN -> R.string.flow_fail_system_broken
         FlowEvent.Reason.OTHER -> R.string.flow_fail_other
     },
 )
