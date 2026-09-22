@@ -7,6 +7,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.text.ClickableText
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -51,8 +52,11 @@ import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import com.rootmyvivo.R
 
@@ -223,11 +227,7 @@ private fun FaqCard(item: FaqItem) {
                         color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f),
                     )
                     Spacer(Modifier.height(12.dp))
-                    Text(
-                        stringResource(item.aRes),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
+                    LinkifiedText(stringResource(item.aRes))
                     if (item.templateRes != 0) {
                         Spacer(Modifier.height(12.dp))
                         TemplateBox(item.templateRes)
@@ -236,6 +236,65 @@ private fun FaqCard(item: FaqItem) {
             }
         }
     }
+}
+
+/** Ответ FAQ: https-ссылки становятся кликабельными (открываются системой). */
+private const val TAG_URL = "URL"
+
+@Composable
+private fun LinkifiedText(text: String) {
+    val ctx = LocalContext.current
+    val linkColor = MaterialTheme.colorScheme.primary
+    val annotated = remember(text) {
+        buildAnnotatedString {
+            val re = Regex("""https?://\S+""")
+            var last = 0
+            for (m in re.findAll(text)) {
+                val url = m.value.trimEnd('.', ',', ';', ':', '!', '?', ')', '»', '"')
+                append(text.substring(last, m.range.first))
+                val start = length
+                pushStringAnnotation(TAG_URL, url)
+                withStyle(
+                    SpanStyle(
+                        color = linkColor,
+                        textDecoration = androidx.compose.ui.text.style.TextDecoration.Underline,
+                    ),
+                ) {
+                    append(url)
+                }
+                pop()
+                // хвостовая пунктуация, не вошедшая в ссылку
+                append(text.substring(start + url.length, m.range.last + 1))
+                last = m.range.last + 1
+            }
+            append(text.substring(last))
+        }
+    }
+    ClickableText(
+        annotated,
+        style = MaterialTheme.typography.bodyMedium.copy(
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        ),
+        onClick = { offset ->
+            annotated.getStringAnnotations(TAG_URL, offset, offset)
+                .firstOrNull()
+                ?.let { ann ->
+                    try {
+                        ctx.startActivity(
+                            android.content.Intent(
+                                android.content.Intent.ACTION_VIEW,
+                                android.net.Uri.parse(ann.item),
+                            ).addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK),
+                        )
+                    } catch (_: Exception) {
+                        android.widget.Toast.makeText(
+                            ctx, ctx.getString(R.string.link_open_failed),
+                            android.widget.Toast.LENGTH_SHORT,
+                        ).show()
+                    }
+                }
+        },
+    )
 }
 
 /** Моноширинный блок шаблона с кнопкой копирования. */

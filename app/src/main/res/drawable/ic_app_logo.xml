@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Замок без рамок и полей: viewport обрезан по контенту,
+     чтобы в шапке «О приложении» рисовать сам значок, а не пустоту -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="42dp"
+    android:height="53dp"
+    android:viewportWidth="42"
+    android:viewportHeight="53">
+
+    <!-- Дужка: П-форма, короткая ножка обрывается посередине -->
+    <path
+        android:strokeColor="@color/iconForeground"
+        android:strokeWidth="4.5"
+        android:strokeLineCap="round"
+        android:fillColor="#00000000"
+        android:pathData="M28,23 L28,12 C28,7 24.5,4 20,4 C15.5,4 12,7 12,12 L12,15" />
+
+    <!-- Корпус -->
+    <path
+        android:fillColor="@color/iconForeground"
+        android:pathData="M8,23 L34,23 C36.5,23 38,24.5 38,27 L38,45 C38,47.5 36.5,49 34,49 L8,49 C5.5,49 4,47.5 4,45 L4,27 C4,24.5 5.5,23 8,23 Z" />
+
+    <!-- Молния -->
+    <path
+        android:fillColor="@color/iconAccent"
+        android:pathData="M21,30 L24,30 L22,34 L25,34 L18,41 L20,36 L17,36 Z" />
+</vector>

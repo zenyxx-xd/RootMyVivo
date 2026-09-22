@@ -316,8 +316,10 @@ fun HomeScreen(
                 TransportCard(state, onPermission = vm::requestShizukuPermission, onOpenShizuku = vm::openShizukuApp)
             else -> {}
         }
-        // Группа 1: рут-менеджер + пейлоад + характеристики устройства
+        // Группа 1: рут-менеджер + пейлоад
         InfoGroup(state, onKsuClick = { ksuDialog = true })
+        // Устройство — отдельная группа с подзаголовком, как раньше
+        DeviceGroup(state)
         // Группа 2: история запусков, поддерживаемые устройства, FAQ
         NavGroup(
             onOpenLastLog = onOpenLastLog,
@@ -943,83 +945,52 @@ private fun TransportCard(
 
 // ─────────── Плашка первого запуска: Telegram-канал ───────────
 
+/** Одна строка, как плашка обновления: иконка, заголовок и текст, справа
+ *  «Перейти» и «Пропустить». Первый запуск — показывается один раз. */
 @Composable
 private fun TelegramPromoCard(vm: MainViewModel) {
-    var shown by remember { mutableStateOf(false) }
-    LaunchedEffect(Unit) { shown = true }
-    // Иконка «выпрыгивает» пружиной вслед за разворотом карточки
-    val iconScale by animateFloatAsState(
-        targetValue = if (shown) 1f else 0.2f,
-        animationSpec = spring(
-            dampingRatio = Spring.DampingRatioMediumBouncy,
-            stiffness = Spring.StiffnessLow,
-        ),
-        label = "tgIcon",
-    )
     Surface(
         modifier = Modifier.fillMaxWidth(),
-        shape = MaterialTheme.shapes.extraLarge,
-        color = Color.Transparent,
+        shape = MaterialTheme.shapes.large,
+        color = MaterialTheme.colorScheme.surfaceContainerLow,
     ) {
-        Column(
-            Modifier
-                .background(
-                    androidx.compose.ui.graphics.Brush.horizontalGradient(
-                        listOf(
-                            MaterialTheme.colorScheme.primaryContainer,
-                            MaterialTheme.colorScheme.tertiaryContainer,
-                        ),
-                    ),
-                )
-                .padding(20.dp),
+        Row(
+            Modifier.padding(start = 14.dp, end = 6.dp, top = 6.dp, bottom = 6.dp),
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            verticalAlignment = Alignment.CenterVertically,
         ) {
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(14.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Box(
-                    Modifier
-                        .size(52.dp)
-                        .scale(iconScale)
-                        .clip(CircleShape)
-                        .background(MaterialTheme.colorScheme.primary),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Icon(
-                        Icons.Rounded.Send, null,
-                        tint = MaterialTheme.colorScheme.onPrimary,
-                        modifier = Modifier.size(26.dp),
-                    )
-                }
-                Column(Modifier.weight(1f)) {
-                    Text(
-                        stringResource(R.string.tg_promo_title),
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                    )
-                    Text(
-                        stringResource(R.string.tg_promo_text),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
+            Icon(
+                Icons.Rounded.Send,
+                null,
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(20.dp),
+            )
+            Column(Modifier.weight(1f)) {
+                Text(
+                    stringResource(R.string.tg_promo_title),
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines = 1,
+                )
+                Text(
+                    stringResource(R.string.tg_promo_text),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 2,
+                )
             }
-            Spacer(Modifier.height(14.dp))
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                TextButton(
-                    onClick = vm::dismissTgBanner,
-                    modifier = Modifier.weight(1f),
-                ) {
-                    Text(stringResource(R.string.tg_promo_skip))
-                }
+            Column(horizontalAlignment = Alignment.End) {
                 Button(
                     onClick = vm::openTelegramChannel,
-                    modifier = Modifier.weight(1f),
+                    contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 16.dp),
                 ) {
                     Text(stringResource(R.string.tg_promo_go))
+                }
+                TextButton(
+                    onClick = vm::dismissTgBanner,
+                    contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 16.dp),
+                ) {
+                    Text(stringResource(R.string.tg_promo_skip))
                 }
             }
         }
@@ -1065,14 +1036,21 @@ private fun InfoGroup(state: UiState, onKsuClick: () -> Unit) {
                 else -> Icons.Rounded.Search
             },
         )
-        // Характеристики устройства — переехали сюда отдельным блоком
+        // Характеристики устройства — отдельная группа DeviceGroup ниже
+    }
+}
+
+// ─────────── Группа «Устройство» ───────────
+
+@Composable
+private fun DeviceGroup(state: UiState) {
+    SettingsGroup(title = stringResource(R.string.device_title)) {
         val d = state.device
         if (d == null) {
             Row(Modifier.padding(16.dp)) {
                 LinearProgressIndicator(Modifier.fillMaxWidth())
             }
         } else {
-            SettingsDivider(indentIcon = false)
             SettingsRow(
                 title = stringResource(R.string.device_model),
                 // Маркет-нейм из каталога + PD-код: «vivo X200 Pro (PD2405)».

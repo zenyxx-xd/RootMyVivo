@@ -258,6 +258,7 @@
     <string name="link_open_failed">无法打开链接</string>
     <string name="about_title">关于</string>
     <string name="about_repositories">代码仓库</string>
+    <string name="about_tg_channel">Telegram 频道</string>
     <string name="about_repo_app">应用</string>
     <string name="about_repo_payloads">载荷</string>
     <string name="about_repo_exploit">漏洞利用</string>

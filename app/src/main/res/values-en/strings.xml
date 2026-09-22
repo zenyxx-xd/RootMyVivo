@@ -258,6 +258,7 @@
     <string name="link_open_failed">Couldn\'t open the link</string>
     <string name="about_title">About</string>
     <string name="about_repositories">Repositories</string>
+    <string name="about_tg_channel">Telegram channel</string>
     <string name="about_repo_app">App</string>
     <string name="about_repo_payloads">Payloads</string>
     <string name="about_repo_exploit">Exploit</string>

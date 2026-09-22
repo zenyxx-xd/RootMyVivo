@@ -27,6 +27,7 @@ import androidx.compose.material.icons.rounded.CloudDownload
 import androidx.compose.material.icons.rounded.CloudSync
 import androidx.compose.material.icons.rounded.Code
 import androidx.compose.material.icons.rounded.OpenInNew
+import androidx.compose.material.icons.rounded.Send
 import androidx.compose.material.icons.rounded.SystemUpdate
 import androidx.compose.material.icons.rounded.Warning
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -65,6 +66,7 @@ import com.rootmyvivo.vm.UiState
 private val REPO_APP = "https://github.com/zenyxx-xd/RootMyVivo"
 private val REPO_PAYLOADS = "https://github.com/zenyxx-xd/RootMyVivo-Payloads"
 private val REPO_EXPLOIT = "https://github.com/zenyxx-xd/RootMyVivo-Exploit"
+private const val TELEGRAM_CHANNEL = "zenyxx_projects"
 
 private fun openUrl(context: Context, url: String) {
     try {
@@ -113,16 +115,18 @@ fun AboutScreen(vm: MainViewModel, state: UiState, onClose: () -> Unit) {
             Surface(
                 modifier = Modifier.fillMaxWidth(),
                 shape = MaterialTheme.shapes.extraLarge,
-                color = MaterialTheme.colorScheme.primaryContainer,
+                color = MaterialTheme.colorScheme.surfaceContainerLow,
             ) {
                 Column(
                     Modifier.padding(22.dp),
                     horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
+                    // Плотный вектор (ic_app_logo): сам замок крупным планом,
+                    // без лаунчерных полей и подложки
                     Image(
-                        painter = painterResource(R.drawable.ic_launcher_foreground),
+                        painter = painterResource(R.drawable.ic_app_logo),
                         contentDescription = null,
-                        modifier = Modifier.size(72.dp),
+                        modifier = Modifier.size(96.dp),
                     )
                     Spacer(Modifier.height(10.dp))
                     Text(
@@ -177,8 +181,14 @@ fun AboutScreen(vm: MainViewModel, state: UiState, onClose: () -> Unit) {
                 )
             }
 
-            // ── Репозитории ──
+            // ── Репозитории и сообщество ──
             SettingsGroup(title = stringResource(R.string.about_repositories)) {
+                RepoRow(
+                    title = stringResource(R.string.about_tg_channel),
+                    url = "https://t.me/${TELEGRAM_CHANNEL}",
+                    icon = Icons.Rounded.Send,
+                )
+                SettingsDivider()
                 RepoRow(
                     title = stringResource(R.string.about_repo_app),
                     url = REPO_APP,

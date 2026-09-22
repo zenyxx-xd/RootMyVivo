@@ -271,6 +271,7 @@
     <string name="link_open_failed">Не удалось открыть ссылку</string>
     <string name="about_title">О приложении</string>
     <string name="about_repositories">Репозитории</string>
+    <string name="about_tg_channel">Telegram-канал</string>
     <string name="about_repo_app">Приложение</string>
     <string name="about_repo_payloads">Пейлоады</string>
     <string name="about_repo_exploit">Эксплойт</string>
