@@ -945,52 +945,83 @@ private fun TransportCard(
 
 // ─────────── Плашка первого запуска: Telegram-канал ───────────
 
-/** Одна строка, как плашка обновления: иконка, заголовок и текст, справа
- *  «Перейти» и «Пропустить». Первый запуск — показывается один раз. */
 @Composable
 private fun TelegramPromoCard(vm: MainViewModel) {
+    var shown by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) { shown = true }
+    // Иконка «выпрыгивает» пружиной вслед за разворотом карточки
+    val iconScale by animateFloatAsState(
+        targetValue = if (shown) 1f else 0.2f,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Spring.StiffnessLow,
+        ),
+        label = "tgIcon",
+    )
     Surface(
         modifier = Modifier.fillMaxWidth(),
-        shape = MaterialTheme.shapes.large,
-        color = MaterialTheme.colorScheme.surfaceContainerLow,
+        shape = MaterialTheme.shapes.extraLarge,
+        color = Color.Transparent,
     ) {
-        Row(
-            Modifier.padding(start = 14.dp, end = 6.dp, top = 6.dp, bottom = 6.dp),
-            horizontalArrangement = Arrangement.spacedBy(10.dp),
-            verticalAlignment = Alignment.CenterVertically,
+        Column(
+            Modifier
+                .background(
+                    androidx.compose.ui.graphics.Brush.horizontalGradient(
+                        listOf(
+                            MaterialTheme.colorScheme.primaryContainer,
+                            MaterialTheme.colorScheme.tertiaryContainer,
+                        ),
+                    ),
+                )
+                .padding(20.dp),
         ) {
-            Icon(
-                Icons.Rounded.Send,
-                null,
-                tint = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.size(20.dp),
-            )
-            Column(Modifier.weight(1f)) {
-                Text(
-                    stringResource(R.string.tg_promo_title),
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.SemiBold,
-                    maxLines = 1,
-                )
-                Text(
-                    stringResource(R.string.tg_promo_text),
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 2,
-                )
-            }
-            Column(horizontalAlignment = Alignment.End) {
-                Button(
-                    onClick = vm::openTelegramChannel,
-                    contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 16.dp),
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(14.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Box(
+                    Modifier
+                        .size(52.dp)
+                        .scale(iconScale)
+                        .clip(CircleShape)
+                        .background(MaterialTheme.colorScheme.primary),
+                    contentAlignment = Alignment.Center,
                 ) {
-                    Text(stringResource(R.string.tg_promo_go))
+                    Icon(
+                        Icons.Rounded.Send, null,
+                        tint = MaterialTheme.colorScheme.onPrimary,
+                        modifier = Modifier.size(26.dp),
+                    )
                 }
+                Column(Modifier.weight(1f)) {
+                    Text(
+                        stringResource(R.string.tg_promo_title),
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                    )
+                    Text(
+                        stringResource(R.string.tg_promo_text),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+            Spacer(Modifier.height(14.dp))
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                modifier = Modifier.fillMaxWidth(),
+            ) {
                 TextButton(
                     onClick = vm::dismissTgBanner,
-                    contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 16.dp),
+                    modifier = Modifier.weight(1f),
                 ) {
                     Text(stringResource(R.string.tg_promo_skip))
+                }
+                Button(
+                    onClick = vm::openTelegramChannel,
+                    modifier = Modifier.weight(1f),
+                ) {
+                    Text(stringResource(R.string.tg_promo_go))
                 }
             }
         }
@@ -1042,44 +1073,56 @@ private fun InfoGroup(state: UiState, onKsuClick: () -> Unit) {
 
 // ─────────── Группа «Устройство» ───────────
 
+/** Тап по строке копирует значение целиком (например, полное ядро с версией). */
 @Composable
 private fun DeviceGroup(state: UiState) {
-    SettingsGroup(title = stringResource(R.string.device_title)) {
+    val ctx = LocalContext.current
+    val clipboard = androidx.compose.ui.platform.LocalClipboardManager.current
+    val copyValue: (String) -> Unit = { v ->
+        clipboard.setText(androidx.compose.ui.text.AnnotatedString(v))
+        android.widget.Toast.makeText(
+            ctx, ctx.getString(R.string.log_copied), android.widget.Toast.LENGTH_SHORT,
+        ).show()
+    }
+    SettingsGroup {
         val d = state.device
         if (d == null) {
             Row(Modifier.padding(16.dp)) {
                 LinearProgressIndicator(Modifier.fillMaxWidth())
             }
         } else {
+            val modelValue = (state.catalogMarketName ?: d.marketName) + " (${d.model})"
             SettingsRow(
                 title = stringResource(R.string.device_model),
                 // Маркет-нейм из каталога + PD-код: «vivo X200 Pro (PD2405)».
                 // Без записи в каталоге — как есть: Build.MODEL (Build.DEVICE)
+                onClick = { copyValue(modelValue) },
                 trailing = {
-                    TrailingValue(
-                        (state.catalogMarketName ?: d.marketName) + " (${d.model})",
-                        maxLines = 3,
-                    )
+                    TrailingValue(modelValue, maxLines = 3)
                 },
             )
             SettingsDivider(indentIcon = false)
             SettingsRow(
                 title = stringResource(R.string.device_rom),
+                onClick = { copyValue(d.rom) },
                 trailing = { TrailingValue(d.rom, mono = true, maxLines = 3) },
             )
             SettingsDivider(indentIcon = false)
             SettingsRow(
                 title = stringResource(R.string.device_kernel),
+                onClick = { copyValue(d.kernel) },
                 trailing = { TrailingValue(d.kernel, mono = true, maxLines = 3) },
             )
             SettingsDivider(indentIcon = false)
             SettingsRow(
                 title = stringResource(R.string.device_patch),
+                onClick = { copyValue(d.securityPatch) },
                 trailing = { TrailingValue(d.securityPatch, mono = true, maxLines = 3) },
             )
             SettingsDivider(indentIcon = false)
             SettingsRow(
                 title = stringResource(R.string.device_soc),
+                onClick = { copyValue(d.soc) },
                 trailing = { TrailingValue(d.soc, maxLines = 3) },
             )
         }

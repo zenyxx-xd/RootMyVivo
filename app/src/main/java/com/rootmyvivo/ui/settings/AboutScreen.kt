@@ -115,18 +115,18 @@ fun AboutScreen(vm: MainViewModel, state: UiState, onClose: () -> Unit) {
             Surface(
                 modifier = Modifier.fillMaxWidth(),
                 shape = MaterialTheme.shapes.extraLarge,
-                color = MaterialTheme.colorScheme.surfaceContainerLow,
+                color = MaterialTheme.colorScheme.primaryContainer,
             ) {
                 Column(
                     Modifier.padding(22.dp),
                     horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
-                    // Плотный вектор (ic_app_logo): сам замок крупным планом,
-                    // без лаунчерных полей и подложки
+                    // Плотный вектор (ic_app_logo): сам замок без лаунчерных
+                    // полей и подложки — акцентом служит фон самой карточки
                     Image(
                         painter = painterResource(R.drawable.ic_app_logo),
                         contentDescription = null,
-                        modifier = Modifier.size(96.dp),
+                        modifier = Modifier.size(76.dp),
                     )
                     Spacer(Modifier.height(10.dp))
                     Text(
@@ -181,14 +181,17 @@ fun AboutScreen(vm: MainViewModel, state: UiState, onClose: () -> Unit) {
                 )
             }
 
-            // ── Репозитории и сообщество ──
-            SettingsGroup(title = stringResource(R.string.about_repositories)) {
+            // ── Сообщество ──
+            SettingsGroup {
                 RepoRow(
                     title = stringResource(R.string.about_tg_channel),
                     url = "https://t.me/${TELEGRAM_CHANNEL}",
                     icon = Icons.Rounded.Send,
                 )
-                SettingsDivider()
+            }
+
+            // ── Репозитории ──
+            SettingsGroup(title = stringResource(R.string.about_repositories)) {
                 RepoRow(
                     title = stringResource(R.string.about_repo_app),
                     url = REPO_APP,
