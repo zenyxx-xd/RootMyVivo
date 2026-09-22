@@ -28,7 +28,14 @@ android {
 
     buildTypes {
         release {
-            isMinifyEnabled = false
+            // R8: без него dex с Compose + icons-extended + miuix раздувает
+            // APK до 46 МБ неиспользуемого кода — с ним ~в 5 раз меньше
+            isMinifyEnabled = true
+            isShrinkResources = true
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro",
+            )
             signingConfig = signingConfigs.getByName("release")
         }
     }
