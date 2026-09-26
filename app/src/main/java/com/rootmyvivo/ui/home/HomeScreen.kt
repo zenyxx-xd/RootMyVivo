@@ -133,6 +133,21 @@ fun HomeScreen(
         }
     }
 
+    // Транспорт проверяется не только при старте: после сворачивания
+    // приложения пользователь мог включить/выключить Shizuku или поднять
+    // ADB-порт — на возврате (ON_RESUME) пересчитываем, кнопка рута
+    // должна мгновенно отражать реальную доступность транспорта
+    val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
+    androidx.compose.runtime.DisposableEffect(lifecycleOwner) {
+        val obs = androidx.lifecycle.LifecycleEventObserver { _, event ->
+            if (event == androidx.lifecycle.Lifecycle.Event.ON_RESUME) {
+                vm.refreshTransport()
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(obs)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(obs) }
+    }
+
     // Предупреждение перед запуском (кнопка не открывает его, если отключено):
     // паники, не выходить, перезапуск
     if (warnDialog && !warnDismissed) {
@@ -312,13 +327,12 @@ fun HomeScreen(
                 TransportCard(state, onPermission = vm::requestShizukuPermission, onOpenShizuku = vm::openShizukuApp)
             else -> {}
         }
-        // Группа 1: рут-менеджер + пейлоад
-        InfoGroup(state, onKsuClick = { ksuDialog = true })
+        // Группа 1: рут-менеджер + пейлоад + история запусков
+        InfoGroup(state, onOpenLastLog = onOpenLastLog, onKsuClick = { ksuDialog = true })
         // Устройство — отдельная группа с подзаголовком, как раньше
         DeviceGroup(state)
-        // Группа 2: история запусков, поддерживаемые устройства, FAQ
+        // Группа 2: поддерживаемые устройства, FAQ
         NavGroup(
-            onOpenLastLog = onOpenLastLog,
             onOpenSupported = onOpenSupported,
             onOpenFaq = onOpenFaq,
         )
@@ -1027,7 +1041,11 @@ private fun TelegramPromoCard(vm: MainViewModel) {
 // ─────────── Группа 1: менеджер + пейлоад + устройство ───────────
 
 @Composable
-private fun InfoGroup(state: UiState, onKsuClick: () -> Unit) {
+private fun InfoGroup(
+    state: UiState,
+    onOpenLastLog: () -> Unit,
+    onKsuClick: () -> Unit,
+) {
     SettingsGroup {
         // Рут-менеджер
         SettingsRow(
@@ -1061,6 +1079,20 @@ private fun InfoGroup(state: UiState, onKsuClick: () -> Unit) {
                 state.payload != null || state.customPayload != null -> Icons.Rounded.Verified
                 state.catalogState == CatalogState.READY -> Icons.Rounded.SearchOff
                 else -> Icons.Rounded.Search
+            },
+        )
+        SettingsDivider()
+        // История запусков — в первой группе сразу после пейлоада: точка
+        // входа к логам всегда под рукой, на свежей установке не спрятана
+        SettingsRow(
+            title = stringResource(R.string.home_lastlog),
+            icon = Icons.Rounded.Description,
+            onClick = onOpenLastLog,
+            trailing = {
+                Icon(
+                    Icons.AutoMirrored.Rounded.KeyboardArrowRight, null,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
             },
         )
         // Характеристики устройства — отдельная группа DeviceGroup ниже
@@ -1129,25 +1161,10 @@ private fun DeviceGroup(state: UiState) {
 
 @Composable
 private fun NavGroup(
-    onOpenLastLog: () -> Unit,
     onOpenSupported: () -> Unit,
     onOpenFaq: () -> Unit,
 ) {
     SettingsGroup {
-        // История запусков — всегда видима: на свежей установке это
-        // единственная точка входа к логам, пустая история не повод её прятать
-        SettingsRow(
-            title = stringResource(R.string.home_lastlog),
-            icon = Icons.Rounded.Description,
-            onClick = onOpenLastLog,
-            trailing = {
-                Icon(
-                    Icons.AutoMirrored.Rounded.KeyboardArrowRight, null,
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            },
-        )
-        SettingsDivider()
         SettingsRow(
             title = stringResource(R.string.home_supported_devices),
             icon = Icons.Rounded.PhoneAndroid,
