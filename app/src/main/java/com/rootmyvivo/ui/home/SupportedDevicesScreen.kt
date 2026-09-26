@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -162,6 +163,7 @@ fun SupportedDevicesScreen(
                                     sameBody = mine,
                                     liveMine = state.payload?.device?.id == device.id,
                                     currentBuild = if (mine) myBuildId ?: state.payload?.build?.id else null,
+                                    buildsById = cat.builds,
                                 )
                                 if (mine) Spacer(Modifier.height(12.dp))
                             }
@@ -188,6 +190,7 @@ private fun DeviceRow(
     sameBody: Boolean,
     liveMine: Boolean,
     currentBuild: String?,
+    buildsById: Map<String, com.rootmyvivo.data.KernelBuild> = emptyMap(),
 ) {
     val supported = kernels.isNotEmpty()
     Surface(
@@ -258,6 +261,7 @@ private fun DeviceRow(
                             label = dk.build.label,
                             ready = dk.build.ready,
                             current = dk.build.id == currentBuild,
+                            experimental = buildsById[dk.build.id]?.experimental == true,
                         )
                     }
                 }
@@ -266,9 +270,10 @@ private fun DeviceRow(
     }
 }
 
-/** Метка сборки ядра: живые — обычным текстом, мёртвые — зачёркнутым. */
+/** Метка сборки ядра: живые — обычным текстом (experimental — с «(beta)»
+ *  в скобках), мёртвые (patched/unsupported) — зачёркнутым. */
 @Composable
-private fun KernelChip(label: String, ready: Boolean, current: Boolean) {
+private fun KernelChip(label: String, ready: Boolean, current: Boolean, experimental: Boolean = false) {
     Surface(
         shape = MaterialTheme.shapes.small,
         color = when {
@@ -278,12 +283,14 @@ private fun KernelChip(label: String, ready: Boolean, current: Boolean) {
         },
         border = when {
             current -> null
-            ready -> BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
+            ready -> BorderStroke(1.dp, if (experimental)
+                MaterialTheme.colorScheme.tertiary.copy(alpha = 0.5f)
+            else MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
             else -> BorderStroke(1.dp, MaterialTheme.colorScheme.error.copy(alpha = 0.5f))
         },
     ) {
         Text(
-            label,
+            if (experimental && ready) "$label (beta)" else label,
             style = MaterialTheme.typography.labelMedium,
             fontFamily = FontFamily.Monospace,
             fontWeight = if (current) FontWeight.Bold else FontWeight.Normal,

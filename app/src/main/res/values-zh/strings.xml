@@ -255,6 +255,9 @@
     <string name="faq_cat_guides">教程</string>
     <string name="faq_cat_advanced">进阶</string>
 
+        <string name="faq_q_status">设备列表中内核标签的标记是什么意思？</string>
+    <string name="faq_a_status">普通标签 — 有效载荷已在真实设备上验证，能稳定获取 root。带 (beta) 标记的标签 — 有效载荷已为该内核构建并校准，但尚未在真实手机上确认：可能需要多次尝试，失败的尝试偶尔会导致手机重启。划线标签 — 该内核中的漏洞已被厂商修复，无法通过此方式获取 root。如果设备完全不在列表中，说明尚无对应的有效载荷。</string>
+
     <string name="faq_q_root">为什么需要 root？</string>
     <string name="faq_a_root">root 是对 Android 系统的完全访问权限：可以使用 KernelSU 模块（例如游戏绕过检测）、深度定制系统与界面、删除无法卸载的预装应用、连同数据一起备份应用，以及精细调节电池和性能。本应用提供的 root 就是标准的 KernelSU，带图形化管理器，和其他 root 方案一样。</string>
 

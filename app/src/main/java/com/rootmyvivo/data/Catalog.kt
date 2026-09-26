@@ -40,7 +40,9 @@ data class KernelBuild(
     val env: Map<String, String>,
     val note: String,
 ) {
-    val ready: Boolean get() = status == "ready" && file != null
+    val ready: Boolean get() = (status == "ready" || status == "experimental") && file != null
+    /** Честная готовность — на устройстве не проверялся. */
+    val experimental: Boolean get() = status == "experimental"
     val label: String get() = match.firstOrNull()?.let { kernelTag(it) } ?: id
 
     /** 2 — совпал GKI-паттерн (строже), 1 — короткая версия, 0 — мимо. */

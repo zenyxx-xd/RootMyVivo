@@ -255,6 +255,9 @@
     <string name="faq_cat_guides">Guides</string>
     <string name="faq_cat_advanced">Advanced</string>
 
+        <string name="faq_q_status">What do the kernel chip marks mean in the device list?</string>
+    <string name="faq_a_status">A plain chip — the payload has been verified on a real device and reliably grants root. A chip with the (beta) mark — the payload is built and matched to this kernel, but has not yet been confirmed on a live phone: it may take more than one attempt, and a failed attempt can occasionally reboot the phone. A struck-through chip — the vulnerability is patched in this kernel, root is not possible this way. If a device is missing from the list entirely, no payload exists for it yet.</string>
+
     <string name="faq_q_root">Why would I need root at all?</string>
     <string name="faq_a_root">Root is full access to the Android system. It enables KernelSU modules (e.g. root-detection bypass games), deep UI and system customization, removing preinstalled apps that cannot be removed otherwise, app backups with their data, and fine tuning of battery and performance. Root from this app is a regular KernelSU with a graphical manager, just like other root solutions.</string>
 

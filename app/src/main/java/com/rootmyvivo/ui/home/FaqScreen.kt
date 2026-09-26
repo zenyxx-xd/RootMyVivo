@@ -78,6 +78,7 @@ fun FaqScreen(onClose: () -> Unit) {
             R.string.faq_cat_basics, Icons.Rounded.School,
             listOf(
                 FaqItem(R.string.faq_q_root, R.string.faq_a_root),
+                FaqItem(R.string.faq_q_status, R.string.faq_a_status),
                 FaqItem(R.string.faq_q_how, R.string.faq_a_how),
                 FaqItem(R.string.faq_q_manager, R.string.faq_a_manager),
                 FaqItem(R.string.faq_q_reboot, R.string.faq_a_reboot),

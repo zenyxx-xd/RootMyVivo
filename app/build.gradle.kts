@@ -14,6 +14,14 @@ val keystoreProps = Properties().apply {
     if (f.exists()) FileInputStream(f).use { load(it) }
 }
 
+// Токен отправки отчётов валидации (fine-grained PAT, только Actions:write
+// на RootMyVivo-Payloads). Тоже вне репозитория; без него приложение
+// просто не шлёт отчёты (RootReport.enabled = false).
+val reportProps = Properties().apply {
+    val f = rootProject.file("report_token.properties")
+    if (f.exists()) FileInputStream(f).use { load(it) }
+}
+
 android {
     namespace = "com.rootmyvivo"
     compileSdk = 37
@@ -24,7 +32,11 @@ android {
         targetSdk = 36
         // Схема MMmmpp: 01-мажор 00-минор 10-патчи
         versionCode = 10100
-        versionName = "1.1.0-beta"
+        versionName = "1.1.0"
+        buildConfigField(
+            "String", "RMV_DISPATCH_TOKEN",
+            "\"${reportProps.getProperty("dispatchToken", "")}\"",
+        )
     }
 
     signingConfigs {
