@@ -32,7 +32,7 @@ android {
         targetSdk = 36
         // Схема MMmmpp: 01-мажор 00-минор 10-патчи
         versionCode = 10100
-        versionName = "1.1.0"
+        versionName = "1.1.1"
         buildConfigField(
             "String", "RMV_DISPATCH_TOKEN",
             "\"${reportProps.getProperty("dispatchToken", "")}\"",
