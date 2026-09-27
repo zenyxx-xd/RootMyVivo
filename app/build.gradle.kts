@@ -30,9 +30,11 @@ android {
         applicationId = "com.rootmyvivo"
         minSdk = 31
         targetSdk = 36
-        // Схема MMmmpp: 01-мажор 00-минор 10-патчи
-        versionCode = 10100
-        versionName = "1.1.2"
+        // Схема MMmmpp: 01-мажор 01-минор 03-патчи.
+        // Код ОБЯЗАТЕЛЬНО синхронен с versionName, иначе апдейтер
+        // (сравнение по коду) «находит» собственный релиз как более новый.
+        versionCode = 10103
+        versionName = "1.1.3"
         buildConfigField(
             "String", "RMV_DISPATCH_TOKEN",
             "\"${reportProps.getProperty("dispatchToken", "")}\"",
