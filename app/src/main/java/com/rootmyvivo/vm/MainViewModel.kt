@@ -163,6 +163,9 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         engine?.stop()
         _state.value = _state.value.copy(flowRunning = false)
         com.rootmyvivo.ExploitService.stop(getApplication())
+        // Остановка — тоже завершение запуска: пишем лог в историю, иначе
+        // прерванный запуск исчезал бесследно (событие Failure не приходит)
+        saveLogHistory(success = false, failReason = "STOPPED_BY_USER")
         // «Принудительно» — не только бросить наблюдение во флоу, но и
         // прибить сам демон на устройстве: процесс с LD_PRELOAD=rmv/preload.so
         // (cmdline у него /system/bin/true, поэтому ищем через maps)
@@ -527,8 +530,15 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                 LogRunInfo(
                     startedAt = p[1].toLongOrNull() ?: return@mapNotNull null,
                     durationSec = p[2].toLongOrNull() ?: 0,
+                    // "running" — запуск был прерван смертью процесса; итога
+                    // нет, показываем как fail (лог-то сохранился — его можно
+                    // скинуть и разобрать)
                     success = p[3] == "ok",
-                    failReason = p[4].ifEmpty { null },
+                    failReason = when (p[3]) {
+                        "ok" -> p[4].ifEmpty { null }
+                        "running" -> "INTERRUPTED"
+                        else -> p[4].ifEmpty { null }
+                    },
                     variant = p[5],
                     lines = p[6].toIntOrNull() ?: 0,
                     file = f,
@@ -563,6 +573,44 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             else -> {}
         }
         _state.value = s
+        // Инкрементальное сохранение: шаги/живой лог пишутся на диск по мере
+        // появления, а не только в конце запуска. Если приложение умрёт
+        // (краш, убийство системой, перезапуск) — лог запуска и live-лог
+        // остаются в истории, пользователь может их скинуть
+        if (event is FlowEvent.Step || event is FlowEvent.ExploitLive ||
+            event is FlowEvent.Complete || event is FlowEvent.Progress
+        ) {
+            saveLogHistoryPartial()
+        }
+    }
+
+    /**
+     * Инкрементальная запись истории: тот же файл запуска, но без смены
+     * итога (итог пишется только finishRun). Дешёвая перезапись маленького
+     * файла на каждое событие — вместо потерянных логов при смерти процесса.
+     */
+    private fun saveLogHistoryPartial() {
+        try {
+            val ctx = getApplication<Application>()
+            val dir = java.io.File(ctx.filesDir, "logs").apply { mkdirs() }
+            val start = runStartedAt
+            val st = _state.value
+            val body = st.log.joinToString("\n") { entry ->
+                entry.status.name + "\t" + entry.text.replace('\n', ' ')
+            }
+            // Итог неизвестен (запуск ещё идёт) — пишем "running"; finishRun
+            // перезапишет с финальным ok/fail
+            java.io.File(dir, "$start.log").writeText(
+                "META\t$start\t0\trunning\t\t${st.selectedKsu.displayName}\t${st.log.size}\n" + body,
+            )
+            val live = st.exploitLive.lines
+            if (live.isNotEmpty()) {
+                java.io.File(dir, "$start.exploit.log").writeText(
+                    live.joinToString("\n") { it.text },
+                )
+            }
+        } catch (_: Exception) {
+        }
     }
 
     /** Хвост запуска: «Готово» при успехе, история на диск, флаг софт-ребута. */
