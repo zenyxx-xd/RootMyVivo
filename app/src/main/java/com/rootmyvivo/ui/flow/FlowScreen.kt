@@ -404,7 +404,6 @@ private fun ResultBanner(state: UiState, onRetry: () -> Unit) {
 
 @Composable
 private fun failureHint(f: FlowResult.Failure): String? = when (f.reason) {
-    FlowEvent.Reason.NO_TRANSPORT -> stringResource(R.string.hint_no_transport)
     FlowEvent.Reason.NO_PAYLOAD -> stringResource(R.string.hint_no_payload)
     FlowEvent.Reason.DOWNLOAD -> stringResource(R.string.hint_download)
     FlowEvent.Reason.DEPLOY -> stringResource(R.string.hint_deploy)
@@ -418,7 +417,6 @@ private fun failureHint(f: FlowResult.Failure): String? = when (f.reason) {
 @Composable
 private fun failureText(f: FlowResult.Failure): String = stringResource(
     when (f.reason) {
-        FlowEvent.Reason.NO_TRANSPORT -> R.string.flow_fail_no_transport
         FlowEvent.Reason.NO_PAYLOAD -> R.string.flow_fail_no_payload
         FlowEvent.Reason.DOWNLOAD -> R.string.flow_fail_download
         FlowEvent.Reason.DEPLOY -> R.string.flow_fail_deploy

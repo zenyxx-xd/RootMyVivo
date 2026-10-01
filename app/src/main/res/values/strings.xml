@@ -20,16 +20,8 @@
     <string name="catalog_retry">Повторить</string>
     <string name="home_btn_unsupported_device">Устройство не поддерживается</string>
     <string name="home_btn_unsupported_kernel">Ядро %1$s не поддерживается</string>
-    <string name="home_btn_need_transport">Нужен Shizuku или ADB</string>
-
-    <!-- Транспорт -->
-    <string name="transport_shizuku_perm">Shizuku: нужно разрешение</string>
-    <string name="transport_shizuku_perm_desc">Нажми кнопку — Shizuku покажет диалог</string>
-    <string name="transport_none">Нет транспорта</string>
-    <string name="transport_none_desc">Первый запуск требует Shizuku: запусти его и выдай разрешение</string>
-    <string name="action_grant_shizuku">Разрешить в Shizuku</string>
-    <string name="action_open_shizuku">Перейти в Shizuku</string>
-
+    <!-- Транспорт -->    <string name="transport_none">Нет транспорта</string>
+    <string name="transport_none_desc">Для запуска ничего не нужно — эксплойт стартует прямо из приложения</string>
     <!-- Пейлоад -->
     <string name="catalog_error">Каталог не загрузился — проверь интернет</string>
 
@@ -89,9 +81,7 @@
     <string name="lang_en_full">English</string>
     <string name="lang_zh_full">中文</string>
     <string name="action_close">Закрыть</string>
-    <string name="action_retry">Повторить</string>
-    <string name="flow_fail_no_transport">Нет транспорта: запусти Shizuku и выдай разрешение</string>
-    <string name="flow_fail_no_payload">Пейлоад для устройства не найден</string>
+    <string name="action_retry">Повторить</string>    <string name="flow_fail_no_payload">Пейлоад для устройства не найден</string>
     <string name="flow_fail_download">Ошибка скачивания файлов</string>
     <string name="flow_fail_deploy">Не удалось передать эксплойт на устройство</string>
     <string name="flow_fail_exploit">Эксплойт завершился без рута</string>
@@ -111,9 +101,7 @@
     <string name="logs_duration">%1$d с</string>
     <string name="logs_lines">%1$d строк</string>
     <string name="payload_short_searching">Поиск…</string>
-<string name="transport_via_adb">через ADB tcp</string>
-    <string name="transport_via_shizuku">через Shizuku</string>
-    <!-- Лог -->
+<string name="transport_via_adb">через ADB tcp</string>    <!-- Лог -->
     <string name="log_started">Запуск процесса получения root</string>
     <string name="log_payload">Используется пейлоад: %1$s</string>
     <string name="log_download_start">Скачивание %1$s (%2$d КБ)…</string>
@@ -128,7 +116,7 @@
     <string name="log_root_obtained">Root получен за %1$d с</string>
     <string name="log_verify">Проверка: %1$s</string>
     <string name="log_persist_start">Закрепление: постоянный ADB и ключ авторизации…</string>
-    <string name="log_persist_ok">ADB закреплён — после перезагрузок Shizuku не нужен</string>
+    <string name="log_persist_ok">ADB закреплён — после перезагрузок приложение подцепится само</string>
     <string name="log_persist_fail">Не удалось закрепить ADB (не критично)</string>
     <string name="log_ksu_download">Скачивание модуля ядра (%1$s)…</string>
     <string name="log_ksu_download_fail">Не удалось скачать модуль ядра</string>
@@ -149,9 +137,7 @@
     <string name="log_manager_install_ok">Менеджер установлен</string>
     <string name="log_manager_install_fail">Установка менеджера не удалась</string>
     <string name="log_adb_test">Диагностика ADB: подключение…</string>
-    <!-- Подсказки при провале -->
-    <string name="hint_no_transport">Запусти Shizuku и выдай разрешение, затем попробуй снова</string>
-    <string name="hint_no_payload">Проверь интернет-соединение</string>
+    <!-- Подсказки при провале -->    <string name="hint_no_payload">Проверь интернет-соединение</string>
     <string name="hint_download">Проверь интернет-соединение и попробуй снова</string>
     <string name="hint_deploy">Попробуй ещё раз</string>
     <string name="hint_exploit">Это лотерея таймингов — перезагрузи телефон и попробуй снова</string>
@@ -255,11 +241,9 @@
 
     <!-- Диагностика деплоя -->
     <string name="log_deploy_fail_detail">Деплой не удался: %1$s</string>
-    <string name="deploy_err_no_transport">нет рабочего транспорта</string>
+    <string name="deploy_err_no_transport">ADB-канал ещё не закреплён (появится после первого root)</string>
     <string name="deploy_err_adb_size">размер файла на устройстве не совпал — канал оборвался в середине передачи</string>
     <string name="deploy_err_adb_closed">adbd закрыл сессию передачи — проверь, что ADB-транспорт живой</string>
-    <string name="deploy_err_shizuku_bind">сервис Shizuku не отвечает</string>
-
     <!-- FAQ -->
     <string name="home_faq">FAQ</string>
     <string name="home_faq_desc">Инструкции, объяснения и разбор ошибок</string>
@@ -284,7 +268,7 @@
     <string name="faq_a_reboot">Root живёт в оперативной памяти, а перезагрузка её очищает. Приложение само перезапускает процесс через несколько минут после включения телефона — эта функция включена по умолчанию («Восстанавливать root после перезагрузки» в настройках). Если после включения root так и не появился — открой приложение и запусти процесс вручную.</string>
 
     <string name="faq_q_deploy">«Не удалось передать эксплойт на устройство»</string>
-    <string name="faq_a_deploy">Не получилось передать файл эксплойта в память телефона. Обычно причина одна из: Shizuku закрылся или был перезапущен в середине процесса, ADB-канал пропал после перезагрузки, в телефоне закончилось свободное место. В журнале запуска теперь указывается точная причина — если ошибка повторяется, скопируй лог и напиши об этом в комментариях. Что попробовать самому: убедиться, что Shizuku (или ADB) запущен, освободить место и запустить процесс заново.</string>
+    <string name="faq_a_deploy">Не получилось скопировать файл эксплойта во внутреннюю папку приложения. Обычно причина одна из: в телефоне закончилось свободное место или системе не хватило памяти. В журнале запуска указывается точная причина — если ошибка повторяется, скопируй лог и напиши об этом в комментариях.</string>
 
     <string name="faq_q_notinstalled">Root-менеджер пишет «Не установлено»</string>
     <string name="faq_a_notinstalled">Модуль KernelSU загрузился, но менеджер его пока не видит. Нажми «Перезагрузка userspace» на главном экране — обычно после неё модуль активируется. Не помогло? Сделай полную перезагрузку, выбери на главном экране другой менеджер и запусти процесс заново. Если не установка ни у одного менеджера — напиши в комментарии, приложив лог запуска (см. «Как сообщить об ошибке»).</string>
@@ -305,8 +289,8 @@
     <string name="faq_q_downgrade">Как откатиться, если патчи уже с пофикшенной уязвимостью?</string>
     <string name="faq_a_downgrade">Если на телефоне новые патчи безопасности с закрытой уязвимостью, а root очень хочется — можно попробовать откатиться на предыдущую версию прошивки.\n\nВНИМАНИЕ: все данные на телефоне будут стёрты. Сохрани всё важное на компьютер или SD-карту.\n\nТребования:\n1. Телефон, который вышел на OriginOS 5 или раньше — откат возможен только на предыдущую мажорку\n2. Компьютер\n3. Немного свободного времени\n\nПорядок действий:\n1. Скачай и установи программу для отката (ссылку автор публикует в Telegram-канале).\n2. Подключи телефон к компьютеру, открой программу и нажимай кнопки в таком порядке:\n— если телефон определился — большая синяя кнопка;\n— сначала белая кнопка для резервного копирования (если данные уже сохранены — сразу синяя), затем синяя для начала отката;\n— выбирай что угодно и нажимай синюю кнопку;\n— синяя кнопка для начала скачивания, и снова она же после окончания скачивания;\n— в финальном диалоге синяя кнопка — начнётся откат, данные сотрутся.\n\nГотово: телефон откатился — ставь приложение и запускай эксплойт как обычно. Если в инструкции что-то неточно — поправьте в комментариях.</string>
 
-    <string name="faq_q_firstlaunch">Первый запуск: зачем нужен доступ к Shizuku?</string>
-    <string name="faq_a_firstlaunch">До получения root приложению нужны права на выполнение команд в режиме shell — их даёт приложение Shizuku. Установи его (https://shizuku.rikka.ru), запусти через «Беспроводную отладку» в настройках разработчика (спарь устройство и запусти Shizuku), затем разреши RootMyVivo в появившемся окне.\n\nПосле первого успешного root приложение само закрепляет ADB-канал — после этого Shizuku для перезагрузок больше не понадобится.</string>
+    <string name="faq_q_firstlaunch">Первый запуск: нужен ли Shizuku или ADB?</string>
+    <string name="faq_a_firstlaunch">Нет — Shizuku и ADB для первого запуска не нужны: эксплойт запускается прямо из приложения. После первого успешного root приложение само закрепляет ADB-канал (порт 5555 + ключ) — он нужен для проверки состояния и восстановления после перезагрузок.</string>
 
     <string name="faq_q_softreboot">Чем «перезагрузка userspace» отличается от обычной?</string>
     <string name="faq_a_softreboot">Перезагрузка userspace перезапускает только системный интерфейс Android — ядро не перезагружается, поэтому root и модуль KernelSU сохраняются. Полная же перезагрузка заново загружает ядро: root пропадёт до автоматического восстановления. Пользовательскую перезагрузку стоит применять, когда модуль уже загружен, но менеджер его не видит.</string>

@@ -14,17 +14,9 @@
 
     <string name="action_root">获取 ROOT</string>
     <string name="home_btn_unsupported_device">设备不受支持</string>
-    <string name="home_btn_unsupported_kernel">内核 (%1$s) 不受支持</string>
-    <string name="home_btn_need_transport">需要 Shizuku 或 ADB</string>
-    <string name="action_back">返回</string>
-    <string name="action_save">保存</string>
-    <string name="action_grant_shizuku">在 Shizuku 中授权</string>
-    <string name="action_open_shizuku">打开 Shizuku</string>
-
-    <string name="transport_shizuku_perm">Shizuku：需要授权</string>
-    <string name="transport_shizuku_perm_desc">点击按钮 — Shizuku 将显示授权对话框</string>
-    <string name="transport_none">无可用传输方式</string>
-    <string name="transport_none_desc">首次运行需要 Shizuku：打开应用并启动它</string>
+    <string name="home_btn_unsupported_kernel">内核 (%1$s) 不受支持</string>    <string name="action_back">返回</string>
+    <string name="action_save">保存</string>    <string name="transport_none">无可用传输方式</string>
+    <string name="transport_none_desc">启动无需任何准备——exploit 直接在应用内运行</string>
 
     <string name="catalog_loading">正在加载目录…</string>
     <string name="catalog_retry">重试搜索</string>
@@ -76,9 +68,7 @@
     <string name="lang_en_full">English</string>
     <string name="lang_zh_full">中文</string>
     <string name="action_close">关闭</string>
-    <string name="action_retry">重试</string>
-    <string name="flow_fail_no_transport">无传输方式：启动 Shizuku 并授权</string>
-    <string name="flow_fail_no_payload">未找到此设备的载荷</string>
+    <string name="action_retry">重试</string>    <string name="flow_fail_no_payload">未找到此设备的载荷</string>
     <string name="flow_fail_download">文件下载失败</string>
     <string name="flow_fail_deploy">无法将漏洞利用传到设备</string>
     <string name="flow_fail_exploit">漏洞利用完成但未获得 root</string>
@@ -98,9 +88,7 @@
     <string name="logs_duration">%1$d 秒</string>
     <string name="logs_lines">%1$d 行</string>
     <string name="payload_short_searching">搜索中…</string>
-<string name="transport_via_adb">通过 ADB tcp</string>
-    <string name="transport_via_shizuku">通过 Shizuku</string>
-    <!-- 日志 -->
+<string name="transport_via_adb">通过 ADB tcp</string>    <!-- 日志 -->
     <string name="log_started">开始获取 root</string>
     <string name="log_payload">使用载荷：%1$s</string>
     <string name="log_download_start">正在下载 %1$s（%2$d KB）…</string>
@@ -115,7 +103,7 @@
     <string name="log_root_obtained">Root 已获取（用时 %1$d 秒）</string>
     <string name="log_verify">验证：%1$s</string>
     <string name="log_persist_start">正在巩固：永久 ADB 和授权密钥…</string>
-    <string name="log_persist_ok">ADB 已巩固 — 重启后无需 Shizuku</string>
+    <string name="log_persist_ok">ADB 已固定——重启后应用会自动重连</string>
     <string name="log_persist_fail">无法巩固 ADB（不影响使用）</string>
     <string name="log_ksu_download">正在下载内核模块（%1$s）…</string>
     <string name="log_ksu_download_fail">内核模块下载失败</string>
@@ -136,9 +124,7 @@
     <string name="log_manager_install_ok">管理器已安装</string>
     <string name="log_manager_install_fail">管理器安装失败</string>
     <string name="log_adb_test">ADB 诊断：连接中…</string>
-    <!-- 失败提示 -->
-    <string name="hint_no_transport">启动 Shizuku 并授权，然后重试</string>
-    <string name="hint_no_payload">请检查网络连接</string>
+    <!-- 失败提示 -->    <string name="hint_no_payload">请检查网络连接</string>
     <string name="hint_download">请检查网络连接后重试</string>
     <string name="hint_deploy">请重试</string>
     <string name="hint_exploit">这是时序博弈 — 重启手机后重试</string>
@@ -242,11 +228,9 @@
 
     <!-- 部署诊断 -->
     <string name="log_deploy_fail_detail">部署失败：%1$s</string>
-    <string name="deploy_err_no_transport">没有可用的传输通道</string>
+    <string name="deploy_err_no_transport">ADB 通道尚未固定（首次 root 后出现）</string>
     <string name="deploy_err_adb_size">设备上文件大小不一致——传输中途连接中断</string>
     <string name="deploy_err_adb_closed">adbd 关闭了传输会话——请确认 ADB 通道正常</string>
-    <string name="deploy_err_shizuku_bind">Shizuku 服务无响应</string>
-
     <!-- FAQ -->
     <string name="home_faq">FAQ</string>
     <string name="home_faq_desc">教程、原理说明与错误处理</string>
@@ -271,7 +255,7 @@
     <string name="faq_a_reboot">root 存在于内存中，重启会清空它。应用会在开机几分钟后自动重新执行——该功能默认开启（设置中的"重启后恢复 root"）。若开机后 root 仍未恢复，请打开应用手动执行。</string>
 
     <string name="faq_q_deploy">"无法将 exploit 传输到设备"</string>
-    <string name="faq_a_deploy">exploit 文件未能传送到手机。常见原因：执行中 Shizuku 被关闭或重启、软重启后 ADB 通道断开、手机存储空间不足。运行日志现在会标明具体原因——若错误反复出现，请复制日志并在评论区反馈。可自行尝试：确认 Shizuku（或 ADB）在运行、释放空间后重新执行。</string>
+    <string name="faq_a_deploy">exploit 文件未能复制到应用私有目录。常见原因：手机存储空间不足或系统内存不足。运行日志会标明具体原因——若错误反复出现，请复制日志并在评论区反馈。</string>
 
     <string name="faq_q_notinstalled">root 管理器显示"未安装"</string>
     <string name="faq_a_notinstalled">KernelSU 模块已加载，但管理器尚未识别。请按几下主界面的"重启用户空间"——通常之后模块就会激活。仍无效：完全重启，在主界面换另一个管理器并重新执行。若所有管理器都不行——请附运行日志到评论区反馈（见"如何报告错误"）。</string>
@@ -292,8 +276,8 @@
     <string name="faq_q_downgrade">安全补丁已修复漏洞，怎么办？</string>
     <string name="faq_a_downgrade">如果手机的安全补丁已修复该漏洞，但仍想 root——可以尝试回退到上一个大版本固件。\n\n警告：手机上所有数据将被清除，请先把重要资料保存到电脑或 SD 卡。\n\n要求：\n1. 出厂为 OriginOS 5 或更早的手机——只能回退到上一大版本\n2. 一台电脑\n3. 一点空闲时间\n\n步骤：\n1. 下载并安装回退工具（下载链接作者在 Telegram 频道发布）。\n2. 将手机连接电脑，打开程序，按以下顺序点击按钮：\n— 设备被识别后——点大蓝色按钮；\n— 先点白色备份按钮（数据已备份则直接点蓝色），再点蓝色开始回退；\n— 任选一项并点蓝色按钮；\n— 点蓝色按钮开始下载，下载完成后再点一次；\n— 在最后的对话框点蓝色按钮——回退开始，数据将被清除。\n\n完成后手机已回到旧固件——安装应用并正常执行 exploit 即可。若本指南有不准确之处——欢迎在评论区指正。</string>
 
-    <string name="faq_q_firstlaunch">首次启动：为什么需要 Shizuku？</string>
-    <string name="faq_a_firstlaunch">获取 root 之前，应用需要 shell 域的执行权限——由 Shizuku 提供。安装 Shizuku（https://shizuku.rikka.ru），在开发者选项里通过"无线调试"启动（配对设备并启动 Shizuku），然后在弹窗中允许 RootMyVivo。\n\n首次 root 成功后，应用会固定自己的 ADB 通道——之后重启不再需要 Shizuku。</string>
+    <string name="faq_q_firstlaunch">首次启动：需要 Shizuku 或 ADB 吗？</string>
+    <string name="faq_a_firstlaunch">不需要——首次运行既不需要 Shizuku 也不需要 ADB：exploit 直接在应用内启动。首次 root 成功后，应用会自动固定自己的 ADB 通道（端口 5555 + 密钥）——用于状态检查和重启后恢复。</string>
 
     <string name="faq_q_softreboot">"用户空间重启"和普通重启有何不同？</string>
     <string name="faq_a_softreboot">用户空间重启只重启 Android 系统界面——内核不重载，root 和 KernelSU 模块会保留。完全重启会重新加载内核：root 将消失，直到自动恢复完成。当模块已加载但管理器识别不到时，应使用用户空间重启。</string>

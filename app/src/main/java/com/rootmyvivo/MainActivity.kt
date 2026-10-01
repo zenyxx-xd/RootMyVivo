@@ -42,7 +42,7 @@ class MainActivity : ComponentActivity() {
             vm.adbSelfTest()
         }
 
-        // Возврат в приложение (например, после запуска Shizuku) — обновить транспорт
+        // Возврат в приложение — обновить ADB-бейдж
         lifecycle.addObserver(LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_RESUME) vm.refreshTransport()
         })

@@ -30,11 +30,11 @@ android {
         applicationId = "com.rootmyvivo"
         minSdk = 31
         targetSdk = 36
-        // Схема MMmmpp: 01-мажор 01-минор 03-патчи.
+        // Схема MMmmpp: 01-мажор 01-минор 04-патчи.
         // Код ОБЯЗАТЕЛЬНО синхронен с versionName, иначе апдейтер
         // (сравнение по коду) «находит» собственный релиз как более новый.
-        versionCode = 10103
-        versionName = "1.1.3"
+        versionCode = 10104
+        versionName = "1.1.4"
         buildConfigField(
             "String", "RMV_DISPATCH_TOKEN",
             "\"${reportProps.getProperty("dispatchToken", "")}\"",
@@ -92,11 +92,9 @@ dependencies {
     implementation("androidx.core:core-ktx:1.19.0")
     implementation("androidx.core:core-splashscreen:1.2.0")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.11.0")
-    implementation("dev.rikka.shizuku:api:13.1.5")
     // Навигация в духе новых Android (NavDisplay + предиктивный назад)
     implementation("top.yukonga.miuix.kmp:miuix-nav:0.9.4-rc01")
     implementation("androidx.navigationevent:navigationevent-compose:1.1.2")
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.9.0")
-    implementation("dev.rikka.shizuku:provider:13.1.5")
     debugImplementation("androidx.compose.ui:ui-tooling")
 }

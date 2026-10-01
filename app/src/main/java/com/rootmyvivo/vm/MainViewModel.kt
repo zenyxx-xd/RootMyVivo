@@ -49,8 +49,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             logHistory = loadLogHistory(),
             tgBannerVisible = !prefs.tgPromoDismissed,
         )
-        // Транспорт обновляется при запуске/смерти Shizuku
-        Transport.onBinderStateChanged = { refreshTransport() }
+        // ADB-бейдж: порт закреплён и канал жив
         detectDevice()
         refreshTransport()
         // Автопоиск обновлений при каждом запуске приложения
@@ -97,40 +96,12 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    // ─────────── Транспорт ───────────
+    // ─────────── ADB-канал (бейдж закрепления) ───────────
 
     fun refreshTransport() {
         viewModelScope.launch {
             val t = withContext(Dispatchers.IO) { Transport.detectBlocking(getApplication()) }
             _state.value = _state.value.copy(transport = t)
-            if (t == TransportState.Shizuku) {
-                withContext(Dispatchers.IO) { Transport.bindShizukuService(getApplication()) }
-            }
-        }
-    }
-
-    fun requestShizukuPermission() {
-        val ok = Transport.requestShizukuPermission {
-            refreshTransport()
-        }
-        if (!ok) refreshTransport()
-    }
-
-    fun openShizukuApp() {
-        val ctx = getApplication<Application>()
-        try {
-            val intent = ctx.packageManager.getLaunchIntentForPackage(SHIZUKU_PACKAGE)
-            if (intent != null) {
-                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                ctx.startActivity(intent)
-            } else {
-                ctx.startActivity(
-                    Intent(Intent.ACTION_VIEW, Uri.parse(SHIZUKU_DOWNLOAD_URL))
-                        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                )
-            }
-        } catch (e: Exception) {
-            Log.e(TAG, "openShizukuApp failed", e)
         }
     }
 

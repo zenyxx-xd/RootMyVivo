@@ -1,17 +1,11 @@
 # R8-правила релизной сборки.
-# Весь код приложения вызывается статически, кроме двух мест: Shizuku
-# создаёт ShellServiceImpl рефлексией по имени класса, и маршруты
-# навигации (@Serializable) кладутся в SavedState через генерируемые
+# Весь код приложения вызывается статически, кроме маршрутов
+# навигации (@Serializable): они кладутся в SavedState через генерируемые
 # сериализаторы. Остальное R8 вправе вырезать — так и задумано.
 
 # Читаемые стектрейсы: пользователи копируют логи, по ним ловим краши
 -keepattributes SourceFile,LineNumberTable
 -renamesourcefileattribute SourceFile
-
-# Shizuku UserService: экземпляр создаётся по имени класса в обход статических ссылок
--keep class com.rootmyvivo.shell.ShellServiceImpl { public <init>(...); }
--keep class com.rootmyvivo.shell.IShellService { *; }
--keep class com.rootmyvivo.shell.IShellService$* { *; }
 
 # kotlinx.serialization: маршруты навигации (@Serializable RmvRoute) —
 # сгенерированные сериализаторы обязаны выжить

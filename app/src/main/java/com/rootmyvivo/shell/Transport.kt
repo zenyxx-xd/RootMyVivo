@@ -1,189 +1,35 @@
 package com.rootmyvivo.shell
 
-import android.content.ComponentName
 import android.content.Context
-import android.content.ServiceConnection
-import android.content.pm.PackageManager
-import android.os.IBinder
 import android.util.Log
 import com.rootmyvivo.data.Prefs
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
-import rikka.shizuku.Shizuku
 import java.io.File
-import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 
-/** Состояние транспорта для запуска эксплойта. */
+/** Состояние ADB-канала (закрепление после первого рута). */
 sealed interface TransportState {
-    /** ADB tcp 5555 через wire-клиент (после первого root) */
+    /** ADB tcp 5555 через wire-клиент (порт закреплён persist-проперти) */
     data object Adb : TransportState
-    /** Shizuku запущен и разрешение выдано */
-    data object Shizuku : TransportState
-    /** Shizuku запущен, разрешение не выдано */
-    data object ShizukuNeedsPermission : TransportState
     data object None : TransportState
 }
 
 /**
  * Мост для выполнения команд в shell-домене (uid=2000, u:r:shell:s0).
  *
- * Политика: до первого успешного root — только Shizuku UserService.
- * После (firstRootDone) — ADB tcp 5555 через AdbWire, Shizuku не нужен.
+ * Эксплойт запускается НЕ через транспорт, а напрямую из приложения
+ * (LocalRunner + RMV_HOME=filesDir/rmv) — Shizuku и ADB для первого
+ * запуска не нужны. Транспорт остался только для ADB tcp 5555:
+ * пост-root закрепление (persist.adb.tcp.port + adb_keys) и команды,
+ * которым нужен именно shell-домен.
  */
 object Transport {
 
     private const val TAG = "NeoTransport"
-    private const val SHIZUKU_CHUNK = 512 * 1024
 
     lateinit var prefs: Prefs
-    var onBinderStateChanged: (() -> Unit)? = null
-
-    // ─────────── Shizuku binder lifecycle ───────────
-
-    @Volatile
-    var shizukuAlive: Boolean = false
-        private set
-
-    private var registered = false
-
-    /** Зарегистрировать листенеры (однократно, из Application). */
-    fun initShizuku(context: Context) {
-        if (registered) return
-        registered = true
-        try {
-            Shizuku.addBinderReceivedListenerSticky(Shizuku.OnBinderReceivedListener {
-                shizukuAlive = true
-                Log.i(TAG, "Shizuku binder received")
-                onBinderStateChanged?.invoke()
-            })
-            Shizuku.addBinderDeadListener(Shizuku.OnBinderDeadListener {
-                shizukuAlive = false
-                shizukuService = null
-                Log.i(TAG, "Shizuku binder dead")
-                onBinderStateChanged?.invoke()
-            })
-            Shizuku.addRequestPermissionResultListener(Shizuku.OnRequestPermissionResultListener { _, granted ->
-                Log.i(TAG, "Shizuku permission granted=$granted")
-            })
-        } catch (e: Exception) {
-            Log.e(TAG, "initShizuku failed", e)
-        }
-    }
-
-    fun shizukuPermissionGranted(): Boolean = try {
-        Shizuku.checkSelfPermission() == PackageManager.PERMISSION_GRANTED
-    } catch (_: Exception) {
-        false
-    }
-
-    /** Запросить разрешение; onGranted вызовется после подтверждения пользователем. */
-    fun requestShizukuPermission(requestCode: Int = 100, onGranted: () -> Unit): Boolean = try {
-        when {
-            Shizuku.getVersion() < 11 -> false
-            Shizuku.checkSelfPermission() == PackageManager.PERMISSION_GRANTED -> {
-                onGranted()
-                true
-            }
-            Shizuku.shouldShowRequestPermissionRationale() -> false
-            else -> {
-                lateinit var listener: Shizuku.OnRequestPermissionResultListener
-                listener = Shizuku.OnRequestPermissionResultListener { _, grantResult ->
-                    if (grantResult == PackageManager.PERMISSION_GRANTED) {
-                        runCatching { Shizuku.removeRequestPermissionResultListener(listener) }
-                        onGranted()
-                    }
-                }
-                Shizuku.addRequestPermissionResultListener(listener)
-                Shizuku.requestPermission(requestCode)
-                false
-            }
-        }
-    } catch (e: Throwable) {
-        Log.e(TAG, "requestPermission failed", e)
-        false
-    }
-
-    // ─────────── Shizuku UserService ───────────
-
-    @Volatile
-    private var shizukuService: IShellService? = null
-
-    @Synchronized
-    fun bindShizukuService(context: Context): Boolean {
-        shizukuService?.let { return true }
-        if (!shizukuAlive || !shizukuPermissionGranted()) return false
-        return try {
-            var binder: IBinder? = null
-            val latch = CountDownLatch(1)
-            val conn = object : ServiceConnection {
-                override fun onServiceConnected(name: ComponentName?, b: IBinder?) {
-                    binder = b
-                    latch.countDown()
-                }
-
-                override fun onServiceDisconnected(name: ComponentName?) {
-                    shizukuService = null
-                }
-            }
-            Shizuku.bindUserService(
-                Shizuku.UserServiceArgs(ComponentName(context, ShellServiceImpl::class.java))
-                    .daemon(false)
-                    .processNameSuffix("service")
-                    .version(1),
-                conn,
-            )
-            latch.await(15, TimeUnit.SECONDS)
-            val b = binder
-            shizukuService = if (b != null && b.pingBinder()) IShellService.Stub.asInterface(b) else null
-            shizukuService != null
-        } catch (e: Exception) {
-            Log.e(TAG, "bindUserService failed", e)
-            false
-        }
-    }
-
-    private fun execShizuku(ctx: Context, command: String): Pair<Int, String> = try {
-        var svc = shizukuService
-        if (svc == null && bindShizukuService(ctx)) svc = shizukuService
-        if (svc == null) return -1 to "Shizuku service not connected"
-        val output = svc.exec(command)
-        val exit = Regex("EXIT=(-?\\d+)").find(output)?.groupValues?.get(1)?.toIntOrNull() ?: -1
-        exit to output.removePrefix("EXIT=$exit\n")
-    } catch (e: Exception) {
-        Log.e(TAG, "shizuku exec failed", e)
-        shizukuService = null
-        -1 to (e.message ?: "shizuku error")
-    }
-
-    private fun deployShizuku(
-        ctx: Context,
-        localPath: String,
-        remotePath: String,
-    ): Pair<Boolean, String> {
-        var svc = shizukuService
-        if (svc == null && bindShizukuService(ctx)) svc = shizukuService
-        if (svc == null) {
-            return false to ctx.getString(com.rootmyvivo.R.string.deploy_err_shizuku_bind)
-        }
-        return try {
-            val data = File(localPath).readBytes()
-            var offset = 0L
-            while (offset < data.size) {
-                val len = minOf(SHIZUKU_CHUNK, (data.size - offset).toInt()).toLong()
-                if (!svc.writeFileChunk(remotePath, offset, data.copyOfRange(offset.toInt(), (offset + len).toInt()))) {
-                    return false to "Shizuku writeFileChunk failed at offset $offset/${data.size}"
-                }
-                offset += len
-            }
-            svc.exec("chmod 644 $remotePath")
-            true to ""
-        } catch (e: Exception) {
-            Log.e(TAG, "shizuku deploy failed", e)
-            false to "Shizuku: ${e.message ?: "binder error"}"
-        }
-    }
 
     // ─────────── ADB wire ───────────
 
@@ -205,18 +51,20 @@ object Transport {
     // ─────────── Общий API ───────────
 
     /**
-     * Команда su: наш пейлоад кладёт клиент в /data/local/tmp/su (не в PATH),
-     * upstream — в /apex (в PATH). Пробуем оба: сначала локальный, потом PATH.
+     * Команда su: наш пейлоад кладёт клиент в RMV_HOME/su (см. LocalRunner),
+     * путь знает приложение. Пробуем оба: сначала локальный, потом PATH.
      */
     const val SU = "/data/local/tmp/su"
 
     /**
      * Прямой вызов su-клиента эксплойта из процесса приложения — без транспорта.
-     * Клиент сам ходит в демон на unix-сокете, так что работает даже когда
-     * Shizuku мёртв, а adb-порт ещё не закреплён.
+     * Клиент сам ходит в демон на unix-сокете, так что работает всегда,
+     * пока жив демон.
      */
-    fun suLocal(command: String, timeoutSec: Int = 60): Pair<Int, String> = try {
-        val proc = Runtime.getRuntime().exec(arrayOf(SU, "-c", command))
+    fun suLocal(ctx: Context, command: String, timeoutSec: Int = 60): Pair<Int, String> = try {
+        val suBin = File(ctx.filesDir, "rmv/su")
+        val bin = if (suBin.isFile && suBin.canExecute()) suBin.absolutePath else SU
+        val proc = Runtime.getRuntime().exec(arrayOf(bin, "-c", command))
         val out = buildString {
             proc.inputStream.bufferedReader().useLines { lines -> lines.forEach { append(it).append('\n') } }
             proc.errorStream.bufferedReader().useLines { lines -> lines.forEach { append(it).append('\n') } }
@@ -247,7 +95,7 @@ object Transport {
     suspend fun su(ctx: Context, command: String, timeoutSec: Int = 300): Pair<Int, String> {
         // 1. Напрямую через демон эксплойта — пока KSU не перехватил su
         if (!ksuSuPresent()) {
-            val local = suLocal(command, timeoutSec = minOf(timeoutSec, 60))
+            val local = suLocal(ctx, command, timeoutSec = minOf(timeoutSec, 60))
             if (local.first == 0) return local
         }
         // 2. Через транспорт (shell-домен): наш su, а после KSU — PATH-su (allow_shell)
@@ -258,11 +106,7 @@ object Transport {
 
     fun detectBlocking(ctx: Context): TransportState {
         if (prefs.firstRootDone && adbUsable(ctx)) return TransportState.Adb
-        return when {
-            shizukuAlive && shizukuPermissionGranted() -> TransportState.Shizuku
-            shizukuAlive -> TransportState.ShizukuNeedsPermission
-            else -> TransportState.None
-        }
+        return TransportState.None
     }
 
     /**
@@ -274,7 +118,7 @@ object Transport {
     fun rootActiveQuick(ctx: Context): Boolean {
         if (!File("/system/bin/su").exists()) {
             val (code, out) = try {
-                suLocal("id", timeoutSec = 5)
+                suLocal(ctx, "id", timeoutSec = 5)
             } catch (_: Exception) {
                 -1 to ""
             }
@@ -287,57 +131,42 @@ object Transport {
         }
     }
 
-    /** Выполнить команду в shell-домене по политике транспорта. */
+    /** Выполнить команду в shell-домене через ADB (нужен закреплённый порт). */
     suspend fun exec(ctx: Context, command: String, timeoutSec: Int = 300): Pair<Int, String> =
         withContext(Dispatchers.IO) {
             if (prefs.firstRootDone && adbUsable(ctx)) {
                 try {
                     return@withContext AdbWire.shell(ctx, command, timeoutMs = timeoutSec * 1000L, allowDialog = true)
                 } catch (e: Exception) {
-                    // канал умер между пробой и командой — фолбэк на Shizuku
                     Log.w(TAG, "adb exec failed: ${e.message}")
                 }
             }
-            if (shizukuAlive && shizukuPermissionGranted()) {
-                execShizuku(ctx, command)
-            } else {
-                -1 to "no transport"
-            }
+            -1 to "no transport (adb not persisted yet)"
         }
 
     /**
-     * Передать файл в /data/local/tmp по политике транспорта.
+     * Передать файл в /data/local/tmp по ADB.
      * (успех, причина-текст): false — вторая строка объясняет что именно
-     * не так (обрыв канала, привязка Shizuku, исключение передачи) — это
-     * уходит в лог процесса вместо безликого «не удалось задеплоить».
+     * не так — это уходит в лог процесса.
      */
     suspend fun deploy(ctx: Context, localPath: String, remotePath: String): Pair<Boolean, String> =
         withContext(Dispatchers.IO) {
-            var adbErr: String? = null
             if (prefs.firstRootDone && adbUsable(ctx)) {
                 val err = AdbWire.deploy(ctx, localPath, remotePath)
                 if (err == null) return@withContext true to ""
-                adbErr = err
-                Log.w(TAG, "adb deploy failed: $err — trying shizuku")
+                return@withContext false to err
             }
-            if (shizukuAlive && shizukuPermissionGranted()) {
-                val (ok, detail) = deployShizuku(ctx, localPath, remotePath)
-                if (ok) return@withContext true to ""
-                false to (adbErr?.plus(" | ") ?: "") + detail
-            } else {
-                false to (adbErr ?: ctx.getString(com.rootmyvivo.R.string.deploy_err_no_transport))
-            }
+            false to (ctx.getString(com.rootmyvivo.R.string.deploy_err_no_transport))
         }
 
     /**
      * Пост-root закрепление: persist-порт + свой ключ в adb_keys —
-     * бесшерстная авторизация после любых перезагрузок.
+     * бесшовная авторизация после любых перезагрузок.
      *
-     * Порт пробуем двумя путями: shell-домен (Shizuku/AdbWire — основной) и
+     * Порт пробуем двумя путями: shell-домен (AdbWire — основной) и
      * su-демон эксплойта (фолбэк: на части прошивок property service пускает
-     * и его контекст, а транспорт после soft reboot бывает мёртв). adbd
-     * перечитывает persist-порт только на старте — рестарим и ждём, пока
-     * порт 5555 реально начнёт слушаться.
+     * и его контекст). adbd перечитывает persist-порт только на старте —
+     * рестарим и ждём, пока порт 5555 реально начнёт слушаться.
      */
     suspend fun persistAfterRoot(ctx: Context): Boolean = withContext(Dispatchers.IO) {
         // 1. persist-порт: shell-домен, затем su-демон
@@ -356,7 +185,6 @@ object Transport {
             Log.i(TAG, "adb_keys install: code=$kc ${kout.take(60)}")
         }
         // 3. adbd перечитывает persist-порт только на старте — рестарт
-        // (init перезапустит его; на транспорте Shizuku это безопасно)
         if (portOk) {
             su(ctx, "pkill -x adbd", timeoutSec = 10)
             // init поднимает adbd не мгновенно: ждём и проверяем живой порт,

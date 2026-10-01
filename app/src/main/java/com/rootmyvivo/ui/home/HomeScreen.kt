@@ -44,7 +44,7 @@ import androidx.compose.material.icons.rounded.Code
 import androidx.compose.material.icons.rounded.Description
 import androidx.compose.material.icons.rounded.FolderOpen
 import androidx.compose.material.icons.automirrored.rounded.HelpOutline
-import androidx.compose.material.icons.rounded.LinkOff
+import androidx.compose.material.icons.rounded.Usb
 import androidx.compose.material.icons.rounded.PhoneAndroid
 import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material.icons.rounded.SearchOff
@@ -133,10 +133,8 @@ fun HomeScreen(
         }
     }
 
-    // Транспорт проверяется не только при старте: после сворачивания
-    // приложения пользователь мог включить/выключить Shizuku или поднять
-    // ADB-порт — на возврате (ON_RESUME) пересчитываем, кнопка рута
-    // должна мгновенно отражать реальную доступность транспорта
+    // ADB-бейдж пересчитываем на возврате: закреплённый порт мог
+    // подняться/упасть, пока приложения не было на экране
     val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
     androidx.compose.runtime.DisposableEffect(lifecycleOwner) {
         val obs = androidx.lifecycle.LifecycleEventObserver { _, event ->
@@ -321,12 +319,6 @@ fun HomeScreen(
             }
         }
 
-        // Карточка транспорта — только когда есть проблема (нет Shizuku / нет разрешения)
-        when (state.transport) {
-            TransportState.None, TransportState.ShizukuNeedsPermission ->
-                TransportCard(state, onPermission = vm::requestShizukuPermission, onOpenShizuku = vm::openShizukuApp)
-            else -> {}
-        }
         // Группа 1: рут-менеджер + пейлоад + история запусков
         InfoGroup(state, onOpenLastLog = onOpenLastLog, onKsuClick = { ksuDialog = true })
         // Устройство — отдельная группа с подзаголовком, как раньше
@@ -486,7 +478,8 @@ private fun HeroCard(
     onClearPayload: () -> Unit,
 ) {
     val rooted = state.rootState == RootState.ROOTED
-    val transportOk = state.transport == TransportState.Adb || state.transport == TransportState.Shizuku
+    // Кнопка рута активна всегда: эксплойт запускается из приложения,
+    // транспорт (Shizuku/ADB) для первого запуска не нужен
     // Тёмная тема определяется по реальной яркости фона: NeoTheme выбирает
     // палитру настройкой, а не только системным флагом
     val isDark = MaterialTheme.colorScheme.background.luminance() < 0.5f
@@ -564,7 +557,7 @@ private fun HeroCard(
                             textAlign = TextAlign.Center,
                         )
                         Spacer(Modifier.height(16.dp))
-                        RootButton(state, transportOk, onRoot)
+                        RootButton(state, onRoot)
                         // Кастомный пейлоад: карточка с контуром (как у кнопки
                         // выбора, без заливки). Снимок держим до конца анимации
                         // сворачивания — иначе контент исчезнет раньше выхода
@@ -696,26 +689,23 @@ private fun HeroCard(
                                 }
                             }
                         }
-                        if (transportOk) {
+                        // Бейдж ADB-закрепления: порт 5555 persist'нут, канал жив.
+                        // Показывается только при активном канале — для первого
+                        // запуска ничего не нужно, бейджа нет.
+                        if (state.transport == TransportState.Adb) {
                             Spacer(Modifier.height(10.dp))
                             Row(
                                 horizontalArrangement = Arrangement.spacedBy(6.dp),
                                 verticalAlignment = Alignment.CenterVertically,
                             ) {
                                 Icon(
-                                    when (state.transport) {
-                                        TransportState.Adb -> Icons.Rounded.Usb
-                                        else -> Icons.Rounded.Security
-                                    },
+                                    Icons.Rounded.Usb,
                                     null,
                                     modifier = Modifier.size(14.dp),
                                     tint = MaterialTheme.colorScheme.onSurfaceVariant,
                                 )
                                 Text(
-                                    when (state.transport) {
-                                        TransportState.Adb -> stringResource(R.string.transport_via_adb)
-                                        else -> stringResource(R.string.transport_via_shizuku)
-                                    },
+                                    stringResource(R.string.transport_via_adb),
                                     style = MaterialTheme.typography.labelMedium,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 )
@@ -729,13 +719,12 @@ private fun HeroCard(
 }
 
 @Composable
-private fun RootButton(state: UiState, transportOk: Boolean, onRoot: () -> Unit) {
+private fun RootButton(state: UiState, onRoot: () -> Unit) {
     val ready = state.payload != null || state.customPayload != null
-    val enabled = ready && transportOk && !state.flowRunning
+    val enabled = ready && !state.flowRunning
     val kernelShort = state.device?.kernelShort.orEmpty()
     // «Не поддерживается» всегда объясняет причину: нет тела в каталоге →
-    // устройство; тело есть, но живой сборки под ядро нет → ядро. Без
-    // транспорта кнопка неактивна и говорит, чего не хватает
+    // устройство; тело есть, но живой сборки под ядро нет → ядро.
     val label = when {
         state.customPayload != null -> stringResource(R.string.action_root)
         state.catalogState == CatalogState.LOADING -> stringResource(R.string.catalog_loading)
@@ -745,7 +734,6 @@ private fun RootButton(state: UiState, transportOk: Boolean, onRoot: () -> Unit)
         !ready && kernelShort.isNotEmpty() ->
             stringResource(R.string.home_btn_unsupported_kernel, kernelShort)
         !ready -> stringResource(R.string.status_unsupported)
-        !transportOk -> stringResource(R.string.home_btn_need_transport)
         else -> stringResource(R.string.action_root)
     }
     // Смена состояний («Получить рут» ↔ «Не поддерживается» ↔ загрузка
@@ -884,68 +872,6 @@ private fun CompactUpdateCard(
                         stringResource(R.string.update_retry_install)
                     } else {
                         stringResource(R.string.update_button)
-                    },
-                )
-            }
-        }
-    }
-}
-
-// ─────────── Карточка транспорта (только при проблемах) ───────────
-
-@Composable
-private fun TransportCard(
-    state: UiState,
-    onPermission: () -> Unit,
-    onOpenShizuku: () -> Unit,
-) {
-    Surface(
-        modifier = Modifier.fillMaxWidth(),
-        shape = MaterialTheme.shapes.large,
-        color = when (state.transport) {
-            TransportState.ShizukuNeedsPermission -> MaterialTheme.colorScheme.tertiaryContainer
-            else -> MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.55f)
-        },
-    ) {
-        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
-                Icon(
-                    when (state.transport) {
-                        TransportState.ShizukuNeedsPermission -> Icons.Rounded.Security
-                        else -> Icons.Rounded.LinkOff
-                    },
-                    null,
-                    tint = MaterialTheme.colorScheme.onErrorContainer,
-                    modifier = Modifier.size(20.dp),
-                )
-                Column {
-                    Text(
-                        when (state.transport) {
-                            TransportState.ShizukuNeedsPermission -> stringResource(R.string.transport_shizuku_perm)
-                            else -> stringResource(R.string.transport_none)
-                        },
-                        style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.SemiBold,
-                    )
-                    Text(
-                        when (state.transport) {
-                            TransportState.ShizukuNeedsPermission -> stringResource(R.string.transport_shizuku_perm_desc)
-                            else -> stringResource(R.string.transport_none_desc)
-                        },
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-            }
-            OutlinedButton(
-                onClick = if (state.transport == TransportState.ShizukuNeedsPermission) onPermission else onOpenShizuku,
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                Text(
-                    if (state.transport == TransportState.ShizukuNeedsPermission) {
-                        stringResource(R.string.action_grant_shizuku)
-                    } else {
-                        stringResource(R.string.action_open_shizuku)
                     },
                 )
             }

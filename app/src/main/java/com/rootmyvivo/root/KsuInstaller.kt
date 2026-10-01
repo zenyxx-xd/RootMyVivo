@@ -42,7 +42,7 @@ class KsuInstaller(
             val restartPkg = prefs.managerPackage.ifEmpty { variant.packageName }
 
             // ── 1. Аудит: что уже есть на устройстве, до любых скачиваний ──
-            val (_, preMods) = Transport.exec(ctx, "grep -i kernelsu /proc/modules 2>/dev/null")
+            val (_, preMods) = LocalRunner.exec("grep -i kernelsu /proc/modules 2>/dev/null")
             val moduleLoaded = preMods.isNotBlank()
             val loadedOf = prefs.loadedModuleVariant
             if (moduleLoaded && loadedOf.isNotEmpty() && loadedOf != variant.id) {
@@ -60,8 +60,7 @@ class KsuInstaller(
             // late-load, ранние — нет).
             val managerKsudRaw = findManagerKsud(ctx, pkgs) ?: unpackManagerKsud(ctx, pkgs)
             val managerKsud = if (managerKsudRaw != null && ksudUsable(ctx, managerKsudRaw)) managerKsudRaw else null
-            val (_, probe) = Transport.exec(
-                ctx,
+            val (_, probe) = LocalRunner.exec(
                 "[ -f /data/adb/rmv/kernelsu.ko ] && echo RMV_CACHE; [ -f $REMOTE_KSUD ] && echo RMV_KSUD",
             )
             val koCached = probe.contains("RMV_CACHE")
@@ -70,7 +69,7 @@ class KsuInstaller(
             // ksud перекачиваем как отсутствующий
             var remoteKsud = false
             if (probe.contains("RMV_KSUD")) {
-                val (_, hp) = Transport.exec(ctx, "$REMOTE_KSUD --help 2>/dev/null", timeoutSec = 15)
+                val (_, hp) = LocalRunner.exec("$REMOTE_KSUD --help 2>/dev/null", timeoutSec = 15)
                 remoteKsud = hp.contains("late-load")
             }
 
@@ -109,7 +108,7 @@ class KsuInstaller(
                 // остаться от прошлых билдов (другой размер/CI-сборка) —
                 // системный insmod на нём давал Exec format error. Чистим,
                 // чтобы грузился только свежескачанный.
-                Transport.exec(ctx, "rm -f /data/local/tmp/rmv/kernelsu.ko /data/adb/rmv/kernelsu.ko")
+                Transport.su(ctx, "rm -f /data/local/tmp/rmv/kernelsu.ko /data/adb/rmv/kernelsu.ko")
                 progress(R.string.log_ksu_download, device.kmi)
                 if (!downloadKo(variant, koPath)) {
                     complete(false, R.string.log_ksu_download_fail)
@@ -226,9 +225,10 @@ class KsuInstaller(
             }
             val prepared = if (url.endsWith(".zip")) unzipEntry(tmp, ksud, "ksud") else tmp.renameTo(ksud)
             tmp.delete()
+            // ksud кладём через su-демона: /data/local/tmp ему родной
+            // (RMV_HOME-дефолт), права — сразу 755
             prepared && ksud.length() > 0 &&
-                Transport.deploy(ctx, ksud.absolutePath, REMOTE_KSUD).first &&
-                Transport.exec(ctx, "chmod 755 $REMOTE_KSUD").first == 0
+                Transport.su(ctx, "cat '${ksud.absolutePath}' > $REMOTE_KSUD && chmod 755 $REMOTE_KSUD").first == 0
         } catch (e: Exception) {
             Log.e(TAG, "downloadKsud failed", e)
             false
@@ -377,7 +377,7 @@ class KsuInstaller(
     }
 
     private suspend fun isPackageInstalled(pkg: String): Boolean {
-        val (_, pathOut) = Transport.exec(ctx, "pm path $pkg", timeoutSec = 30)
+        val (_, pathOut) = LocalRunner.exec("pm path $pkg", timeoutSec = 30)
         return pathOut.startsWith("package:")
     }
 
@@ -414,7 +414,7 @@ class KsuInstaller(
         var (code, out) = Transport.su(ctx, "sh $remoteScript")
         if (code != 0) {
             Log.w(TAG, "setup via su failed ($code), falling back to shell: ${out.take(120)}")
-            code = Transport.exec(ctx, "sh $remoteScript").first
+            code = Transport.su(ctx, "sh $remoteScript").first
         }
         return code == 0
     }
@@ -628,7 +628,7 @@ class KsuInstaller(
             for (pkg in pkgs.filter { it.isNotEmpty() }.distinct()) {
                 val baseApk = baseApkPath(ctx, pkg) ?: continue
                 val ksud = baseApk.substringBeforeLast("/") + "/lib/arm64/libksud.so"
-                val (_, probe) = Transport.exec(ctx, "[ -f $ksud ] && echo RMV_YES", timeoutSec = 15)
+                val (_, probe) = LocalRunner.exec("[ -f $ksud ] && echo RMV_YES", timeoutSec = 15)
                 if (probe.contains("RMV_YES")) return ksud
             }
             return null
@@ -637,7 +637,7 @@ class KsuInstaller(
         /** Путь base.apk пакета через pm (shell-домен), null если пакет не стоит. */
         suspend fun baseApkPath(ctx: android.content.Context, pkg: String): String? {
             if (pkg.isEmpty()) return null
-            val (_, out) = Transport.exec(ctx, "pm path $pkg", timeoutSec = 30)
+            val (_, out) = LocalRunner.exec("pm path $pkg", timeoutSec = 30)
             return out.lineSequence()
                 .firstOrNull { it.startsWith("package:") }
                 ?.removePrefix("package:")?.trim()
@@ -673,7 +673,7 @@ class KsuInstaller(
 
         /** Кандидат ksud реально умеет наш флоу (late-load обязателен). */
         suspend fun ksudUsable(ctx: android.content.Context, path: String): Boolean {
-            val (_, hp) = Transport.exec(ctx, "$path --help 2>&1", timeoutSec = 15)
+            val (_, hp) = LocalRunner.exec("$path --help 2>&1", timeoutSec = 15)
             return hp.contains("late-load")
         }
 
@@ -698,7 +698,7 @@ class KsuInstaller(
             magicaFirst: Boolean = false,
         ): Pair<Boolean, String> {
             suspend fun loaded(): Boolean {
-                val viaExec = Transport.exec(ctx, "grep -i kernelsu /proc/modules 2>/dev/null").second
+                val viaExec = LocalRunner.exec("grep -i kernelsu /proc/modules 2>/dev/null").second
                 return viaExec.isNotBlank() ||
                     Transport.su(ctx, "grep -i kernelsu /proc/modules 2>/dev/null").second.isNotBlank()
             }

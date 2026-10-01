@@ -81,20 +81,9 @@ class BootRootService : Service() {
             return
         }
 
-        // Adb-транспорт (закреплённый порт) может подниматься дольше загрузки
-        var adbUp = false
-        for (i in 0 until 30) {
-            val (code, out) = Transport.exec(this, "echo RMV_OK", timeoutSec = 10)
-            if (code == 0 && out.contains("RMV_OK")) {
-                adbUp = true
-                break
-            }
-            delay(3000)
-        }
-        if (!adbUp) {
-            notifyResult(ok = false)
-            return
-        }
+        // ADB для запуска эксплойта не нужен: он стартует локально из
+        // приложения (LocalRunner + RMV_HOME). Закреплённый порт поднимется
+        // сам по persist-проперти — ждать его не требуется.
 
         // Прогон эксплойта: один запуск preload делает до N попыток внутри
         // (RMV_ATTEMPTS из каталога). ВТОРОЙ ЦИКЛ НА ТОМ ЖЕ ЯДРЕ ЗАПРЕЩЁН:
@@ -129,48 +118,53 @@ class BootRootService : Service() {
 
     /** Пейлоад на месте? Перезапускаем эксплойт в фоне, как основной флоу. */
     private suspend fun launchExploit(): Boolean {
-        val remoteDir = "/data/local/tmp/rmv"
-        val remotePreload = "$remoteDir/preload.so"
-        Transport.exec(
-            this,
-            "mkdir -p $remoteDir && rm -f $remoteDir/DONE $remoteDir/live.log",
-            timeoutSec = 15,
-        )
-        // пейлоад мог потеряться (чистка /data/local/tmp) — перекладываем из app-хранилища
-        if (!remoteFileExists(remotePreload)) {
+        val homeDir = File(filesDir, "rmv")
+        homeDir.mkdirs()
+        val localPreload = File(homeDir, "preload.so")
+        File(homeDir, "DONE").delete()
+        File(homeDir, "live.log").delete()
+        // пейлоад мог потеряться (чистка filesDir) — перекладываем из app-хранилища
+        if (!localPreload.isFile) {
             val local = File(filesDir, "payloads/preload.so")
-            if (!local.exists() || !Transport.deploy(this, local.absolutePath, remotePreload).first) {
+            if (!local.exists() ||
+                !com.rootmyvivo.root.LocalRunner.copy(local, localPreload)
+            ) {
                 return false
             }
         }
-        Transport.exec(
-            this,
-            "cd $remoteDir && (LD_PRELOAD=$remotePreload /system/bin/true > $remoteDir/live.log 2>&1 &)",
-            timeoutSec = 15,
+        com.rootmyvivo.root.LocalRunner.exec("chmod 755 '${localPreload.absolutePath}'", timeoutSec = 15)
+        com.rootmyvivo.root.LocalRunner.execBackground(
+            "cd '${homeDir.absolutePath}' && LD_PRELOAD='${localPreload.absolutePath}' /system/bin/true",
+            env = mapOf("RMV_HOME" to homeDir.absolutePath),
+            logFile = File(homeDir, "live.log"),
         )
         return true
     }
 
-    private suspend fun remoteFileExists(path: String): Boolean {
-        val (code, out) = Transport.exec(this, "[ -f $path ] && echo RMV_YES", timeoutSec = 10)
-        return code == 0 && out.contains("RMV_YES")
-    }
+    private fun remoteFileExists(path: String): Boolean = File(path).isFile
 
     /**
      * Модуль из кэша: /data/adb/rmv (писал setupPersistence при руте), при
      * отсутствии — деплой из filesDir приложения. ksud аналогично.
      */
     private suspend fun loadCachedModule(): Boolean {
-        val (_, mods) = Transport.exec(this, "grep -i kernelsu /proc/modules 2>/dev/null")
+        val (_, mods) = com.rootmyvivo.root.LocalRunner.exec("grep -i kernelsu /proc/modules 2>/dev/null")
         if (mods.isNotBlank()) return true
 
         val prefs = Prefs(this)
         val koLocal = File(filesDir, "payloads/kernelsu_${prefs.selectedKsu}.ko")
         var ko = "/data/adb/rmv/kernelsu.ko"
         if (!remoteFileExists(ko)) {
-            if (!koLocal.exists() ||
-                !Transport.deploy(this, koLocal.absolutePath, "/data/local/tmp/rmv/kernelsu.ko").first
-            ) {
+            if (!koLocal.exists()) {
+                return false
+            }
+            // Кладём через su-демона: он уже поднят (рут есть), /data/local/tmp ему родной
+            val (code, _) = Transport.su(
+                this,
+                "cat '${koLocal.absolutePath}' > /data/local/tmp/rmv/kernelsu.ko && chmod 644 /data/local/tmp/rmv/kernelsu.ko",
+                timeoutSec = 60,
+            )
+            if (code != 0 || !remoteFileExists("/data/local/tmp/rmv/kernelsu.ko")) {
                 return false
             }
             ko = "/data/local/tmp/rmv/kernelsu.ko"
@@ -194,7 +188,7 @@ class BootRootService : Service() {
             }
         }
         if (ksudPaths.isEmpty()) return false
-        Transport.exec(this, "chmod 755 ${ksudPaths.joinToString(" ")}", timeoutSec = 15)
+        Transport.su(this, "chmod 755 ${ksudPaths.joinToString(" ")}", timeoutSec = 15)
         // кэш kernelsu.ko пишет setupPersistence уже ПАТЧЕННЫМ (vermagic под
         // это ядро): ksud insmod проглотит и такой, системному insmod он нужен.
         // Для resukisu — официальный джейлбрейк-флоу late-load --magica первым
@@ -203,7 +197,7 @@ class BootRootService : Service() {
             magicaFirst = prefs.selectedKsu == "resukisu",
         )
 
-        val (_, mods2) = Transport.exec(this, "grep -i kernelsu /proc/modules 2>/dev/null")
+        val (_, mods2) = com.rootmyvivo.root.LocalRunner.exec("grep -i kernelsu /proc/modules 2>/dev/null")
         return mods2.isNotBlank()
     }
 
