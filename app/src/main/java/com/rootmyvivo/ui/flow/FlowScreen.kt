@@ -373,6 +373,7 @@ private fun ResultBanner(state: UiState, onRetry: () -> Unit) {
                             style = MaterialTheme.typography.titleLarge,
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.onErrorContainer,
+                            textAlign = TextAlign.Center,
                         )
                         Text(
                             failureText(result),
@@ -642,7 +643,15 @@ private fun ExploitLine(
     Row(
         modifier
             .fillMaxWidth()
-            .clickable(onClick = onToggle)
+            // Без стандартной AOSP-ripple: при раскрытии композиция
+            // перестраивается мгновенно и анимация отменяется, а при
+            // сворачивании успевает проиграться — поведение разное. Без
+            // indication шапка ведёт себя одинаково в обе стороны
+            .clickable(
+                interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() },
+                indication = null,
+                onClick = onToggle,
+            )
             .padding(vertical = 5.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
