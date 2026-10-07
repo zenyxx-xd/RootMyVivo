@@ -193,7 +193,7 @@ fun FlowScreen(
             Spacer(Modifier.height(4.dp))
 
             Box(Modifier.padding(horizontal = 20.dp)) {
-                StepIndicator(state)
+                StatusCard(state, onRetry)
             }
 
             // Загрузка файла (только во время активного скачивания)
@@ -221,10 +221,6 @@ fun FlowScreen(
                 }
             }
 
-            Box(Modifier.padding(horizontal = 20.dp)) {
-                ResultBanner(state, onRetry)
-            }
-
             // Поток лога (Dopamine-стиль): новые снизу, туман у самого верха
             if (state.log.isNotEmpty()) {
                 LogStream(
@@ -249,11 +245,52 @@ fun FlowScreen(
     }
 }
 
-// ─────────── Шаги ───────────
+// ─────────── Статус: один объект, трансформация ───────────
+
+/** Вид верхней статус-карточки: процесс / успех / провал. */
+private enum class StatusKind { RUNNING, SUCCESS, FAILURE }
+
+/**
+ * Верхняя карточка — ОДИН объект: при мажорной смене статуса (процесс →
+ * «рут получен» / «не удалось получить root») она трансформируется в
+ * нужную карточку анимацией (размер, текст, цвет), а не появляется
+ * отдельной карточкой. Дизайн до/после — ровно прежний.
+ */
+@Composable
+private fun StatusCard(state: UiState, onRetry: () -> Unit) {
+    if (!state.flowRunning && state.flowResult == null) return
+    val kind = when {
+        state.flowResult is FlowResult.Success -> StatusKind.SUCCESS
+        state.flowResult is FlowResult.Failure -> StatusKind.FAILURE
+        else -> StatusKind.RUNNING
+    }
+    AnimatedContent(
+        targetState = kind,
+        transitionSpec = {
+            androidx.compose.animation.ContentTransform(
+                targetContentEnter = (fadeIn(tween(280)) + slideInVertically(
+                    animationSpec = spring(stiffness = Spring.StiffnessMedium),
+                    initialOffsetY = { it / 4 },
+                )),
+                initialContentExit = (fadeOut(tween(220)) + slideOutVertically(
+                    animationSpec = spring(stiffness = Spring.StiffnessMedium),
+                    targetOffsetY = { -it / 4 },
+                )),
+                sizeTransform = androidx.compose.animation.SizeTransform(clip = false),
+            )
+        },
+        label = "statusCard",
+    ) { k ->
+        when (k) {
+            StatusKind.RUNNING -> RunningCard(state)
+            StatusKind.SUCCESS -> SuccessCard()
+            StatusKind.FAILURE -> FailureCard(state, onRetry)
+        }
+    }
+}
 
 @Composable
-private fun StepIndicator(state: UiState) {
-    if (!state.flowRunning && state.flowResult == null) return
+private fun RunningCard(state: UiState) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
         shape = MaterialTheme.shapes.large,
@@ -312,93 +349,83 @@ private fun phaseName(phase: Phase?): String? = when (phase) {
     null -> null
 }
 
-// ─────────── Результат ───────────
+@Composable
+private fun SuccessCard() {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = MaterialTheme.shapes.extraLarge,
+        color = MaterialTheme.colorScheme.primaryContainer,
+    ) {
+        Column(
+            Modifier.padding(20.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            Icon(
+                Icons.Rounded.CheckCircle, null,
+                modifier = Modifier.size(56.dp),
+                tint = MaterialTheme.colorScheme.primary,
+            )
+            Spacer(Modifier.height(8.dp))
+            Text(
+                stringResource(R.string.flow_success),
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.Bold,
+            )
+            Text(
+                stringResource(R.string.flow_success_desc),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.Center,
+            )
+        }
+    }
+}
 
 @Composable
-private fun ResultBanner(state: UiState, onRetry: () -> Unit) {
-    AnimatedVisibility(
-        visible = state.flowResult != null,
-        enter = fadeIn(tween(280)) +
-            androidx.compose.animation.expandVertically(tween(320, easing = androidx.compose.animation.core.FastOutSlowInEasing)),
+private fun FailureCard(state: UiState, onRetry: () -> Unit) {
+    val result = state.flowResult as? FlowResult.Failure ?: return
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = MaterialTheme.shapes.extraLarge,
+        color = MaterialTheme.colorScheme.errorContainer,
     ) {
-        when (val result = state.flowResult) {
-            FlowResult.Success -> {
-                Surface(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = MaterialTheme.shapes.extraLarge,
-                    color = MaterialTheme.colorScheme.primaryContainer,
-                ) {
-                    Column(
-                        Modifier.padding(20.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                    ) {
-                        Icon(
-                            Icons.Rounded.CheckCircle, null,
-                            modifier = Modifier.size(56.dp),
-                            tint = MaterialTheme.colorScheme.primary,
-                        )
-                        Spacer(Modifier.height(8.dp))
-                        Text(
-                            stringResource(R.string.flow_success),
-                            style = MaterialTheme.typography.headlineSmall,
-                            fontWeight = FontWeight.Bold,
-                        )
-                        Text(
-                            stringResource(R.string.flow_success_desc),
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            textAlign = TextAlign.Center,
-                        )
-                    }
-                }
+        Column(
+            Modifier.padding(20.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
+            Icon(
+                Icons.Rounded.Error, null,
+                modifier = Modifier.size(48.dp),
+                tint = MaterialTheme.colorScheme.onErrorContainer,
+            )
+            Text(
+                stringResource(R.string.flow_failed),
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onErrorContainer,
+                textAlign = TextAlign.Center,
+            )
+            Text(
+                failureText(result),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onErrorContainer,
+                textAlign = TextAlign.Center,
+            )
+            failureHint(result)?.let { hint ->
+                Text(
+                    hint,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onErrorContainer.copy(alpha = 0.75f),
+                    textAlign = TextAlign.Center,
+                )
             }
-            is FlowResult.Failure -> {
-                Surface(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = MaterialTheme.shapes.extraLarge,
-                    color = MaterialTheme.colorScheme.errorContainer,
-                ) {
-                    Column(
-                        Modifier.padding(20.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(6.dp),
-                    ) {
-                        Icon(
-                            Icons.Rounded.Error, null,
-                            modifier = Modifier.size(48.dp),
-                            tint = MaterialTheme.colorScheme.onErrorContainer,
-                        )
-                        Text(
-                            stringResource(R.string.flow_failed),
-                            style = MaterialTheme.typography.titleLarge,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onErrorContainer,
-                            textAlign = TextAlign.Center,
-                        )
-                        Text(
-                            failureText(result),
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onErrorContainer,
-                            textAlign = TextAlign.Center,
-                        )
-                        failureHint(result)?.let { hint ->
-                            Text(
-                                hint,
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onErrorContainer.copy(alpha = 0.75f),
-                                textAlign = TextAlign.Center,
-                            )
-                        }
-                        Spacer(Modifier.height(6.dp))
-                        Button(onClick = onRetry) {
-                            Icon(Icons.Rounded.Refresh, null, modifier = Modifier.size(18.dp))
-                            Spacer(Modifier.width(8.dp))
-                            Text(stringResource(R.string.action_retry))
-                        }
-                    }
-                }
+            Spacer(Modifier.height(6.dp))
+            Button(onClick = onRetry) {
+                Icon(Icons.Rounded.Refresh, null, modifier = Modifier.size(18.dp))
+                Spacer(Modifier.width(8.dp))
+                Text(stringResource(R.string.action_retry))
             }
-            null -> {}
         }
     }
 }

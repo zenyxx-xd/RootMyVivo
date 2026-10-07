@@ -55,9 +55,9 @@
     <string name="phase_catalog">Загрузка каталога</string>
     <string name="phase_payload">Поиск пейлоада</string>
     <string name="phase_download">Скачивание файлов</string>
-    <string name="phase_deploy">Деплой эксплойта</string>
+    <string name="phase_deploy">Подготовка</string>
     <string name="phase_exploit">Запуск эксплойта</string>
-    <string name="phase_ksu">Установка KernelSU</string>
+    <string name="phase_ksu">Менеджер KernelSU</string>
 
     <!-- Настройки -->
     <string name="settings_title">Настройки</string>
@@ -216,7 +216,6 @@
     <string name="theme_screen_style">Оформление</string>
     <string name="theme_name_monet">Monet</string>
     <string name="theme_name_originos">OriginOS</string>
-    <string name="other_demo_run">Демонстрация эксплоита</string>
     <string name="settings_root">Рут</string>
     <string name="home_pick_payload">Выбрать кастомный .so</string>
     <string name="home_custom_payload_active">Кастомный: %1$s</string>
@@ -237,6 +236,8 @@
     <string name="log_traces_failed">Не удалось очистить временные файлы</string>
     <string name="log_custom_not_so">Выбранный файл не является .so — запуск невозможен</string>
     <string name="payload_not_found">Не найден</string>
+        <string name="other_demo_gl">Демо GhostLock</string>
+    <string name="other_demo_df">Демо DirtyFrag</string>
     <string name="other_section_process">Процесс</string>
 
     <!-- Плашка Telegram (первый запуск) -->

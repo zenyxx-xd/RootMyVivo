@@ -122,14 +122,29 @@ fun DevScreen(vm: MainViewModel, state: UiState, onClose: () -> Unit, onRootStar
                     Spacer(Modifier.width(8.dp))
                     Text(stringResource(R.string.home_restart_exploit), maxLines = 1)
                 }
-                OutlinedButton(
-                    onClick = { runDemo(demoUi, scope, appCtx) { demoState = it } },
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = MaterialTheme.shapes.large,
-                ) {
-                    Icon(Icons.Rounded.PlayArrow, null, modifier = Modifier.size(18.dp))
-                    Spacer(Modifier.width(8.dp))
-                    Text(stringResource(R.string.other_demo_run), maxLines = 1)
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    OutlinedButton(
+                        onClick = { runDemo(demoUi, scope, appCtx) { demoState = it } },
+                        enabled = demoEnabled,
+                        modifier = Modifier.weight(1f),
+                        shape = MaterialTheme.shapes.large,
+                    ) {
+                        Icon(Icons.Rounded.PlayArrow, null, modifier = Modifier.size(18.dp))
+                        Spacer(Modifier.width(6.dp))
+                        Text(stringResource(R.string.other_demo_gl), maxLines = 1)
+                    }
+                    val dfDemoEnabled = state.device?.dirtyfragCompatible() ==
+                        com.rootmyvivo.data.DeviceInfo.DfCompat.OK && !state.flowRunning
+                    OutlinedButton(
+                        onClick = { runDemoDf(demoUi, scope, appCtx) { demoState = it } },
+                        enabled = dfDemoEnabled,
+                        modifier = Modifier.weight(1f),
+                        shape = MaterialTheme.shapes.large,
+                    ) {
+                        Icon(Icons.Rounded.PlayArrow, null, modifier = Modifier.size(18.dp))
+                        Spacer(Modifier.width(6.dp))
+                        Text(stringResource(R.string.other_demo_df), maxLines = 1)
+                    }
                 }
             }
 
@@ -324,6 +339,103 @@ private fun runDemo(
         apply(FlowEvent.Log(ctx.getString(R.string.log_manager_already, "ReSukiSU"), LogLevel.OK))
         kotlinx.coroutines.delay(400)
         apply(FlowEvent.Complete(true, ctx.getString(R.string.log_ksu_active, "ReSukiSU")))
+
+        // Зачистка следов — этап в реальном finishRoot (KSU ACTIVE)
+        apply(FlowEvent.Progress(ctx.getString(R.string.log_cleanup_start)))
+        kotlinx.coroutines.delay(500)
+        apply(FlowEvent.Complete(true, ctx.getString(R.string.log_cleanup_done)))
+
+        apply(FlowEvent.Success(softRebootRecommended = true))
+        update(s.copy(flowRunning = false, lastLog = s.log))
+    }
+}
+
+/** DF-демо: точная последовательность успешного runDirtyFrag() с реальными
+ *  логами натива (encryption-only, verify OK, ***SUCCESS***). */
+private fun runDemoDf(
+    ui: FlowUiReducer,
+    scope: kotlinx.coroutines.CoroutineScope,
+    ctx: android.content.Context,
+    update: (UiState) -> Unit,
+) {
+    scope.launch {
+        var s = UiState(flowRunning = true)
+        fun apply(event: FlowEvent) {
+            s = ui.apply(s, event)
+            update(s)
+        }
+
+        apply(FlowEvent.Log(ctx.getString(R.string.log_started)))
+        apply(FlowEvent.Log(ctx.getString(R.string.log_df_method), LogLevel.OK))
+
+        // ── 1. Подготовка: SA + стейджинг ──
+        apply(FlowEvent.Step(Phase.DEPLOY, 1, 3))
+        kotlinx.coroutines.delay(700)
+        apply(FlowEvent.Log(ctx.getString(R.string.log_df_staged), LogLevel.OK))
+
+        // ── 2. Запуск эксплойта: реальный лог натива ──
+        apply(FlowEvent.Step(Phase.EXPLOIT, 2, 3))
+        apply(FlowEvent.Progress(ctx.getString(R.string.log_exploit_start), exploit = true))
+
+        val dfLog = listOf(
+            "=== setup ===",
+            "found ko_target: /vendor/lib64/libbinderdebug.so",
+            "encap port: 56411",
+            "spi: 0x719c948b",
+            "",
+            "=== EXPLOIT ===",
+            "* patch #1 (crash_dump64 <- splicehelper, 1488 bytes)",
+            "patched 1488 bytes to /apex/com.android.runtime/bin/crash_dump64+0x0",
+            "patch #1 verify OK",
+            "* ko android15-6.6 (8464 bytes)",
+            "* patch #2 (/vendor/lib64/libbinderdebug.so <- dirtyfrag.ko, 8464 bytes)",
+            "patched 8464 bytes to /vendor/lib64/libbinderdebug.so+0x0",
+            "* finding symbol offsets for /system/lib64/libc++.so",
+            "PACIASP/BTI found at hook site, advancing +4",
+            "* /system/lib64/libc++.so hook=0xa49fc shell=0xf6d80 len=468",
+            "* patching /system/lib64/libc++.so shellcode (480 bytes)",
+            "patched 480 bytes to /system/lib64/libc++.so+0xf6d80",
+            "* patching /system/lib64/libc++.so trampoline at 0xa49f0",
+            "patched 16 bytes to /system/lib64/libc++.so+0xa49f0",
+            "",
+            "=== init  ===",
+            "* triggering...",
+            "libc++: mutex acquired, loading custom module",
+            "dfroot: launching bootstrap",
+            "bootstrap: prefs loaded",
+            "bootstrap: adopting zygote env",
+            "bootstrap: env adopted",
+            "bootstrap: setting partitions ro",
+            "bootstrap: partitions set ro",
+            "bootstrap: starting SU daemon",
+            "***SUCCESS***",
+        )
+        // Порции как в живом логе: setup → патчи → триггер → бутстрап → SUCCESS
+        val chunks = listOf(4, 6, 8, 7, 6)
+        var shown = 0
+        for (c in chunks) {
+            kotlinx.coroutines.delay(600)
+            shown = (shown + c).coerceAtMost(dfLog.size)
+            apply(FlowEvent.ExploitLive(attempt = null, max = null, lines = dfLog.take(shown)))
+        }
+        kotlinx.coroutines.delay(400)
+
+        apply(FlowEvent.Complete(true))
+        kotlinx.coroutines.delay(300)
+        apply(FlowEvent.Log(ctx.getString(R.string.log_df_root_iface), LogLevel.OK))
+        apply(FlowEvent.Log(ctx.getString(R.string.log_root_obtained, 38), LogLevel.OK))
+
+        // ── 3. Менеджер KernelSU (выбранный) ──
+        apply(FlowEvent.Step(Phase.KSU, 3, 3))
+        apply(FlowEvent.Progress(ctx.getString(R.string.log_manager_download, "KernelSU")))
+        kotlinx.coroutines.delay(700)
+        apply(FlowEvent.Complete(true))
+        apply(FlowEvent.Progress(ctx.getString(R.string.log_ksu_load)))
+        kotlinx.coroutines.delay(600)
+        apply(FlowEvent.Complete(true, ctx.getString(R.string.log_ksu_active, "KernelSU")))
+        apply(FlowEvent.Progress(ctx.getString(R.string.log_cleanup_start)))
+        kotlinx.coroutines.delay(500)
+        apply(FlowEvent.Complete(true, ctx.getString(R.string.log_cleanup_done)))
 
         apply(FlowEvent.Success(softRebootRecommended = true))
         update(s.copy(flowRunning = false, lastLog = s.log))

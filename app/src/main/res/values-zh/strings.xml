@@ -45,9 +45,9 @@
     <string name="phase_catalog">正在加载目录…</string>
     <string name="phase_payload">正在查找载荷…</string>
     <string name="phase_download">正在下载文件…</string>
-    <string name="phase_deploy">正在部署漏洞利用…</string>
+    <string name="phase_deploy">准备</string>
     <string name="phase_exploit">正在运行漏洞利用…</string>
-    <string name="phase_ksu">正在安装 KernelSU…</string>
+    <string name="phase_ksu">KernelSU 管理器</string>
     <string name="downloading">下载中…</string>
 
     <string name="settings_title">设置</string>
@@ -203,7 +203,6 @@
     <string name="theme_screen_style">外观</string>
     <string name="theme_name_monet">Monet</string>
     <string name="theme_name_originos">OriginOS</string>
-    <string name="other_demo_run">漏洞利用演示</string>
     <string name="settings_root">Root</string>
     <string name="home_pick_payload">选择自定义 .so</string>
     <string name="home_custom_payload_active">自定义：%1$s</string>
@@ -224,6 +223,8 @@
     <string name="log_traces_failed">删除临时文件失败</string>
     <string name="log_custom_not_so">所选文件不是 .so 库——无法运行</string>
     <string name="payload_not_found">未找到</string>
+        <string name="other_demo_gl">演示 GhostLock</string>
+    <string name="other_demo_df">演示 DirtyFrag</string>
     <string name="other_section_process">进程</string>
 
     <!-- 首次启动 Telegram 提示 -->

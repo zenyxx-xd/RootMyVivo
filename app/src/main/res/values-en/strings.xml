@@ -45,9 +45,9 @@
     <string name="phase_catalog">Loading catalog…</string>
     <string name="phase_payload">Finding payload…</string>
     <string name="phase_download">Downloading files…</string>
-    <string name="phase_deploy">Deploying exploit…</string>
+    <string name="phase_deploy">Preparation</string>
     <string name="phase_exploit">Running exploit…</string>
-    <string name="phase_ksu">Installing KernelSU…</string>
+    <string name="phase_ksu">KernelSU manager</string>
     <string name="downloading">Downloading…</string>
 
     <string name="settings_title">Settings</string>
@@ -203,7 +203,6 @@
     <string name="theme_screen_style">Style</string>
     <string name="theme_name_monet">Monet</string>
     <string name="theme_name_originos">OriginOS</string>
-    <string name="other_demo_run">Exploit demonstration</string>
     <string name="settings_root">Root</string>
     <string name="home_pick_payload">Choose custom .so</string>
     <string name="home_custom_payload_active">Custom: %1$s</string>
@@ -224,6 +223,8 @@
     <string name="log_traces_failed">Failed to remove temporary files</string>
     <string name="log_custom_not_so">Selected file is not a .so library — cannot run</string>
     <string name="payload_not_found">Not found</string>
+        <string name="other_demo_gl">Demo GhostLock</string>
+    <string name="other_demo_df">Demo DirtyFrag</string>
     <string name="other_section_process">Process</string>
 
     <!-- First-run Telegram promo -->
