@@ -877,16 +877,48 @@ private fun LogStream(
                     )
                 }
             } else if (viewerExploit) {
-                // Сохранённый запуск: обычные строки + live-лог эксплойта
-                items(log.asReversed(), key = { it.id }) { entry ->
-                    LogLine(
-                        entry = entry,
-                        animateIn = entry.id in newIds,
-                        modifier = Modifier.animateItem(fadeInSpec = null, fadeOutSpec = null),
-                    )
-                }
-                item(key = "live_block_viewer") {
-                    LiveLogBlock(exploitLive.lines, expanded = true)
+                // Сохранённый запуск: как в живом потоке — шаг эксплойта
+                // бутербродом (шапка + live-лог под ней), не плоскими строками
+                val exploitEntry = log.lastOrNull { it.kind == com.rootmyvivo.vm.LogKind.EXPLOIT }
+                if (exploitEntry == null) {
+                    items(log.asReversed(), key = { it.id }) { entry ->
+                        LogLine(
+                            entry = entry,
+                            animateIn = entry.id in newIds,
+                            modifier = Modifier.animateItem(fadeInSpec = null, fadeOutSpec = null),
+                        )
+                    }
+                } else {
+                    items(
+                        log.filter { it.id > exploitEntry.id }.asReversed(),
+                        key = { it.id },
+                    ) { entry ->
+                        LogLine(
+                            entry = entry,
+                            animateIn = entry.id in newIds,
+                            modifier = Modifier.animateItem(fadeInSpec = null, fadeOutSpec = null),
+                        )
+                    }
+                    item(key = "exploit_header_viewer") {
+                        ExploitLine(
+                            entry = exploitEntry,
+                            expanded = exploitExpanded,
+                            onToggle = { exploitExpanded = !exploitExpanded },
+                        )
+                    }
+                    item(key = "live_block_viewer") {
+                        LiveLogBlock(exploitLive.lines, expanded = exploitExpanded)
+                    }
+                    items(
+                        log.filter { it.id < exploitEntry.id }.asReversed(),
+                        key = { it.id },
+                    ) { entry ->
+                        LogLine(
+                            entry = entry,
+                            animateIn = entry.id in newIds,
+                            modifier = Modifier.animateItem(fadeInSpec = null, fadeOutSpec = null),
+                        )
+                    }
                 }
             } else {
                 items(log.asReversed(), key = { it.id }) { entry ->

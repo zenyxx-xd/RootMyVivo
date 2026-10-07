@@ -181,8 +181,9 @@ fun App(vm: MainViewModel, state: UiState) {
                     runs = state.logHistory,
                     onOpen = { run ->
                         vm.openLogRun(run)
-                        nav.pop()
-                        pushRoute(RmvRoute.LogViewer)
+                        // Без pop: вьюер пушится НАД историей — назад
+                        // возвращаемся в список, переход анимирован push'ем
+                        nav.push(RmvRoute.LogViewer)
                     },
                     onClose = onBack,
                 )

@@ -12,6 +12,7 @@ import com.rootmyvivo.data.AppUpdater
 import com.rootmyvivo.data.Catalog
 import com.rootmyvivo.data.DeviceInfo
 import com.rootmyvivo.data.Prefs
+import com.rootmyvivo.vm.LogKind
 import com.rootmyvivo.data.Settings
 import com.rootmyvivo.root.ExploitEngine
 import com.rootmyvivo.root.FlowEvent
@@ -458,7 +459,14 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                     null
                 } else {
                     val st = runCatching { LogLevel.valueOf(line.substring(0, idx)) }.getOrDefault(LogLevel.INFO)
-                    LogEntry(i.toLong(), line.substring(idx + 1), st)
+                    val text = line.substring(idx + 1)
+                    // Шаг эксплойта в сохранённом логе: детектим по тексту
+                    // (все локали) — вьюер рендерит его бутербродом
+                    val kind = if (text.startsWith("Запуск эксплойта") ||
+                        text.startsWith("Running exploit") ||
+                        text.startsWith("正在运行漏洞利用")
+                    ) LogKind.EXPLOIT else LogKind.NORMAL
+                    LogEntry(i.toLong(), text, st, kind)
                 }
             }
         } catch (_: Exception) {
