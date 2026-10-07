@@ -30,11 +30,11 @@ android {
         applicationId = "com.rootmyvivo"
         minSdk = 31
         targetSdk = 36
-        // Схема MMmmpp: 01-мажор 02-минор 00-патчи.
-        // Код ОБЯЗАТЕЛЬНО синхронен с versionName, иначе апдейтер
-        // (сравнение по коду) «находит» собственный релиз как более новый.
-        versionCode = 10200
-        versionName = "1.2.0-beta"
+        // Схема MMmmpp + бета-индекс: betaN → базовый код + N (1.2.0-beta2 →
+        // 10202), чтобы апдейтер различал бетки между собой. Код ОБЯЗАТЕЛЬНО
+        // синхронен с versionName, иначе апдейтер «находит» собственный релиз.
+        versionCode = 10202
+        versionName = "1.2.0-beta2"
         buildConfigField(
             "String", "RMV_DISPATCH_TOKEN",
             "\"${reportProps.getProperty("dispatchToken", "")}\"",

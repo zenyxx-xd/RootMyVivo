@@ -89,13 +89,20 @@ object AppUpdater {
         }
     }
 
-    /** Схема версий MMmmpp: 1.0.10 → 10010 (как versionCode в gradle). */
+    /**
+     * Схема версий MMmmpp: 1.0.10 → 10010 (как versionCode в gradle).
+     * Бета-суффикс различает бетки: 1.2.0-beta2 → 10200 + 2 = 10202
+     * (базовый код + номер беты, как versionCode в gradle).
+     */
     private fun versionNameToCode(ver: String): Long {
-        val parts = ver.split('.').map { it.filter(Char::isDigit).toLongOrNull() ?: 0L }
+        val beta = Regex("""-beta(\d+)$""", RegexOption.IGNORE_CASE).find(ver)
+            ?.groupValues?.get(1)?.toLongOrNull() ?: 0L
+        val base = Regex("""-beta\d+$""", RegexOption.IGNORE_CASE).replace(ver, "")
+        val parts = base.split('.').map { it.filter(Char::isDigit).toLongOrNull() ?: 0L }
         val maj = parts.getOrElse(0) { 0L }
         val min = parts.getOrElse(1) { 0L }
         val pat = parts.getOrElse(2) { 0L }
-        return maj * 10000L + min * 100L + pat
+        return maj * 10000L + min * 100L + pat + beta
     }
 
     /**
