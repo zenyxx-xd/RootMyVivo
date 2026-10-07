@@ -8,10 +8,21 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
     <!-- Установка скачанного APK-обновления (Android 8+) -->
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
+    <!-- DirtyFrag: DUMP для IpSecManager-трассировки, WAKE_LOCK на время триггера -->
+    <uses-permission android:name="android.permission.DUMP" />
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
+
+    <!-- DirtyFrag: определение установленного SU-менеджера для ksud late-load -->
+    <queries>
+        <package android:name="me.weishu.kernelsu" />
+        <package android:name="me.bmax.apatch" />
+        <package android:name="com.rifsxd.ksunext" />
+    </queries>
 
     <application
         android:name=".RmvApp"
         android:allowBackup="false"
+        android:directBootAware="true"
         android:enableOnBackInvokedCallback="true"
         android:icon="@mipmap/ic_launcher"
         android:roundIcon="@mipmap/ic_launcher_round"
@@ -68,6 +79,7 @@
             android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.LOCKED_BOOT_COMPLETED" />
             </intent-filter>
         </receiver>
     </application>

@@ -30,15 +30,18 @@ android {
         applicationId = "com.rootmyvivo"
         minSdk = 31
         targetSdk = 36
-        // Схема MMmmpp: 01-мажор 01-минор 04-патчи.
+        // Схема MMmmpp: 01-мажор 00-минор 00-патчи.
         // Код ОБЯЗАТЕЛЬНО синхронен с versionName, иначе апдейтер
         // (сравнение по коду) «находит» собственный релиз как более новый.
-        versionCode = 10104
-        versionName = "1.1.4"
+        versionCode = 10000
+        versionName = "1.0.0-beta"
         buildConfigField(
             "String", "RMV_DISPATCH_TOKEN",
             "\"${reportProps.getProperty("dispatchToken", "")}\"",
         )
+        ndk {
+            abiFilters += listOf("arm64-v8a")
+        }
     }
 
     signingConfigs {
@@ -72,6 +75,14 @@ android {
         compose = true
         buildConfig = true
         aidl = true
+    }
+
+    packaging {
+        // DirtyFrag: libdfroot.so/libbootstrap.so — исполняемые бинари в
+        // nativeLibraryDir, нужны распакованными на диск
+        jniLibs {
+            useLegacyPackaging = true
+        }
     }
 
     compileOptions {

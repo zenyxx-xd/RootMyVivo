@@ -140,6 +140,10 @@ fun SupportedDevicesScreen(
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(start = 12.dp),
                     )
+                    // Карточка DirtyFrag: универсальный метод (встроен в APK),
+                    // статус решается по ядру телефона — применим / пропатчено /
+                    // мёртв (6.1.x) / non-GKI
+                    info?.let { DirtyFragCard(it) }
                     // карточки появляются каскадом, как в остальном приложении
                     ordered.forEachIndexed { i, device ->
                         val mine = myDevice != null && device.id == myDevice.id
@@ -172,6 +176,61 @@ fun SupportedDevicesScreen(
                 }
             }
             Spacer(Modifier.height(24.dp))
+        }
+    }
+}
+
+/** Карточка DirtyFrag: статус универсального метода по ядру телефона. */
+@Composable
+private fun DirtyFragCard(info: com.rootmyvivo.data.DeviceInfo) {
+    val compat = info.dirtyfragCompatible()
+    val status = when (compat) {
+        com.rootmyvivo.data.DeviceInfo.DfCompat.OK -> stringResource(R.string.df_status_ok)
+        com.rootmyvivo.data.DeviceInfo.DfCompat.PATCHED -> stringResource(R.string.df_status_patched)
+        com.rootmyvivo.data.DeviceInfo.DfCompat.DEAD_61 -> stringResource(R.string.df_status_dead)
+        com.rootmyvivo.data.DeviceInfo.DfCompat.NON_GKI -> stringResource(R.string.df_status_nongki)
+    }
+    val ok = compat == com.rootmyvivo.data.DeviceInfo.DfCompat.OK
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = 4.dp),
+        shape = MaterialTheme.shapes.large,
+        color = MaterialTheme.colorScheme.surfaceContainerLow,
+    ) {
+        Column(Modifier.padding(horizontal = 16.dp, vertical = 14.dp)) {
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Icon(
+                    if (ok) Icons.Rounded.CheckCircle else Icons.Rounded.Cancel,
+                    null,
+                    tint = if (ok) {
+                        MaterialTheme.colorScheme.primary
+                    } else {
+                        MaterialTheme.colorScheme.error
+                    },
+                    modifier = Modifier.size(20.dp),
+                )
+                Text(
+                    "DirtyFrag",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier.weight(1f, fill = false),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+            HorizontalDivider(
+                modifier = Modifier.padding(top = 12.dp, bottom = 12.dp),
+                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f),
+            )
+            Text(
+                status,
+                style = MaterialTheme.typography.bodyMedium,
+                color = if (ok) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.error,
+            )
         }
     }
 }

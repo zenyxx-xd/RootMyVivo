@@ -109,6 +109,15 @@
     <string name="log_deploy_ok">Эксплойт развёрнут в /data/local/tmp/rmv</string>
     <string name="log_exploit_start">Запуск эксплойта…</string>
     <string name="log_root_already">Root уже активен</string>
+        <string name="df_status_ok">Применим на этом ядре (экспериментально)</string>
+    <string name="df_status_patched">Не применим: в этом ядре примитив пропатчен (исправление с мая 2026)</string>
+    <string name="df_status_dead">Не применим: ядра 6.1.x мёртвы для DirtyFrag (mitigation в ядре)</string>
+    <string name="df_status_nongki">Не применим: non-GKI ядро не поддерживается</string>
+    <string name="log_df_method">Метод DirtyFrag (универсальный, встроен в приложение)</string>
+    <string name="log_df_staged">ksud и бутстрап подготовлены</string>
+    <string name="log_df_dead_61">DirtyFrag недоступен: ядро 6.1.x — примитив мёртв (mitigation в ядре)</string>
+    <string name="log_df_patched">DirtyFrag недоступен: в этом ядре примитив пропатчен (исправление с мая 2026)</string>
+    <string name="log_df_nongki">DirtyFrag недоступен: non-GKI ядро не поддерживается</string>
     <string name="log_exploit_progress">Эксплойт работает… проверка %1$d</string>
     <string name="log_exploit_empty">Нет вывода эксплойта</string>
     <string name="log_exploit_resumed">Обнаружен работающий эксплойт — продолжаю наблюдение вместо нового запуска</string>

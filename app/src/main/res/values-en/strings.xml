@@ -96,6 +96,15 @@
     <string name="log_deploy_ok">Exploit deployed to /data/local/tmp/rmv</string>
     <string name="log_exploit_start">Running exploit…</string>
     <string name="log_root_already">Root is already active</string>
+        <string name="df_status_ok">Applicable on this kernel (experimental)</string>
+    <string name="df_status_patched">Not applicable: primitive is patched in this kernel (fix since May 2026)</string>
+    <string name="df_status_dead">Not applicable: 6.1.x kernels are dead for DirtyFrag (in-kernel mitigation)</string>
+    <string name="df_status_nongki">Not applicable: non-GKI kernel is not supported</string>
+    <string name="log_df_method">DirtyFrag method (universal, built into the app)</string>
+    <string name="log_df_staged">ksud and bootstrap staged</string>
+    <string name="log_df_dead_61">DirtyFrag unavailable: kernel 6.1.x — primitive is dead (in-kernel mitigation)</string>
+    <string name="log_df_patched">DirtyFrag unavailable: primitive is patched in this kernel (fix since May 2026)</string>
+    <string name="log_df_nongki">DirtyFrag unavailable: non-GKI kernel is not supported</string>
     <string name="log_exploit_progress">Exploit running… check %1$d</string>
     <string name="log_exploit_empty">No exploit output</string>
     <string name="log_exploit_resumed">Running exploit detected — resuming it instead of starting a new one</string>
