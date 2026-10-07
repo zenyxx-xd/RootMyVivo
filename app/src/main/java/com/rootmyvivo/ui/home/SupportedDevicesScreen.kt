@@ -252,14 +252,18 @@ private fun DeviceRow(
     buildsById: Map<String, com.rootmyvivo.data.KernelBuild> = emptyMap(),
 ) {
     val supported = kernels.isNotEmpty()
+    // Карточка пользователя — без заливки акцентом: серая обводка; если ядро
+    // не поддерживается — красная обводка (как крестик в этом же меню)
+    val border = when {
+        sameBody && !supported -> BorderStroke(1.dp, MaterialTheme.colorScheme.error.copy(alpha = 0.5f))
+        sameBody -> BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
+        else -> null
+    }
     Surface(
         modifier = Modifier.fillMaxWidth(),
         shape = MaterialTheme.shapes.large,
-        color = when {
-            liveMine -> MaterialTheme.colorScheme.primaryContainer
-            sameBody -> MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.55f)
-            else -> MaterialTheme.colorScheme.surfaceContainerLow
-        },
+        border = border,
+        color = MaterialTheme.colorScheme.surfaceContainerLow,
     ) {
         Column(Modifier.padding(horizontal = 16.dp, vertical = 14.dp)) {
             Row(
@@ -280,7 +284,7 @@ private fun DeviceRow(
                     device.title,
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = if (liveMine) FontWeight.Bold else FontWeight.SemiBold,
-                    color = if (liveMine) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
+                    color = MaterialTheme.colorScheme.onSurface,
                     modifier = Modifier.weight(1f, fill = false),
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
@@ -329,22 +333,17 @@ private fun DeviceRow(
     }
 }
 
-/** Метка сборки ядра: живые — обычным текстом (experimental — с «(beta)»
- *  в скобках), мёртвые (patched/unsupported) — зачёркнутым. */
+/** Метка сборки ядра: у пользователя — акцентная обводка (не заливка), живые —
+ *  обычным текстом (experimental — с «(beta)» в скобках), мёртвые
+ *  (patched/unsupported) — зачёркнутым с красной обводкой. */
 @Composable
 private fun KernelChip(label: String, ready: Boolean, current: Boolean, experimental: Boolean = false) {
     Surface(
         shape = MaterialTheme.shapes.small,
-        color = when {
-            current -> MaterialTheme.colorScheme.primary
-            ready -> MaterialTheme.colorScheme.surfaceContainerHigh
-            else -> Color.Transparent
-        },
+        color = if (ready && !current) MaterialTheme.colorScheme.surfaceContainerHigh else Color.Transparent,
         border = when {
-            current -> null
-            ready -> BorderStroke(1.dp, if (experimental)
-                MaterialTheme.colorScheme.tertiary.copy(alpha = 0.5f)
-            else MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
+            current -> BorderStroke(1.dp, MaterialTheme.colorScheme.primary)
+            ready -> null
             else -> BorderStroke(1.dp, MaterialTheme.colorScheme.error.copy(alpha = 0.5f))
         },
     ) {
@@ -354,7 +353,7 @@ private fun KernelChip(label: String, ready: Boolean, current: Boolean, experime
             fontFamily = FontFamily.Monospace,
             fontWeight = if (current) FontWeight.Bold else FontWeight.Normal,
             color = when {
-                current -> MaterialTheme.colorScheme.onPrimary
+                current -> MaterialTheme.colorScheme.primary
                 ready -> MaterialTheme.colorScheme.onSurfaceVariant
                 else -> MaterialTheme.colorScheme.error.copy(alpha = 0.6f)
             },
