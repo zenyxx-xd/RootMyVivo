@@ -83,6 +83,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.rootmyvivo.R
+import com.rootmyvivo.data.DeviceInfo
 import com.rootmyvivo.root.KsuVariant
 import com.rootmyvivo.shell.TransportState
 import com.rootmyvivo.ui.common.ChoiceDialog
@@ -647,7 +648,13 @@ private fun HeroCard(
                             enter = expandVertically(tween(260)) + fadeIn(tween(260)),
                             exit = shrinkVertically(tween(200)) + fadeOut(tween(200)),
                         ) {
-                            val filled = state.catalogState == CatalogState.READY && state.payload == null
+                            // Заливка (акцент) — только когда рут-кнопка
+                            // НЕАКТИВНА и метода нет (устройство не
+                            // поддерживается); при активной рут-кнопке —
+                            // просто контур
+                            val dfOkPick = state.device?.dirtyfragCompatible() == DeviceInfo.DfCompat.OK
+                            val filled = state.catalogState == CatalogState.READY &&
+                                state.payload == null && !dfOkPick
                             AnimatedContent(
                                 targetState = filled,
                                 transitionSpec = { fadeIn(tween(200)) togetherWith fadeOut(tween(150)) },
@@ -726,6 +733,11 @@ private fun RootButton(state: UiState, onRoot: () -> Unit) {
     val ready = state.payload != null || state.customPayload != null || dfOk
     val enabled = ready && !state.flowRunning
     val kernelShort = state.device?.kernelShort.orEmpty()
+    // git-id из uname (5 символов после androidNN-N-) — как чипы в
+    // поддерживаемых устройствах: «ядро 5.15.197-abcde не поддерживается»
+    val id5 = Regex("""(?:android\d+-\d+-g?)?([0-9a-f]{5,8})$""")
+        .find(state.device?.kernel.orEmpty())?.groupValues?.get(1)?.take(5)
+    val kernelLabel = if (id5 != null) "$kernelShort-$id5" else kernelShort
     // «Не поддерживается» всегда объясняет причину: нет тела в каталоге →
     // устройство; тело есть, но живой сборки под ядро нет → ядро. DirtyFrag
     // применим — обе причины не показываем
@@ -735,8 +747,8 @@ private fun RootButton(state: UiState, onRoot: () -> Unit) {
         state.catalogState == CatalogState.ERROR -> stringResource(R.string.catalog_retry)
         !ready && state.catalogState == CatalogState.READY && !state.deviceInCatalog ->
             stringResource(R.string.home_btn_unsupported_device)
-        !ready && kernelShort.isNotEmpty() ->
-            stringResource(R.string.home_btn_unsupported_kernel, kernelShort)
+        !ready && kernelLabel.isNotEmpty() ->
+            stringResource(R.string.home_btn_unsupported_kernel, kernelLabel)
         !ready -> stringResource(R.string.status_unsupported)
         else -> stringResource(R.string.action_root)
     }
@@ -991,13 +1003,17 @@ private fun InfoGroup(
             },
         )
         SettingsDivider()
-        // Пейлоад
+        // Пейлоад / метод: DirtyFrag применим — показываем его (локальный
+        // метод, каталога не требует); GhostLock — с маршрутом из каталога
+        val dfOk = state.device?.dirtyfragCompatible() == DeviceInfo.DfCompat.OK
+        val routeSuffix = state.payload?.build?.route?.let { " · $it" } ?: ""
         SettingsRow(
             title = stringResource(R.string.status_payload),
             description = when {
                 state.customPayload != null ->
                     stringResource(R.string.home_custom_payload_active, state.customPayload.displayName)
-                state.payload != null -> state.payload.displayName
+                state.payload != null -> state.payload.displayName + routeSuffix
+                dfOk -> stringResource(R.string.home_method_df)
                 state.catalogState == CatalogState.LOADING ->
                     stringResource(R.string.payload_short_searching)
                 // каталог загружен, но записи для этого устройства нет —
@@ -1006,7 +1022,7 @@ private fun InfoGroup(
                 else -> stringResource(R.string.catalog_error)
             },
             icon = when {
-                state.payload != null || state.customPayload != null -> Icons.Rounded.Verified
+                state.payload != null || state.customPayload != null || dfOk -> Icons.Rounded.Verified
                 state.catalogState == CatalogState.READY -> Icons.Rounded.SearchOff
                 else -> Icons.Rounded.Search
             },

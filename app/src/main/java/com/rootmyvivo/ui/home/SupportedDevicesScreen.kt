@@ -116,10 +116,16 @@ fun SupportedDevicesScreen(
                     val shown = cat.devices.filter {
                         cat.kernelsOf(it).isEmpty() || cat.isSupported(it)
                     }
-                    // Карточка пользователя всегда первой, над всеми телами
-                    val ordered = myDevice?.let { mine ->
-                        shown.sortedByDescending { it.id == mine.id }
-                    } ?: shown
+                    // Карточка пользователя всегда первой, над всеми телами.
+                    // Дальше — тела с живыми (готовыми) сборками, beta-only —
+                    // после них, порядок каталога внутри групп сохраняем
+                    val ordered = shown.sortedWith(
+                        compareByDescending<com.rootmyvivo.data.CatalogDevice> { dev ->
+                            myDevice != null && dev.id == myDevice.id
+                        }.thenByDescending { dev ->
+                            cat.kernelsOf(dev).any { it.build.ready && !it.build.experimental }
+                        },
+                    )
                     // Живое ядро телефона: готовая сборка корпуса, паттерн
                     // которой совпадает с живым uname (подсветка чипа в карточке).
                     // Считаем по списку ядер корпуса, а не по state.payload:

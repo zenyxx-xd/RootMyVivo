@@ -39,11 +39,15 @@ data class KernelBuild(
     val file: PayloadFile?,
     val env: Map<String, String>,
     val note: String,
+    val rawRoute: String? = null,
 ) {
     val ready: Boolean get() = (status == "ready" || status == "experimental") && file != null
     /** Честная готовность — на устройстве не проверялся. */
     val experimental: Boolean get() = status == "experimental"
     val label: String get() = match.firstOrNull()?.let { kernelTag(it) } ?: id
+
+    /** Маршрут эксплойта из каталога (tcp / pselect / mcast), null если нет. */
+    val route: String? get() = rawRoute?.uppercase()
 
     /** 2 — совпал GKI-паттерн (строже), 1 — короткая версия, 0 — мимо. */
     fun specificity(actualFull: String): Int {
@@ -320,6 +324,7 @@ class Catalog(var url: String = DEFAULT_URL) {
                     file = file,
                     env = env,
                     note = o.optString("matchCondition", ""),
+                    rawRoute = o.optString("route", "").takeIf { it.isNotEmpty() },
                 )
             }
         }

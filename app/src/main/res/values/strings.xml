@@ -89,6 +89,8 @@
     <string name="flow_fail_stopped">Остановлено пользователем</string>
     <string name="flow_fail_ksu">KernelSU не активировался</string>
     <string name="flow_fail_other">Неизвестная ошибка</string>
+            <string name="log_df_root_iface">Root-интерфейс DirtyFrag загружен, ставлю менеджер KernelSU</string>
+    <string name="home_method_df">DirtyFrag (встроенный метод, экспериментально)</string>
     <string name="status_payload">Пейлоад</string>
     <string name="confirm_softreboot_text">Перезагрузка userspace перезапустит системный интерфейс: приложения закроются, данные не потеряются.</string>
     <string name="confirm_softreboot_title">Перезапустить интерфейс?</string>

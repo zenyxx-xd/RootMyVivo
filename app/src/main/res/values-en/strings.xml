@@ -76,6 +76,8 @@
     <string name="flow_fail_stopped">Stopped by user</string>
     <string name="flow_fail_ksu">KernelSU did not activate</string>
     <string name="flow_fail_other">Unknown error</string>
+            <string name="log_df_root_iface">DirtyFrag root interface loaded, installing KernelSU manager</string>
+    <string name="home_method_df">DirtyFrag (built-in method, experimental)</string>
     <string name="status_payload">Payload</string>
     <string name="confirm_softreboot_text">A userspace reboot will restart the system interface: apps will close, no data will be lost.</string>
     <string name="confirm_softreboot_title">Restart the interface?</string>

