@@ -720,11 +720,15 @@ private fun HeroCard(
 
 @Composable
 private fun RootButton(state: UiState, onRoot: () -> Unit) {
-    val ready = state.payload != null || state.customPayload != null
+    // DirtyFrag — первый приоритет: применим по ядру → кнопка активна без
+    // каталога (универсальный метод встроен в APK)
+    val dfOk = state.device?.dirtyfragCompatible() == com.rootmyvivo.data.DeviceInfo.DfCompat.OK
+    val ready = state.payload != null || state.customPayload != null || dfOk
     val enabled = ready && !state.flowRunning
     val kernelShort = state.device?.kernelShort.orEmpty()
     // «Не поддерживается» всегда объясняет причину: нет тела в каталоге →
-    // устройство; тело есть, но живой сборки под ядро нет → ядро.
+    // устройство; тело есть, но живой сборки под ядро нет → ядро. DirtyFrag
+    // применим — обе причины не показываем
     val label = when {
         state.customPayload != null -> stringResource(R.string.action_root)
         state.catalogState == CatalogState.LOADING -> stringResource(R.string.catalog_loading)
