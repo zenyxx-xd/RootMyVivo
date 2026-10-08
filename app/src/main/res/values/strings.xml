@@ -184,6 +184,7 @@
     <string name="warn_cancel">Отмена</string>
 <string name="warn_dont_show">Больше не показывать</string>
     <string name="copy_log">Копировать лог</string>
+        <string name="copied_to_clipboard">Скопировано в буфер</string>
     <string name="log_copied">Лог скопирован в буфер</string>
 
     <!-- Обновление приложения -->

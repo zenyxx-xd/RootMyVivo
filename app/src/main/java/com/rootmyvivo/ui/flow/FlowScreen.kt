@@ -476,6 +476,7 @@ private fun failureHint(f: FlowResult.Failure): String? = when (f.reason) {
     FlowEvent.Reason.DOWNLOAD -> stringResource(R.string.hint_download)
     FlowEvent.Reason.DEPLOY -> stringResource(R.string.hint_deploy)
     FlowEvent.Reason.EXPLOIT -> stringResource(R.string.hint_exploit)
+    FlowEvent.Reason.DF -> null
     FlowEvent.Reason.TIMEOUT -> stringResource(R.string.hint_timeout)
     FlowEvent.Reason.STOPPED -> null
     FlowEvent.Reason.KSU -> stringResource(R.string.hint_ksu)
@@ -489,6 +490,8 @@ private fun failureText(f: FlowResult.Failure): String = stringResource(
         FlowEvent.Reason.DOWNLOAD -> R.string.flow_fail_download
         FlowEvent.Reason.DEPLOY -> R.string.flow_fail_deploy
         FlowEvent.Reason.EXPLOIT -> R.string.flow_fail_exploit
+    // DF: тот же заголовок, но без подсказки про «лотерею таймингов»
+    FlowEvent.Reason.DF -> R.string.flow_fail_exploit
         FlowEvent.Reason.TIMEOUT -> R.string.flow_fail_timeout
         FlowEvent.Reason.STOPPED -> R.string.flow_fail_stopped
         FlowEvent.Reason.KSU -> R.string.flow_fail_ksu

@@ -171,6 +171,7 @@
     <string name="warn_cancel">Cancel</string>
 <string name="warn_dont_show">Don\'t show again</string>
     <string name="copy_log">Copy log</string>
+        <string name="copied_to_clipboard">Copied to clipboard</string>
     <string name="log_copied">Log copied to clipboard</string>
 
     <!-- App update -->

@@ -182,8 +182,9 @@ fun App(vm: MainViewModel, state: UiState) {
                     onOpen = { run ->
                         vm.openLogRun(run)
                         // Без pop: вьюер пушится НАД историей — назад
-                        // возвращаемся в список, переход анимирован push'ем
-                        nav.push(RmvRoute.LogViewer)
+                        // возвращаемся в список. Дебаунс: быстрый двойной
+                        // тап дважды пушит один ключ — miuix-nav падает
+                        pushRoute(RmvRoute.LogViewer)
                     },
                     onClose = onBack,
                 )

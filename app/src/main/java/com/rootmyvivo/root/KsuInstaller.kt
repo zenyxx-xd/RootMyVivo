@@ -308,6 +308,27 @@ class KsuInstaller(
      * ядро принимает её по той же подписи). Фактический пакет читаем из APK:
      * у spoofed-сборок он не совпадает с каноническим.
      */
+    /**
+     * DirtyFrag-путь: ksud late-load из бутстрапа уже поднял KSU-интерфейс
+     * в ядре (модуль загружен, пакет менеджера авторизован) — скачивать и
+     * грузить kernelsu.ko НЕЛЬЗЯ (дубликат в ядре, vermagic-промахи). Только
+     * проверка su, установка менеджера и закрепление adb.
+     */
+    suspend fun installManagerOnly(variant: KsuVariant): KsuResult =
+        withContext(Dispatchers.IO) {
+            progress(R.string.log_ksu_verify)
+            val (vCode, vOut) = Transport.su(ctx, "id")
+            val rooted = vCode == 0 && vOut.contains("uid=0")
+            installManager(variant)
+            if (rooted) {
+                complete(true, R.string.log_ksu_active, variant.displayName)
+                KsuResult.ACTIVE
+            } else {
+                complete(true, R.string.log_ksu_soft_reboot)
+                KsuResult.NEEDS_REBOOT
+            }
+        }
+
     private suspend fun installManager(variant: KsuVariant) {
         try {
             val prefs = com.rootmyvivo.data.Prefs(ctx)

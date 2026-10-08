@@ -1055,7 +1055,7 @@ private fun DeviceGroup(state: UiState) {
     val copyValue: (String) -> Unit = { v ->
         clipboard.setText(androidx.compose.ui.text.AnnotatedString(v))
         android.widget.Toast.makeText(
-            ctx, ctx.getString(R.string.log_copied), android.widget.Toast.LENGTH_SHORT,
+            ctx, ctx.getString(R.string.copied_to_clipboard), android.widget.Toast.LENGTH_SHORT,
         ).show()
     }
     SettingsGroup {
