@@ -125,7 +125,7 @@ fun DevScreen(vm: MainViewModel, state: UiState, onClose: () -> Unit, onRootStar
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     OutlinedButton(
                         onClick = { runDemo(demoUi, scope, appCtx) { demoState = it } },
-                        enabled = demoEnabled,
+                        enabled = !state.flowRunning,
                         modifier = Modifier.weight(1f),
                         shape = MaterialTheme.shapes.large,
                     ) {
@@ -133,8 +133,7 @@ fun DevScreen(vm: MainViewModel, state: UiState, onClose: () -> Unit, onRootStar
                         Spacer(Modifier.width(6.dp))
                         Text(stringResource(R.string.other_demo_gl), maxLines = 1)
                     }
-                    val dfDemoEnabled = state.device?.dirtyfragCompatible() ==
-                        com.rootmyvivo.data.DeviceInfo.DfCompat.OK && !state.flowRunning
+                    val dfDemoEnabled = !state.flowRunning
                     OutlinedButton(
                         onClick = { runDemoDf(demoUi, scope, appCtx) { demoState = it } },
                         enabled = dfDemoEnabled,
@@ -260,15 +259,10 @@ private fun runDemo(
 
         // ═══ Точная последовательность успешного ExploitEngine.run() ═══
         apply(FlowEvent.Log(ctx.getString(R.string.log_started)))
-
-        apply(FlowEvent.Step(Phase.CATALOG, 1, 6))
-        kotlinx.coroutines.delay(600)
-
-        apply(FlowEvent.Step(Phase.PAYLOAD, 2, 6))
         apply(FlowEvent.Log(ctx.getString(R.string.log_payload, "iQOO Neo 11 | SM8750"), LogLevel.OK))
         kotlinx.coroutines.delay(400)
 
-        apply(FlowEvent.Step(Phase.DOWNLOAD, 3, 6))
+        apply(FlowEvent.Step(Phase.DOWNLOAD, 1, 4))
         apply(FlowEvent.Progress(ctx.getString(R.string.log_download_start, "preload-rmv.so", 137)))
         for (p in 1..6) {
             kotlinx.coroutines.delay(160)
@@ -276,11 +270,11 @@ private fun runDemo(
         }
         apply(FlowEvent.Complete(true, ctx.getString(R.string.log_download_ok, "preload-rmv.so")))
 
-        apply(FlowEvent.Step(Phase.DEPLOY, 4, 6))
+        apply(FlowEvent.Step(Phase.DEPLOY, 2, 4))
         kotlinx.coroutines.delay(500)
 
         // ── Эксплойт: живой лог ──
-        apply(FlowEvent.Step(Phase.EXPLOIT, 5, 6))
+        apply(FlowEvent.Step(Phase.EXPLOIT, 3, 4))
         apply(FlowEvent.Progress(ctx.getString(R.string.log_exploit_start), exploit = true))
 
         val boot = listOf(
@@ -317,7 +311,7 @@ private fun runDemo(
 
         // ═══ finishRoot ═══
         apply(FlowEvent.Log(ctx.getString(R.string.log_verify, "uid=0(root) gid=0(root) context=u:r:kernel:s0"), LogLevel.OK))
-        apply(FlowEvent.Step(Phase.KSU, 6, 6))
+        apply(FlowEvent.Step(Phase.KSU, 4, 4))
         apply(FlowEvent.Progress(ctx.getString(R.string.log_persist_start)))
         kotlinx.coroutines.delay(700)
         apply(FlowEvent.Complete(true, ctx.getString(R.string.log_persist_ok)))

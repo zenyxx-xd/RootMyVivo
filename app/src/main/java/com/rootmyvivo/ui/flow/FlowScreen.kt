@@ -264,77 +264,97 @@ private fun StatusCard(state: UiState, onRetry: () -> Unit) {
         state.flowResult is FlowResult.Failure -> StatusKind.FAILURE
         else -> StatusKind.RUNNING
     }
-    AnimatedContent(
-        targetState = kind,
-        transitionSpec = {
-            androidx.compose.animation.ContentTransform(
-                targetContentEnter = (fadeIn(tween(280)) + slideInVertically(
-                    animationSpec = spring(stiffness = Spring.StiffnessMedium),
-                    initialOffsetY = { it / 4 },
-                )),
-                initialContentExit = (fadeOut(tween(220)) + slideOutVertically(
-                    animationSpec = spring(stiffness = Spring.StiffnessMedium),
-                    targetOffsetY = { -it / 4 },
-                )),
-                sizeTransform = androidx.compose.animation.SizeTransform(clip = false),
-            )
+    // Цвет и форма карточки перетекают сами (один объект); контент
+    // кроссфейдится; прогрессбар — ВНЕ кроссфейда: позицию не перескакивает,
+    // а плавно уходит fade'ом при смене статуса
+    val color by androidx.compose.animation.animateColorAsState(
+        targetValue = when (kind) {
+            StatusKind.RUNNING -> MaterialTheme.colorScheme.surfaceContainerLow
+            StatusKind.SUCCESS -> MaterialTheme.colorScheme.primaryContainer
+            StatusKind.FAILURE -> MaterialTheme.colorScheme.errorContainer
         },
-        label = "statusCard",
-    ) { k ->
-        when (k) {
-            StatusKind.RUNNING -> RunningCard(state)
-            StatusKind.SUCCESS -> SuccessCard()
-            StatusKind.FAILURE -> FailureCard(state, onRetry)
+        animationSpec = tween(320),
+        label = "statusColor",
+    )
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = MaterialTheme.shapes.extraLarge,
+        color = color,
+    ) {
+        Column(
+            Modifier.padding(20.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
+            AnimatedContent(
+                targetState = kind,
+                transitionSpec = {
+                    (fadeIn(tween(280)) + slideInVertically(
+                        animationSpec = spring(stiffness = Spring.StiffnessMedium),
+                        initialOffsetY = { it / 4 },
+                    )) togetherWith (fadeOut(tween(220)) + slideOutVertically(
+                        animationSpec = spring(stiffness = Spring.StiffnessMedium),
+                        targetOffsetY = { -it / 4 },
+                    ))
+                },
+                label = "statusContent",
+            ) { k ->
+                when (k) {
+                    StatusKind.RUNNING -> RunningHeader(state)
+                    StatusKind.SUCCESS -> SuccessCard()
+                    StatusKind.FAILURE -> FailureCard(state, onRetry)
+                }
+            }
+            androidx.compose.animation.AnimatedVisibility(
+                visible = kind == StatusKind.RUNNING,
+                enter = fadeIn(tween(220)) + androidx.compose.animation.expandVertically(tween(260)),
+                exit = fadeOut(tween(260)) + androidx.compose.animation.shrinkVertically(tween(260)),
+            ) {
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    LinearProgressIndicator(
+                        progress = { if (state.stepTotal > 0) state.stepIndex.toFloat() / state.stepTotal else 0f },
+                        modifier = Modifier.fillMaxWidth(),
+                        strokeCap = StrokeCap.Round,
+                    )
+                }
+            }
         }
     }
 }
 
 @Composable
-private fun RunningCard(state: UiState) {
-    Surface(
-        modifier = Modifier.fillMaxWidth(),
-        shape = MaterialTheme.shapes.large,
-        color = MaterialTheme.colorScheme.surfaceContainerLow,
-    ) {
-        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                // Плавная смена названия фазы (slide up/down)
-                AnimatedContent(
-                    targetState = state.flowPhase,
-                    transitionSpec = {
-                        val forward = (targetState?.ordinal ?: 0) >= (initialState?.ordinal ?: 0)
-                        (
-                            slideInVertically(
-                                animationSpec = spring(stiffness = Spring.StiffnessMedium),
-                                initialOffsetY = { if (forward) it / 2 else -it / 2 },
-                            ) + fadeIn()
-                            ) togetherWith (
-                            slideOutVertically(
-                                animationSpec = spring(stiffness = Spring.StiffnessMedium),
-                                targetOffsetY = { if (forward) -it / 2 else it / 2 },
-                            ) + fadeOut()
-                            )
-                    },
-                    label = "phase",
-                ) { phase ->
-                    Text(
-                        phaseName(phase) ?: stringResource(R.string.flow_running),
-                        style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.SemiBold,
+private fun RunningHeader(state: UiState) {
+    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+        // Плавная смена названия фазы (slide up/down)
+        AnimatedContent(
+            targetState = state.flowPhase,
+            transitionSpec = {
+                val forward = (targetState?.ordinal ?: 0) >= (initialState?.ordinal ?: 0)
+                (
+                    slideInVertically(
+                        animationSpec = spring(stiffness = Spring.StiffnessMedium),
+                        initialOffsetY = { if (forward) it / 2 else -it / 2 },
+                    ) + fadeIn()
+                    ) togetherWith (
+                    slideOutVertically(
+                        animationSpec = spring(stiffness = Spring.StiffnessMedium),
+                        targetOffsetY = { if (forward) -it / 2 else it / 2 },
+                    ) + fadeOut()
                     )
-                }
-                Text(
-                    "${state.stepIndex}/${state.stepTotal}",
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-            LinearProgressIndicator(
-                progress = { if (state.stepTotal > 0) state.stepIndex.toFloat() / state.stepTotal else 0f },
-                modifier = Modifier.fillMaxWidth(),
-                strokeCap = StrokeCap.Round,
+            },
+            label = "phase",
+        ) { phase ->
+            Text(
+                phaseName(phase) ?: stringResource(R.string.flow_running),
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.SemiBold,
             )
         }
+        Text(
+            "${state.stepIndex}/${state.stepTotal}",
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
     }
 }
 

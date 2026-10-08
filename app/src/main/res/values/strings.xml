@@ -57,7 +57,7 @@
     <string name="phase_download">Скачивание файлов</string>
     <string name="phase_deploy">Подготовка</string>
     <string name="phase_exploit">Запуск эксплойта</string>
-    <string name="phase_ksu">Менеджер KernelSU</string>
+    <string name="phase_ksu">Закрепление и менеджер</string>
 
     <!-- Настройки -->
     <string name="settings_title">Настройки</string>

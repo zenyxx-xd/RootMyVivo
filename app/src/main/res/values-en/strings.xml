@@ -47,7 +47,7 @@
     <string name="phase_download">Downloading files…</string>
     <string name="phase_deploy">Preparation</string>
     <string name="phase_exploit">Running exploit…</string>
-    <string name="phase_ksu">KernelSU manager</string>
+    <string name="phase_ksu">Persist &amp; manager</string>
     <string name="downloading">Downloading…</string>
 
     <string name="settings_title">Settings</string>

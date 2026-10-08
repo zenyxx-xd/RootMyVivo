@@ -47,7 +47,7 @@
     <string name="phase_download">正在下载文件…</string>
     <string name="phase_deploy">准备</string>
     <string name="phase_exploit">正在运行漏洞利用…</string>
-    <string name="phase_ksu">KernelSU 管理器</string>
+    <string name="phase_ksu">持久化与管理器</string>
     <string name="downloading">下载中…</string>
 
     <string name="settings_title">设置</string>
