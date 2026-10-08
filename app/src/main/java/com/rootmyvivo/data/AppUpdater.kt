@@ -45,8 +45,9 @@ object AppUpdater {
         0L
     }
 
-    /** Найти обновление: None, если новых стабильных версий нет. */
-    suspend fun check(ctx: Context): AppUpdate? = withContext(Dispatchers.IO) {
+    /** Найти обновление: без бета-канала — только стабильные (beta-теги и
+     *  pre-release пропускаются), с каналом — всё. */
+    suspend fun check(ctx: Context, betaChannel: Boolean = false): AppUpdate? = withContext(Dispatchers.IO) {
         try {
             val conn = URL(API).openConnection() as HttpURLConnection
             conn.connectTimeout = 15_000
@@ -58,7 +59,11 @@ object AppUpdater {
             val current = currentVersionCode(ctx)
             for (i in 0 until releases.length()) {
                 val rel = releases.getJSONObject(i)
-                if (rel.optBoolean("prerelease") || rel.optBoolean("draft")) continue
+                if (rel.optBoolean("draft")) continue
+                if (!betaChannel &&
+                    (rel.optBoolean("prerelease") ||
+                        rel.optString("tag_name").contains("-beta", ignoreCase = true))
+                ) continue
                 val tag = rel.optString("tag_name", "")
                 val ver = tag.trimStart('v', 'V')
                 val assets = rel.optJSONArray("assets") ?: continue

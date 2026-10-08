@@ -210,6 +210,8 @@
     <string name="about_repo_app">Приложение</string>
     <string name="about_repo_payloads">Пейлоады</string>
     <string name="about_repo_exploit">Эксплойт</string>
+        <string name="settings_beta_channel">Бета-канал обновлений</string>
+    <string name="settings_beta_channel_desc">Включён — апдейтер находит beta-версии приложения</string>
     <string name="settings_other">Другое</string>
     <string name="settings_other_desc">Демо-флоу и каталог пейлоадов</string>
     <string name="theme_screen_title">Тема</string>

@@ -15,12 +15,11 @@ data class DeviceInfo(
     val soc: String,
 ) {
     /** DirtyFrag (CVE-2026-43284): применим ли примитив на этом ядре. */
-    enum class DfCompat { OK, PATCHED, DEAD_61, NON_GKI }
+    enum class DfCompat { OK, PATCHED, NON_GKI }
 
     /**
      * Решение по ядру (таблица порогов фикса от 2026-05-08, SKBFL_SHARED_FRAG):
-     *  - весь 6.1.x — мёртв: accidental mitigation (нет MSG_SPLICE_PAGES,
-     *    страница кэша вообще не попадает в skb);
+     *  - весь 6.1.x — не поддерживается (mitigation в ядре, DF-модуля нет);
      *  - ядро ≥ порога своей ветки — пропатчено (esp больше не пишет в page
      *    cache): 5.10→5.10.255, 5.15→5.15.205, 6.1→6.1.171, 6.6→6.6.138,
      *    6.12→6.12.87 (в тегах ≤6.12.60 фикса нет), 6.18→6.18.29, 7.0→7.0.6;
@@ -33,7 +32,6 @@ data class DeviceInfo(
         val parts = kernelShort.split(".").map { it.toIntOrNull() ?: 0 }
         val maj = parts.getOrNull(0) ?: 0
         val min = parts.getOrNull(1) ?: 0
-        if (maj == 6 && min == 1) return DfCompat.DEAD_61
         val patchedFrom = when {
             maj == 5 && min == 10 -> 255
             maj == 5 && min == 15 -> 205

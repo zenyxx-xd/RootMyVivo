@@ -125,6 +125,22 @@ fun SettingsScreen(
         // ── Другое ──
         SettingsGroup {
             SettingsRow(
+                title = stringResource(R.string.settings_beta_channel),
+                description = stringResource(R.string.settings_beta_channel_desc),
+                icon = Icons.Rounded.BugReport,
+                trailing = {
+                    Switch(
+                        checked = state.settings.betaChannel,
+                        onCheckedChange = { v ->
+                            vm.updateSettings { it.copy(betaChannel = v) }
+                            // канал переключили — пересмотреть обновления честно
+                            vm.checkForUpdate(manual = false)
+                        },
+                    )
+                },
+            )
+            SettingsDivider()
+            SettingsRow(
                 title = stringResource(R.string.settings_other),
                 description = stringResource(R.string.settings_other_desc),
                 icon = Icons.Rounded.BugReport,

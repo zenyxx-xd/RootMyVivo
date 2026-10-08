@@ -197,6 +197,8 @@
     <string name="about_repo_app">App</string>
     <string name="about_repo_payloads">Payloads</string>
     <string name="about_repo_exploit">Exploit</string>
+        <string name="settings_beta_channel">Beta update channel</string>
+    <string name="settings_beta_channel_desc">When on, the updater finds beta app versions</string>
     <string name="settings_other">Other</string>
     <string name="settings_other_desc">Demo flow and payload catalog</string>
     <string name="theme_screen_title">Theme</string>

@@ -29,6 +29,8 @@ data class Settings(
     val bootRestore: Boolean = true,
     /** Автопоиск обновлений приложения после каждого запуска */
     val autoUpdateCheck: Boolean = true,
+    /** Бета-канал: включён — апдейтер находит beta/pre-release версии */
+    val betaChannel: Boolean = false,
 )
 
 /** Хранилище настроек и флагов (SharedPreferences — sync-чтение на старте). */
@@ -51,6 +53,7 @@ class Prefs(context: Context) {
         exploitStopConfirmDismissed = sp.getBoolean(KEY_STOP_CONFIRM, false),
         bootRestore = sp.getBoolean(KEY_BOOT_RESTORE, true),
         autoUpdateCheck = sp.getBoolean(KEY_AUTO_UPDATE, true),
+        betaChannel = sp.getBoolean(KEY_BETA_CHANNEL, false),
     )
 
     fun saveSettings(s: Settings) {
@@ -66,6 +69,7 @@ class Prefs(context: Context) {
             .putBoolean(KEY_STOP_CONFIRM, s.exploitStopConfirmDismissed)
             .putBoolean(KEY_BOOT_RESTORE, s.bootRestore)
             .putBoolean(KEY_AUTO_UPDATE, s.autoUpdateCheck)
+            .putBoolean(KEY_BETA_CHANNEL, s.betaChannel)
             .apply()
     }
 
@@ -186,5 +190,6 @@ class Prefs(context: Context) {
         const val KEY_DEV_UNLOCKED = "devUnlocked"
         const val KEY_TG_PROMO = "tgPromoDismissed"
         const val KEY_AUTO_UPDATE = "autoUpdateCheck"
+    const val KEY_BETA_CHANNEL = "betaChannel"
     }
 }

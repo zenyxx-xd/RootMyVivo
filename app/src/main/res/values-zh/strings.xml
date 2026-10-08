@@ -197,6 +197,8 @@
     <string name="about_repo_app">应用</string>
     <string name="about_repo_payloads">载荷</string>
     <string name="about_repo_exploit">漏洞利用</string>
+        <string name="settings_beta_channel">Beta 更新通道</string>
+    <string name="settings_beta_channel_desc">开启后更新器会查找 Beta 版本</string>
     <string name="settings_other">其他</string>
     <string name="settings_other_desc">演示流程和载荷目录</string>
     <string name="theme_screen_title">主题</string>

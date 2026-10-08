@@ -293,14 +293,16 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     // ─────────── Обновление приложения ───────────
 
     /**
-     * Проверить обновления в фоне (GitHub releases, стабильные только).
+     * Проверить обновления в фоне (GitHub releases; бета-канал — beta/pre-release).
      * Результат — диалог + компактная плашка на главной. Повторные вызовы
      * схлопываются. manual=true — по кнопке: без обновлений показывает тост.
      */
     fun checkForUpdate(manual: Boolean = false) {
         if (updateCheckJob?.isActive == true) return
         updateCheckJob = viewModelScope.launch {
-            val update = withContext(Dispatchers.IO) { AppUpdater.check(getApplication()) }
+            val update = withContext(Dispatchers.IO) {
+                AppUpdater.check(getApplication(), _state.value.settings.betaChannel)
+            }
             // не перетираем активное скачивание предыдущей проверки
             if (_state.value.updateDownload == null) {
                 _state.value = _state.value.copy(

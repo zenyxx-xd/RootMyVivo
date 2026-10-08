@@ -151,7 +151,7 @@ fun DevScreen(vm: MainViewModel, state: UiState, onClose: () -> Unit, onRootStar
                 // Радиокнопки выбора метода — две строки после демо-кнопки;
                 // кликабельна вся строка, отступ между строками минимальный
                 androidx.compose.animation.AnimatedVisibility(visible = demoExpanded) {
-                    Column(Modifier.padding(top = 6.dp)) {
+                    Column(Modifier.padding(top = 6.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
                             modifier = Modifier
@@ -166,7 +166,7 @@ fun DevScreen(vm: MainViewModel, state: UiState, onClose: () -> Unit, onRootStar
                                 onClick = null,
                             )
                             Spacer(Modifier.width(8.dp))
-                            Text(stringResource(R.string.other_demo_method_gl), style = MaterialTheme.typography.bodyMedium)
+                            Text(stringResource(R.string.other_demo_method_gl), style = MaterialTheme.typography.titleSmall)
                         }
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
@@ -182,7 +182,7 @@ fun DevScreen(vm: MainViewModel, state: UiState, onClose: () -> Unit, onRootStar
                                 onClick = null,
                             )
                             Spacer(Modifier.width(8.dp))
-                            Text(stringResource(R.string.other_demo_method_df), style = MaterialTheme.typography.bodyMedium)
+                            Text(stringResource(R.string.other_demo_method_df), style = MaterialTheme.typography.titleSmall)
                         }
                     }
                 }
