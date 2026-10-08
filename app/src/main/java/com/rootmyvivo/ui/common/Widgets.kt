@@ -233,6 +233,8 @@ data class ChoiceDialogItem(
     val label: String,
     val description: String? = null,
     val selected: Boolean = false,
+    /** false — вариант недоступен: серый, без клика (плашка не едет) */
+    val enabled: Boolean = true,
 )
 
 /**
@@ -336,30 +338,41 @@ fun ChoiceDialog(
 @Composable
 private fun ChoiceRow(item: ChoiceDialogItem, onClick: () -> Unit) {
     val haptic = LocalHapticFeedback.current
+    // Недоступный вариант — серый (обесцвеченный), без отклика на тап
+    val disabledColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.45f)
     Row(
         Modifier
             .fillMaxWidth()
-            .clickable {
+            .clickable(
+                enabled = item.enabled,
+            ) {
                 haptic.performHapticFeedback(HapticFeedbackType.ContextClick)
                 onClick()
             }
             .padding(horizontal = 24.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        RadioButton(selected = item.selected, onClick = onClick)
+        RadioButton(
+            selected = item.selected,
+            onClick = if (item.enabled) onClick else null,
+            enabled = item.enabled,
+        )
         Spacer(Modifier.width(14.dp))
         Column(Modifier.weight(1f)) {
             Text(
                 item.label,
                 style = MaterialTheme.typography.bodyLarge,
                 fontWeight = if (item.selected) FontWeight.SemiBold else FontWeight.Normal,
+                color = if (item.enabled) androidx.compose.ui.graphics.Color.Unspecified
+                else disabledColor,
             )
             item.description?.let { desc ->
                 Spacer(Modifier.height(2.dp))
                 Text(
                     desc,
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = if (item.enabled) MaterialTheme.colorScheme.onSurfaceVariant
+                    else disabledColor,
                 )
             }
         }

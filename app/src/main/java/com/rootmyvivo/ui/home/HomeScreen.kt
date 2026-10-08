@@ -864,17 +864,22 @@ private fun InfoGroup(
             },
         )
         SettingsDivider()
-        // Пейлоад / метод: DirtyFrag применим — показываем его (локальный
-        // метод, каталога не требует); GhostLock — с маршрутом из каталога
+        // Пейлоад / метод: как выбрано в окне пейлоада (авто — по
+        // совместимости; DF/GL — явно), с маршрутом GhostLock из каталога
         val dfOk = state.device?.dirtyfragCompatible() == DeviceInfo.DfCompat.OK
+        val method = state.settings.rootMethod
         val routeSuffix = state.payload?.build?.route?.let { " · $it" } ?: ""
         SettingsRow(
             title = stringResource(R.string.status_payload),
             description = when {
                 state.customPayload != null ->
                     stringResource(R.string.home_custom_payload_active, state.customPayload.displayName)
+                method == com.rootmyvivo.data.RootMethod.DIRTYFRAG -> "DirtyFrag"
+                method == com.rootmyvivo.data.RootMethod.GHOSTLOCK ->
+                    state.payload?.displayName?.plus(routeSuffix)
+                        ?: stringResource(R.string.payload_not_found)
                 state.payload != null -> state.payload.displayName + routeSuffix
-                dfOk -> stringResource(R.string.home_method_df)
+                dfOk -> "DirtyFrag"
                 state.catalogState == CatalogState.LOADING ->
                     stringResource(R.string.payload_short_searching)
                 // каталог загружен, но записи для этого устройства нет —

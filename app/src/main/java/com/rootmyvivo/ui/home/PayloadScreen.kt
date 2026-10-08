@@ -197,7 +197,7 @@ fun PayloadScreen(
                     OutlinedButton(
                         onClick = { pickPayload.launch(arrayOf("*/*")) },
                         modifier = Modifier.fillMaxWidth(),
-                        shape = MaterialTheme.shapes.large,
+                        shape = MaterialTheme.shapes.extraLarge,
                     ) {
                         Icon(Icons.Rounded.FolderOpen, null, modifier = Modifier.size(16.dp))
                         Spacer(Modifier.width(6.dp))
@@ -236,6 +236,7 @@ fun PayloadScreen(
                     description = if (glAvailable) stringResource(R.string.payload_method_gl)
                     else glUnavailableText,
                     selected = state.settings.rootMethod == RootMethod.GHOSTLOCK,
+                    enabled = glAvailable,
                 ),
             ),
             onSelect = { idx ->
