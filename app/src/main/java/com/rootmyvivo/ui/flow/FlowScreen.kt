@@ -362,26 +362,41 @@ private fun SuccessCard(state: UiState, onClose: () -> Unit, canClose: Boolean) 
                 textAlign = TextAlign.Center,
             )
             Spacer(Modifier.height(10.dp))
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                OutlinedButton(
+            // FlowRow: кнопки переносятся на 2+ строки — весь текст виден
+            androidx.compose.foundation.layout.FlowRow(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                Button(
                     onClick = onClose,
                     modifier = Modifier.weight(1f),
                 ) {
-                    Text(stringResource(R.string.action_back))
+                    Text(stringResource(R.string.flow_exit_home), maxLines = 2)
                 }
                 Button(
                     onClick = {
-                        // Менеджер, выбранный юзером на главной (ReSukiSU / KernelSU Next / …)
-                        ctx.packageManager.getLaunchIntentForPackage(state.selectedKsu.packageName)?.let {
-                            ctx.startActivity(it)
+                        // Менеджер, выбранный юзером на главной; не установлен — тост
+                        val pkg = state.selectedKsu.packageName
+                        val installed = try {
+                            ctx.packageManager.getApplicationInfo(pkg, 0); true
+                        } catch (_: Exception) { false }
+                        if (!installed) {
+                            android.widget.Toast.makeText(
+                                ctx, ctx.getString(R.string.flow_manager_missing),
+                                android.widget.Toast.LENGTH_SHORT,
+                            ).show()
+                        } else {
+                            ctx.packageManager.getLaunchIntentForPackage(pkg)?.let {
+                                ctx.startActivity(it)
+                            }
                         }
                     },
                     modifier = Modifier.weight(1f),
                 ) {
                     Text(
                         stringResource(R.string.flow_open_manager, state.selectedKsu.displayName),
-                        maxLines = 1,
-                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                        maxLines = 2,
                     )
                 }
             }

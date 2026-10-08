@@ -39,7 +39,9 @@
 
     <string name="flow_title">越狱</string>
     <string name="flow_running">运行中…</string>
-        <string name="flow_autoclose">页面将在 %1$d 秒后关闭</string>
+            <string name="flow_exit_home">退出到主页</string>
+    <string name="flow_manager_missing">未找到管理器</string>
+    <string name="flow_autoclose">页面将在 %1$d 秒后关闭</string>
     <string name="flow_open_manager">打开 %1$s</string>
     <string name="flow_success">ROOT 已获取！</string>
     <string name="flow_success_desc">Root 已激活，重启后会自动恢复</string>

@@ -129,46 +129,20 @@ fun DevScreen(vm: MainViewModel, state: UiState, onClose: () -> Unit, onRootStar
                     Spacer(Modifier.width(8.dp))
                     Text(stringResource(R.string.home_restart_exploit), maxLines = 1)
                 }
-                var demoExpanded by remember { mutableStateOf(false) }
-                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                    OutlinedButton(
-                        onClick = {
-                            if (demoMethodDf) runDemoDf(demoUi, scope, appCtx) { demoState = it }
-                            else runDemo(demoUi, scope, appCtx) { demoState = it }
-                        },
-                        // Демо всегда кликабельно: активный процесс всё равно
-                        // перекрывает экран своим оверлеем
-                        enabled = true,
-                        modifier = Modifier.weight(1f),
-                        shape = MaterialTheme.shapes.large,
-                    ) {
-                        Icon(Icons.Rounded.PlayArrow, null, modifier = Modifier.size(18.dp))
-                        Spacer(Modifier.width(6.dp))
-                        Text(
-                            stringResource(R.string.other_demo_with_method, if (demoMethodDf) "DirtyFrag" else "GhostLock"),
-                            maxLines = 1,
-                        )
-                    }
-                    IconButton(onClick = { demoExpanded = !demoExpanded }) {
-                        Icon(
-                            Icons.Rounded.KeyboardArrowDown, null,
-                            modifier = Modifier.rotate(if (demoExpanded) 180f else 0f),
-                        )
-                    }
-                }
-                // Две кнопки метода на одной строке: выбранный подсвечен,
-                // переключение анимировано (цвет границы и текста перетекают)
-                Row(Modifier.padding(top = 8.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                // Две кнопки метода на одной строке (оригинальный дизайн):
+                // тап запускает демо выбранного метода; выбранный подсвечен,
+                // переключение анимировано
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     DemoMethodButton(
                         label = stringResource(R.string.other_demo_method_gl),
                         selected = !demoMethodDf,
-                        onClick = { pickDemoMethod(false) },
+                        onClick = { pickDemoMethod(false); runDemo(demoUi, scope, appCtx) { demoState = it } },
                         modifier = Modifier.weight(1f),
                     )
                     DemoMethodButton(
                         label = stringResource(R.string.other_demo_method_df),
                         selected = demoMethodDf,
-                        onClick = { pickDemoMethod(true) },
+                        onClick = { pickDemoMethod(true); runDemoDf(demoUi, scope, appCtx) { demoState = it } },
                         modifier = Modifier.weight(1f),
                     )
                 }
@@ -321,7 +295,9 @@ private fun DemoMethodButton(
         border = BorderStroke(1.dp, border),
         colors = ButtonDefaults.outlinedButtonColors(contentColor = text),
     ) {
-        Text(label, maxLines = 1)
+        Icon(Icons.Rounded.PlayArrow, null, modifier = Modifier.size(18.dp))
+        Spacer(Modifier.width(6.dp))
+        Text(label, maxLines = 2)
     }
 }
 

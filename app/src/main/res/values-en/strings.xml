@@ -39,7 +39,9 @@
 
     <string name="flow_title">Jailbreak</string>
     <string name="flow_running">Running…</string>
-        <string name="flow_autoclose">Page closes in %1$d s</string>
+            <string name="flow_exit_home">Exit to home</string>
+    <string name="flow_manager_missing">Manager not found</string>
+    <string name="flow_autoclose">Page closes in %1$d s</string>
     <string name="flow_open_manager">Open %1$s</string>
     <string name="flow_success">ROOT OBTAINED!</string>
     <string name="flow_success_desc">Root is active and restores itself after reboots</string>
