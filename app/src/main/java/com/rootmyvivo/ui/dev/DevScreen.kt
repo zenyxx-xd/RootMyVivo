@@ -84,30 +84,6 @@ fun DevScreen(vm: MainViewModel, state: UiState, onClose: () -> Unit, onRootStar
     /** Тот же редьюсер, что у боевого процесса: демо показывает ровно тот же UI */
     val demoUi = remember(appCtx) { FlowUiReducer(appCtx) }
 
-    // Демо-флоу рендерится тем же экраном процесса, с переходом
-    AnimatedVisibility(
-        visible = demoState != null,
-        enter = slideInVertically(
-            animationSpec = tween(350, easing = FastOutSlowInEasing),
-            initialOffsetY = { it },
-        ) + fadeIn(tween(350)),
-        exit = slideOutVertically(
-            animationSpec = tween(280, easing = FastOutSlowInEasing),
-            targetOffsetY = { it },
-        ) + fadeOut(tween(280)),
-    ) {
-        demoState?.let { demo ->
-            FlowScreen(
-                state = demo,
-                canClose = true,
-                onClose = closeDemo,
-                onRetry = { runDemo(demoUi, scope, appCtx) { demoState = it } },
-                onSoftReboot = { closeDemo() },
-                onDismissSoftReboot = { demoState = demo.copy(softRebootPrompt = false) },
-            )
-        }
-    }
-
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
         topBar = {
@@ -151,7 +127,9 @@ fun DevScreen(vm: MainViewModel, state: UiState, onClose: () -> Unit, onRootStar
                             if (demoMethodDf) runDemoDf(demoUi, scope, appCtx) { demoState = it }
                             else runDemo(demoUi, scope, appCtx) { demoState = it }
                         },
-                        enabled = !state.flowRunning,
+                        // Демо всегда кликабельно: активный процесс всё равно
+                        // перекрывает экран своим оверлеем
+                        enabled = true,
                         modifier = Modifier.weight(1f),
                         shape = MaterialTheme.shapes.large,
                     ) {
@@ -169,19 +147,25 @@ fun DevScreen(vm: MainViewModel, state: UiState, onClose: () -> Unit, onRootStar
                         )
                     }
                 }
-                // Шарики выбора режима (radio, не кнопки)
-                AnimatedVisibility(visible = demoExpanded) {
-                    Row(Modifier.padding(top = 8.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                        FilterChip(
-                            selected = !demoMethodDf,
-                            onClick = { demoMethodDf = false },
-                            label = { Text(stringResource(R.string.other_demo_gl)) },
-                        )
-                        FilterChip(
-                            selected = demoMethodDf,
-                            onClick = { demoMethodDf = true },
-                            label = { Text(stringResource(R.string.other_demo_df)) },
-                        )
+                // Радиокнопки выбора метода — две строки после демо-кнопки
+                androidx.compose.animation.AnimatedVisibility(visible = demoExpanded) {
+                    Column(Modifier.padding(top = 8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            androidx.compose.material3.RadioButton(
+                                selected = !demoMethodDf,
+                                onClick = { demoMethodDf = false },
+                            )
+                            Spacer(Modifier.width(6.dp))
+                            Text(stringResource(R.string.other_demo_method_gl), style = MaterialTheme.typography.bodyMedium)
+                        }
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            androidx.compose.material3.RadioButton(
+                                selected = demoMethodDf,
+                                onClick = { demoMethodDf = true },
+                            )
+                            Spacer(Modifier.width(6.dp))
+                            Text(stringResource(R.string.other_demo_method_df), style = MaterialTheme.typography.bodyMedium)
+                        }
                     }
                 }
             }
@@ -238,6 +222,30 @@ fun DevScreen(vm: MainViewModel, state: UiState, onClose: () -> Unit, onRootStar
             }
 
             Spacer(Modifier.height(8.dp))
+        }
+    }
+
+    // Демо-флоу — тем же экраном процесса, поверх Scaffold, с переходом
+    androidx.compose.animation.AnimatedVisibility(
+        visible = demoState != null,
+        enter = androidx.compose.animation.slideInVertically(
+            animationSpec = androidx.compose.animation.core.tween(350, easing = androidx.compose.animation.core.FastOutSlowInEasing),
+            initialOffsetY = { it },
+        ) + androidx.compose.animation.fadeIn(androidx.compose.animation.core.tween(350)),
+        exit = androidx.compose.animation.slideOutVertically(
+            animationSpec = androidx.compose.animation.core.tween(280, easing = androidx.compose.animation.core.FastOutSlowInEasing),
+            targetOffsetY = { it },
+        ) + androidx.compose.animation.fadeOut(androidx.compose.animation.core.tween(280)),
+    ) {
+        demoState?.let { demo ->
+            FlowScreen(
+                state = demo,
+                canClose = true,
+                onClose = closeDemo,
+                onRetry = { runDemo(demoUi, scope, appCtx) { demoState = it } },
+                onSoftReboot = { closeDemo() },
+                onDismissSoftReboot = { demoState = demo.copy(softRebootPrompt = false) },
+            )
         }
     }
 }

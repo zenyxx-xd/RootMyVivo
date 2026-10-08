@@ -224,6 +224,8 @@
     <string name="log_custom_not_so">所选文件不是 .so 库——无法运行</string>
     <string name="payload_not_found">未找到</string>
         <string name="other_demo_with_method">演示 (GhostLock)</string>
+        <string name="other_demo_method_gl">方法 GhostLock</string>
+    <string name="other_demo_method_df">方法 DirtyFrag</string>
     <string name="other_demo_gl">演示 GhostLock</string>
     <string name="other_demo_df">演示 DirtyFrag</string>
     <string name="other_section_process">进程</string>

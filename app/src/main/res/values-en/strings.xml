@@ -224,6 +224,8 @@
     <string name="log_custom_not_so">Selected file is not a .so library — cannot run</string>
     <string name="payload_not_found">Not found</string>
         <string name="other_demo_with_method">Demo (GhostLock)</string>
+        <string name="other_demo_method_gl">Method GhostLock</string>
+    <string name="other_demo_method_df">Method DirtyFrag</string>
     <string name="other_demo_gl">Demo GhostLock</string>
     <string name="other_demo_df">Demo DirtyFrag</string>
     <string name="other_section_process">Process</string>
