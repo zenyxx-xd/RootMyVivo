@@ -60,7 +60,7 @@
     <string name="theme_auto">Auto</string>
     <string name="theme_light">Light</string>
     <string name="theme_dark">Dark</string>
-    <string name="dynamic_colors">Material You</string>
+    <string name="dynamic_colors">Dynamic colors</string>
     <string name="dynamic_colors_desc">Dynamic colors from the system (Android 12+)</string>
     <string name="settings_updates">Updates</string>
     <string name="settings_catalog">Payload catalog</string>
@@ -218,7 +218,7 @@
     <string name="settings_other_desc">Demo flow and payload catalog</string>
     <string name="theme_screen_title">Theme</string>
     <string name="theme_screen_style">Style</string>
-    <string name="theme_name_monet">Monet</string>
+    <string name="theme_name_monet">Material 3</string>
     <string name="theme_name_originos">OriginOS</string>
     <string name="settings_root">Root</string>
     <string name="home_pick_payload">Choose custom .so</string>

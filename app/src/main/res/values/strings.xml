@@ -70,7 +70,7 @@
     <string name="theme_auto">Авто</string>
     <string name="theme_light">Светлая</string>
     <string name="theme_dark">Тёмная</string>
-    <string name="dynamic_colors">Material You</string>
+    <string name="dynamic_colors">Динамические цвета</string>
     <string name="dynamic_colors_desc">Динамические цвета системы (Android 12+)</string>
     <string name="settings_updates">Обновления</string>
     <string name="settings_catalog">Каталог пейлоадов</string>
@@ -231,7 +231,7 @@
     <string name="settings_other_desc">Демо-флоу и каталог пейлоадов</string>
     <string name="theme_screen_title">Тема</string>
     <string name="theme_screen_style">Оформление</string>
-    <string name="theme_name_monet">Monet</string>
+    <string name="theme_name_monet">Material 3</string>
     <string name="theme_name_originos">OriginOS</string>
     <string name="settings_root">Рут</string>
     <string name="home_pick_payload">Выбрать кастомный .so</string>

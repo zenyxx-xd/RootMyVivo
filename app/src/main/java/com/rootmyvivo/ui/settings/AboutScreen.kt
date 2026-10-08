@@ -142,13 +142,6 @@ fun AboutScreen(vm: MainViewModel, state: UiState, onClose: () -> Unit) {
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(top = 2.dp),
                     )
-                    Text(
-                        "@zenyxx-xd",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(top = 6.dp),
-                        textAlign = androidx.compose.ui.text.style.TextAlign.Center,
-                    )
                 }
             }
 

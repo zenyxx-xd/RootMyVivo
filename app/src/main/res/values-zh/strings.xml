@@ -60,7 +60,7 @@
     <string name="theme_auto">自动</string>
     <string name="theme_light">浅色</string>
     <string name="theme_dark">深色</string>
-    <string name="dynamic_colors">Material You</string>
+    <string name="dynamic_colors">动态颜色</string>
     <string name="dynamic_colors_desc">系统动态取色（Android 12+）</string>
     <string name="settings_updates">更新</string>
     <string name="settings_catalog">载荷目录</string>
@@ -218,7 +218,7 @@
     <string name="settings_other_desc">演示流程和载荷目录</string>
     <string name="theme_screen_title">主题</string>
     <string name="theme_screen_style">外观</string>
-    <string name="theme_name_monet">Monet</string>
+    <string name="theme_name_monet">Material 3</string>
     <string name="theme_name_originos">OriginOS</string>
     <string name="settings_root">Root</string>
     <string name="home_pick_payload">选择自定义 .so</string>

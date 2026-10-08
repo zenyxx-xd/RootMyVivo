@@ -197,7 +197,7 @@ fun PayloadScreen(
                     OutlinedButton(
                         onClick = { pickPayload.launch(arrayOf("*/*")) },
                         modifier = Modifier.fillMaxWidth(),
-                        shape = MaterialTheme.shapes.extraLarge,
+                        shape = MaterialTheme.shapes.large,
                     ) {
                         Icon(Icons.Rounded.FolderOpen, null, modifier = Modifier.size(16.dp))
                         Spacer(Modifier.width(6.dp))
