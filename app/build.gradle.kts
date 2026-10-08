@@ -33,8 +33,8 @@ android {
         // Схема MMmmpp + бета-индекс: betaN → базовый код + N (1.2.0-beta2 →
         // 10202), чтобы апдейтер различал бетки между собой. Код ОБЯЗАТЕЛЬНО
         // синхронен с versionName, иначе апдейтер «находит» собственный релиз.
-        versionCode = 10209
-        versionName = "1.2.0-beta9"
+        versionCode = 10210
+        versionName = "1.2.0-beta10"
         buildConfigField(
             "String", "RMV_DISPATCH_TOKEN",
             "\"${reportProps.getProperty("dispatchToken", "")}\"",
