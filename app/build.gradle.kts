@@ -30,13 +30,14 @@ android {
         applicationId = "com.rootmyvivo"
         minSdk = 31
         targetSdk = 36
-        // Схема MMmmppBB (мажор·минор·патчи·бета, по 2 цифры): 1.2.0 →
-        // 1020000, 1.2.1 → 1020100, 1.2.0-beta3 → 1020003. Беты всегда
-        // меньше стабильной своей версии — переход с беты честно находится.
-        // Код ОБЯЗАТЕЛЬНО синхронен с versionName (формула в AppUpdater
-        // и build_release.py), иначе апдейтер «находит» собственный релиз.
-        versionCode = 1020000
-        versionName = "1.2.0"
+        // Схема: каждая компонента ×10, две цифры на компоненту —
+        // мажор·минор·фиксы·бета: 1.2.0 → 10200000, 1.2.1 → 10201000,
+        // 1.2.0-beta3 → 10200030. Беты всегда меньше стабильной своей
+        // версии. Код ОБЯЗАТЕЛЬНО синхронен с versionName (формула в
+        // AppUpdater и build_release.py), иначе апдейтер «находит»
+        // собственный релиз.
+        versionCode = 10201000
+        versionName = "1.2.1"
         buildConfigField(
             "String", "RMV_DISPATCH_TOKEN",
             "\"${reportProps.getProperty("dispatchToken", "")}\"",
