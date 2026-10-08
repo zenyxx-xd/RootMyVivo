@@ -28,6 +28,7 @@ import androidx.compose.material.icons.rounded.CloudSync
 import androidx.compose.material.icons.rounded.Code
 import androidx.compose.material.icons.automirrored.rounded.OpenInNew
 import androidx.compose.material.icons.automirrored.rounded.Send
+import androidx.compose.material.icons.rounded.Science
 import androidx.compose.material.icons.rounded.SystemUpdate
 import androidx.compose.material.icons.rounded.Warning
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -161,6 +162,22 @@ fun AboutScreen(vm: MainViewModel, state: UiState, onClose: () -> Unit) {
                         Switch(
                             checked = state.settings.autoUpdateCheck,
                             onCheckedChange = { v -> vm.updateSettings { it.copy(autoUpdateCheck = v) } },
+                        )
+                    },
+                )
+                SettingsDivider()
+                SettingsRow(
+                    title = stringResource(R.string.settings_beta_channel),
+                    description = stringResource(R.string.settings_beta_channel_desc),
+                    icon = Icons.Rounded.Science,
+                    trailing = {
+                        Switch(
+                            checked = state.settings.betaChannel,
+                            onCheckedChange = { v ->
+                                vm.updateSettings { it.copy(betaChannel = v) }
+                                // канал переключили — пересмотреть обновления честно
+                                vm.checkForUpdate(manual = false)
+                            },
                         )
                     },
                 )

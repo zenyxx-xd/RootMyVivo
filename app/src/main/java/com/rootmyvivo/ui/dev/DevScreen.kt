@@ -7,6 +7,7 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -29,6 +30,7 @@ import androidx.compose.material.icons.rounded.CleaningServices
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.Restore
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
@@ -73,10 +75,16 @@ import kotlinx.coroutines.launch
 @Composable
 fun DevScreen(vm: MainViewModel, state: UiState, onClose: () -> Unit, onRootStarted: () -> Unit) {
     var demoState by remember { mutableStateOf<UiState?>(null) }
-    var demoMethodDf by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
     val ctx = LocalContext.current
     val appCtx = remember(ctx) { ctx.applicationContext }
+    // Выбранный метод демо — сохраняется (переживает выход и перезапуск)
+    val demoPrefs = remember(appCtx) { appCtx.getSharedPreferences("neo_prefs", android.content.Context.MODE_PRIVATE) }
+    var demoMethodDf by remember { mutableStateOf(demoPrefs.getBoolean("demoMethodDf", false)) }
+    fun pickDemoMethod(df: Boolean) {
+        demoMethodDf = df
+        demoPrefs.edit().putBoolean("demoMethodDf", df).apply()
+    }
     val demoEnabled = state.payload != null && !state.flowRunning
     val rooted = state.rootState == RootState.ROOTED
     val closeDemo = {
@@ -148,43 +156,21 @@ fun DevScreen(vm: MainViewModel, state: UiState, onClose: () -> Unit, onRootStar
                         )
                     }
                 }
-                // Радиокнопки выбора метода — две строки после демо-кнопки;
-                // кликабельна вся строка, отступ между строками минимальный
-                androidx.compose.animation.AnimatedVisibility(visible = demoExpanded) {
-                    Column(Modifier.padding(top = 6.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable(
-                                    interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() },
-                                    indication = null,
-                                ) { demoMethodDf = false },
-                        ) {
-                            androidx.compose.material3.RadioButton(
-                                selected = !demoMethodDf,
-                                onClick = null,
-                            )
-                            Spacer(Modifier.width(8.dp))
-                            Text(stringResource(R.string.other_demo_method_gl), style = MaterialTheme.typography.titleSmall)
-                        }
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable(
-                                    interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() },
-                                    indication = null,
-                                ) { demoMethodDf = true },
-                        ) {
-                            androidx.compose.material3.RadioButton(
-                                selected = demoMethodDf,
-                                onClick = null,
-                            )
-                            Spacer(Modifier.width(8.dp))
-                            Text(stringResource(R.string.other_demo_method_df), style = MaterialTheme.typography.titleSmall)
-                        }
-                    }
+                // Две кнопки метода на одной строке: выбранный подсвечен,
+                // переключение анимировано (цвет границы и текста перетекают)
+                Row(Modifier.padding(top = 8.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    DemoMethodButton(
+                        label = stringResource(R.string.other_demo_method_gl),
+                        selected = !demoMethodDf,
+                        onClick = { pickDemoMethod(false) },
+                        modifier = Modifier.weight(1f),
+                    )
+                    DemoMethodButton(
+                        label = stringResource(R.string.other_demo_method_df),
+                        selected = demoMethodDf,
+                        onClick = { pickDemoMethod(true) },
+                        modifier = Modifier.weight(1f),
+                    )
                 }
             }
 
@@ -243,7 +229,13 @@ fun DevScreen(vm: MainViewModel, state: UiState, onClose: () -> Unit, onRootStar
         }
     }
 
-    // Демо-флоу — тем же экраном процесса, поверх Scaffold, с переходом
+    // Демо-флоу — тем же экраном процесса, поверх Scaffold, с переходом.
+    // Снапшот демо-состояния: во время exit-анимации контент жив
+    // (иначе экран мгновенно исчезает внутри анимации)
+    var shownDemo by remember { mutableStateOf<UiState?>(null) }
+    androidx.compose.runtime.LaunchedEffect(demoState) {
+        demoState?.let { shownDemo = it }
+    }
     androidx.compose.animation.AnimatedVisibility(
         visible = demoState != null,
         enter = androidx.compose.animation.slideInVertically(
@@ -255,7 +247,7 @@ fun DevScreen(vm: MainViewModel, state: UiState, onClose: () -> Unit, onRootStar
             targetOffsetY = { it },
         ) + androidx.compose.animation.fadeOut(androidx.compose.animation.core.tween(280)),
     ) {
-        demoState?.let { demo ->
+        shownDemo?.let { demo ->
             FlowScreen(
                 state = demo,
                 canClose = true,
@@ -301,6 +293,35 @@ private fun SectionCaption(text: String) {
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
+    }
+}
+
+/** Кнопка метода демо: выбранный подсвечен, переключение анимировано. */
+@Composable
+private fun DemoMethodButton(
+    label: String,
+    selected: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val border by androidx.compose.animation.animateColorAsState(
+        targetValue = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant,
+        animationSpec = androidx.compose.animation.core.tween(250),
+        label = "demoBorder",
+    )
+    val text by androidx.compose.animation.animateColorAsState(
+        targetValue = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+        animationSpec = androidx.compose.animation.core.tween(250),
+        label = "demoText",
+    )
+    OutlinedButton(
+        onClick = onClick,
+        modifier = modifier,
+        shape = MaterialTheme.shapes.large,
+        border = BorderStroke(1.dp, border),
+        colors = ButtonDefaults.outlinedButtonColors(contentColor = text),
+    ) {
+        Text(label, maxLines = 1)
     }
 }
 

@@ -45,6 +45,8 @@
     <!-- Процесс рута -->
     <string name="flow_title">Процесс рута</string>
     <string name="flow_running">Выполняется…</string>
+        <string name="flow_autoclose">Страница закроется через %1$d с</string>
+    <string name="flow_open_manager">Открыть %1$s</string>
     <string name="flow_success">ROOT ПОЛУЧЕН!</string>
     <string name="flow_success_desc">Root активен и восстановится сам после перезагрузки</string>
     <string name="flow_failed">Не удалось получить root</string>

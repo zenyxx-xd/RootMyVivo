@@ -67,6 +67,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -193,7 +194,7 @@ fun FlowScreen(
             Spacer(Modifier.height(4.dp))
 
             Box(Modifier.padding(horizontal = 20.dp)) {
-                StatusCard(state, onRetry)
+                StatusCard(state, onRetry, onClose, canClose)
             }
 
             // Поток лога (Dopamine-стиль): новые снизу, туман у самого верха
@@ -232,7 +233,7 @@ private enum class StatusKind { RUNNING, SUCCESS, FAILURE }
  * отдельной карточкой. Дизайн до/после — ровно прежний.
  */
 @Composable
-private fun StatusCard(state: UiState, onRetry: () -> Unit) {
+private fun StatusCard(state: UiState, onRetry: () -> Unit, onClose: () -> Unit, canClose: Boolean) {
     if (!state.flowRunning && state.flowResult == null) return
     val kind = when {
         state.flowResult is FlowResult.Success -> StatusKind.SUCCESS
@@ -258,7 +259,7 @@ private fun StatusCard(state: UiState, onRetry: () -> Unit) {
     ) { k ->
         when (k) {
             StatusKind.RUNNING -> RunningCard(state)
-            StatusKind.SUCCESS -> SuccessCard()
+            StatusKind.SUCCESS -> SuccessCard(state, onClose, canClose)
             StatusKind.FAILURE -> FailureCard(state, onRetry)
         }
     }
@@ -332,7 +333,8 @@ private fun phaseName(phase: Phase?): String? = when (phase) {
 }
 
 @Composable
-private fun SuccessCard() {
+private fun SuccessCard(state: UiState, onClose: () -> Unit, canClose: Boolean) {
+    val ctx = androidx.compose.ui.platform.LocalContext.current
     Surface(
         modifier = Modifier.fillMaxWidth(),
         shape = MaterialTheme.shapes.extraLarge,
@@ -359,6 +361,47 @@ private fun SuccessCard() {
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = TextAlign.Center,
             )
+            Spacer(Modifier.height(10.dp))
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                OutlinedButton(
+                    onClick = onClose,
+                    modifier = Modifier.weight(1f),
+                ) {
+                    Text(stringResource(R.string.action_back))
+                }
+                Button(
+                    onClick = {
+                        // Менеджер, выбранный юзером на главной (ReSukiSU / KernelSU Next / …)
+                        ctx.packageManager.getLaunchIntentForPackage(state.selectedKsu.packageName)?.let {
+                            ctx.startActivity(it)
+                        }
+                    },
+                    modifier = Modifier.weight(1f),
+                ) {
+                    Text(
+                        stringResource(R.string.flow_open_manager, state.selectedKsu.displayName),
+                        maxLines = 1,
+                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                    )
+                }
+            }
+            // Автовыход: 5 секунд бездействия — отсчёт и закрытие страницы
+            if (canClose) {
+                var sec by androidx.compose.runtime.saveable.rememberSaveable { androidx.compose.runtime.mutableIntStateOf(5) }
+                androidx.compose.runtime.LaunchedEffect(Unit) {
+                    while (sec > 0) {
+                        kotlinx.coroutines.delay(1000)
+                        sec--
+                    }
+                    onClose()
+                }
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    stringResource(R.string.flow_autoclose, sec),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.75f),
+                )
+            }
         }
     }
 }
