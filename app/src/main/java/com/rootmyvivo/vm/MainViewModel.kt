@@ -43,6 +43,8 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     init {
         Transport.prefs = prefs
         Catalog.initCache(app.filesDir)
+        // Кеш обновлений: скачанные APK скапливаются — чистим при старте
+        AppUpdater.sweepUpdateCache(app)
         _state.value = _state.value.copy(
             settings = prefs.settings(),
             selectedKsu = KsuVariant.byId(prefs.selectedKsu),

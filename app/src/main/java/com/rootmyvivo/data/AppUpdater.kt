@@ -36,6 +36,29 @@ object AppUpdater {
     private const val API = "https://api.github.com/repos/$REPO/releases"
     private val ASSET_RE = Regex("""RootMyVivo-v?[\w.\-]+\.apk""", RegexOption.IGNORE_CASE)
 
+    /**
+     * Чистка кеша обновлений при старте: скачанные APK (rmv-update-*.apk)
+     * остаются в кеше после установки и скапливаются — удаляем все при
+     * запуске приложения. Файл текущей сессии установки не трогаем до
+     * следующего старта (установщик читает его при подтверждении).
+     */
+    fun sweepUpdateCache(ctx: Context) {
+        val dir = ctx.externalCacheDir ?: ctx.cacheDir ?: return
+        val files = try {
+            dir.listFiles() ?: return
+        } catch (_: Exception) {
+            return
+        }
+        for (f in files) {
+            if (f.name.startsWith("rmv-update-") && f.name.endsWith(".apk")) {
+                try {
+                    f.delete()
+                } catch (_: Exception) {
+                }
+            }
+        }
+    }
+
     /** Текущий versionCode установки. */
     fun currentVersionCode(ctx: Context): Long = try {
         // minSdk 31 — longVersionCode доступен всегда
