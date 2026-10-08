@@ -11,6 +11,7 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.BlurEffect
 import androidx.compose.ui.graphics.asComposeRenderEffect
 import androidx.compose.ui.graphics.drawscope.withTransform
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.layout.onGloballyPositioned
@@ -363,7 +364,10 @@ private fun SuccessCard(state: UiState, onClose: () -> Unit, canClose: Boolean) 
             )
             Spacer(Modifier.height(10.dp))
             // FlowRow: кнопки переносятся на 2+ строки — весь текст виден;
-            // выход — второстепенный (без заливки), тексты по центру
+            // выход — второстепенный (без заливки), тексты по центру.
+            // Тёмная тема: на акцентном фоне обычного контура не видно —
+            // усиливаем границу и цвет текста
+            val isDark = MaterialTheme.colorScheme.background.luminance() < 0.5f
             androidx.compose.foundation.layout.FlowRow(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(10.dp),
@@ -372,6 +376,21 @@ private fun SuccessCard(state: UiState, onClose: () -> Unit, canClose: Boolean) 
                 OutlinedButton(
                     onClick = onClose,
                     modifier = Modifier.weight(1f),
+                    border = androidx.compose.foundation.BorderStroke(
+                        if (isDark) 1.5.dp else 1.dp,
+                        if (isDark) {
+                            MaterialTheme.colorScheme.onSurface.copy(alpha = 0.65f)
+                        } else {
+                            MaterialTheme.colorScheme.outline
+                        },
+                    ),
+                    colors = androidx.compose.material3.ButtonDefaults.outlinedButtonColors(
+                        contentColor = if (isDark) {
+                            MaterialTheme.colorScheme.onSurface
+                        } else {
+                            MaterialTheme.colorScheme.primary
+                        },
+                    ),
                 ) {
                     Text(
                         stringResource(R.string.flow_exit_home),

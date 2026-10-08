@@ -93,18 +93,7 @@ fun SettingsScreen(
                 onClick = onThemeOpen,
                 trailing = { Chevron() },
             )
-            SettingsDivider()
-            SettingsRow(
-                title = stringResource(R.string.dynamic_colors),
-                description = stringResource(R.string.dynamic_colors_desc),
-                icon = Icons.Rounded.BrightnessAuto,
-                trailing = {
-                    Switch(
-                        checked = state.settings.dynamicColors,
-                        onCheckedChange = { v -> vm.updateSettings { it.copy(dynamicColors = v) } },
-                    )
-                },
-            )
+            // Material You (динамические цвета) — только в экране темы
         }
 
         // ── Рут ──

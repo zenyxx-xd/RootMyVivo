@@ -2,10 +2,6 @@ package com.rootmyvivo.ui.home
 
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.tween
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -25,14 +21,11 @@ import androidx.compose.material.icons.rounded.Bolt
 import androidx.compose.material.icons.rounded.Code
 import androidx.compose.material.icons.rounded.Description
 import androidx.compose.material.icons.rounded.FolderOpen
-import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.RadioButton
-import androidx.compose.material3.RadioButtonDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -51,16 +44,18 @@ import androidx.compose.ui.unit.dp
 import com.rootmyvivo.R
 import com.rootmyvivo.data.DeviceInfo
 import com.rootmyvivo.data.RootMethod
-import com.rootmyvivo.ui.common.SettingsDivider
+import com.rootmyvivo.ui.common.ChoiceDialog
+import com.rootmyvivo.ui.common.ChoiceDialogItem
 import com.rootmyvivo.ui.common.SettingsGroup
 import com.rootmyvivo.ui.common.SettingsRow
+import com.rootmyvivo.vm.CatalogState
 import com.rootmyvivo.vm.MainViewModel
 import com.rootmyvivo.vm.UiState
 
 /**
- * Окно пейлоада: метод рута (авто / DirtyFrag / GhostLock) и кастомный
- * payload.so. Открытие — тап по строке «Пейлоад» на главной; дизайн и
- * навигация — как у остальных окон (боковой переход, те же секции).
+ * Окно пейлоада: метод рута (авто / DirtyFrag / GhostLock — диалог выбора,
+ * как у рут-менеджера) и кастомный payload.so. Открытие — тап по строке
+ * «Пейлоад» на главной; дизайн и навигация — как у остальных окон.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -73,6 +68,28 @@ fun PayloadScreen(
     val pickPayload = rememberLauncherForActivityResult(
         ActivityResultContracts.OpenDocument(),
     ) { uri -> uri?.let(vm::onCustomPayloadPicked) }
+
+    var methodDialog by remember { mutableStateOf(false) }
+
+    // Доступность GhostLock: живая сборка в каталоге под это ядро
+    val glAvailable = state.payload != null
+    // Причина недоступности GL — как на главной кнопке: тела нет в каталоге
+    // или ядро без сборки
+    val glUnavailableText = when {
+        state.catalogState == CatalogState.LOADING -> stringResource(R.string.payload_short_searching)
+        state.catalogState != CatalogState.READY -> stringResource(R.string.catalog_error)
+        !state.deviceInCatalog -> stringResource(R.string.home_btn_unsupported_device)
+        else -> stringResource(
+            R.string.home_btn_unsupported_kernel,
+            state.device?.kernelShort.orEmpty(),
+        )
+    }
+
+    val methodLabel = when (state.settings.rootMethod) {
+        RootMethod.AUTO -> stringResource(R.string.payload_method_auto)
+        RootMethod.DIRTYFRAG -> "DirtyFrag"
+        RootMethod.GHOSTLOCK -> "GhostLock"
+    }
 
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
@@ -99,150 +116,134 @@ fun PayloadScreen(
 
             // ── Метод рута ──
             SettingsGroup(title = stringResource(R.string.payload_method_title)) {
-                val dfOk = state.device?.dirtyfragCompatible() == DeviceInfo.DfCompat.OK
-                MethodRow(
-                    label = stringResource(R.string.payload_method_auto),
-                    description = stringResource(
-                        if (dfOk) R.string.payload_method_auto_df else R.string.payload_method_auto_gl,
-                    ),
-                    selected = state.settings.rootMethod == RootMethod.AUTO,
-                    onClick = { vm.updateSettings { it.copy(rootMethod = RootMethod.AUTO) } },
-                )
-                SettingsDivider()
-                MethodRow(
-                    label = "DirtyFrag",
-                    description = stringResource(
-                        if (dfOk) R.string.payload_method_df_ok else R.string.payload_method_df_unsupported,
-                    ),
-                    selected = state.settings.rootMethod == RootMethod.DIRTYFRAG,
-                    onClick = { vm.updateSettings { it.copy(rootMethod = RootMethod.DIRTYFRAG) } },
-                )
-                SettingsDivider()
-                MethodRow(
-                    label = "GhostLock",
-                    description = stringResource(R.string.payload_method_gl),
-                    selected = state.settings.rootMethod == RootMethod.GHOSTLOCK,
-                    onClick = { vm.updateSettings { it.copy(rootMethod = RootMethod.GHOSTLOCK) } },
+                SettingsRow(
+                    title = stringResource(R.string.payload_method_title),
+                    description = methodLabel,
+                    icon = Icons.Rounded.Bolt,
+                    onClick = { methodDialog = true },
+                    trailing = {
+                        Icon(
+                            Icons.AutoMirrored.Rounded.KeyboardArrowRight, null,
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    },
                 )
             }
 
             // ── Кастомный payload.so ──
             SettingsGroup(title = stringResource(R.string.payload_custom_title)) {
-                state.customPayload?.let { cp ->
-                    Surface(
-                        shape = MaterialTheme.shapes.large,
-                        color = MaterialTheme.colorScheme.surfaceContainerLow,
-                        modifier = Modifier.fillMaxWidth(),
-                    ) {
-                        Column(
-                            Modifier.padding(start = 16.dp, end = 8.dp, top = 12.dp, bottom = 4.dp),
-                            verticalArrangement = Arrangement.spacedBy(2.dp),
+                // Кнопки — с горизонтальным отступом как в «Другом»:
+                // у группы его нет (строки носят свой паддинг сами)
+                Column(Modifier.padding(horizontal = 16.dp, vertical = 10.dp)) {
+                    state.customPayload?.let { cp ->
+                        Surface(
+                            shape = MaterialTheme.shapes.large,
+                            color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                            modifier = Modifier.fillMaxWidth(),
                         ) {
-                            Row(
-                                horizontalArrangement = Arrangement.spacedBy(5.dp),
-                                verticalAlignment = Alignment.CenterVertically,
+                            Column(
+                                Modifier.padding(start = 16.dp, end = 8.dp, top = 12.dp, bottom = 4.dp),
+                                verticalArrangement = Arrangement.spacedBy(2.dp),
                             ) {
-                                Icon(
-                                    Icons.Rounded.Code, null,
-                                    tint = MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier.size(14.dp),
-                                )
-                                Text(
-                                    stringResource(R.string.home_custom_payload_selected),
-                                    style = MaterialTheme.typography.labelSmall,
-                                    fontWeight = FontWeight.SemiBold,
-                                    color = MaterialTheme.colorScheme.primary,
-                                )
-                            }
-                            Row(
-                                horizontalArrangement = Arrangement.spacedBy(10.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                            ) {
-                                Icon(
-                                    Icons.Rounded.Description, null,
-                                    tint = MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier.size(18.dp),
-                                )
-                                Column(Modifier.weight(1f)) {
-                                    Text(
-                                        cp.displayName,
-                                        style = MaterialTheme.typography.labelLarge,
-                                        fontWeight = FontWeight.SemiBold,
-                                        maxLines = 1,
+                                Row(
+                                    horizontalArrangement = Arrangement.spacedBy(5.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                ) {
+                                    Icon(
+                                        Icons.Rounded.Code, null,
+                                        tint = MaterialTheme.colorScheme.primary,
+                                        modifier = Modifier.size(14.dp),
                                     )
                                     Text(
-                                        stringResource(
-                                            R.string.home_custom_payload_size,
-                                            "%.1f".format(cp.size / 1048576.0),
-                                        ),
+                                        stringResource(R.string.home_custom_payload_selected),
                                         style = MaterialTheme.typography.labelSmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        fontWeight = FontWeight.SemiBold,
+                                        color = MaterialTheme.colorScheme.primary,
                                     )
                                 }
-                                TextButton(onClick = vm::clearCustomPayload) {
-                                    Text(stringResource(R.string.home_custom_payload_cancel))
+                                Row(
+                                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                ) {
+                                    Icon(
+                                        Icons.Rounded.Description, null,
+                                        tint = MaterialTheme.colorScheme.primary,
+                                        modifier = Modifier.size(18.dp),
+                                    )
+                                    Column(Modifier.weight(1f)) {
+                                        Text(
+                                            cp.displayName,
+                                            style = MaterialTheme.typography.labelLarge,
+                                            fontWeight = FontWeight.SemiBold,
+                                            maxLines = 1,
+                                        )
+                                        Text(
+                                            stringResource(
+                                                R.string.home_custom_payload_size,
+                                                "%.1f".format(cp.size / 1048576.0),
+                                            ),
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        )
+                                    }
+                                    TextButton(onClick = vm::clearCustomPayload) {
+                                        Text(stringResource(R.string.home_custom_payload_cancel))
+                                    }
                                 }
                             }
                         }
+                        Spacer(Modifier.height(10.dp))
                     }
-                    Spacer(Modifier.height(10.dp))
-                }
-                OutlinedButton(
-                    onClick = { pickPayload.launch(arrayOf("*/*")) },
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = MaterialTheme.shapes.large,
-                ) {
-                    Icon(Icons.Rounded.FolderOpen, null, modifier = Modifier.size(16.dp))
-                    Spacer(Modifier.width(6.dp))
-                    Text(stringResource(R.string.home_pick_payload), maxLines = 1)
+                    OutlinedButton(
+                        onClick = { pickPayload.launch(arrayOf("*/*")) },
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = MaterialTheme.shapes.large,
+                    ) {
+                        Icon(Icons.Rounded.FolderOpen, null, modifier = Modifier.size(16.dp))
+                        Spacer(Modifier.width(6.dp))
+                        Text(stringResource(R.string.home_pick_payload), maxLines = 1)
+                    }
                 }
             }
 
             Spacer(Modifier.height(12.dp))
         }
     }
-}
 
-/** Строка выбора метода: радио + текст, выбор анимирован цветом. */
-@Composable
-private fun MethodRow(
-    label: String,
-    description: String,
-    selected: Boolean,
-    onClick: () -> Unit,
-) {
-    val tint by animateColorAsState(
-        targetValue = if (selected) MaterialTheme.colorScheme.primary
-        else MaterialTheme.colorScheme.onSurfaceVariant,
-        animationSpec = tween(250),
-        label = "methodTint",
-    )
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(start = 4.dp),
-    ) {
-        RadioButton(
-            selected = selected,
-            onClick = onClick,
-            colors = RadioButtonDefaults.colors(
-                selectedColor = MaterialTheme.colorScheme.primary,
+    if (methodDialog) {
+        val dfOk = state.device?.dirtyfragCompatible() == DeviceInfo.DfCompat.OK
+        ChoiceDialog(
+            title = stringResource(R.string.payload_method_title),
+            closeLabel = stringResource(R.string.action_close),
+            onDismiss = { methodDialog = false },
+            items = listOf(
+                ChoiceDialogItem(
+                    label = stringResource(R.string.payload_method_auto),
+                    description = stringResource(
+                        if (dfOk) R.string.payload_method_auto_df else R.string.payload_method_auto_gl,
+                    ),
+                    selected = state.settings.rootMethod == RootMethod.AUTO,
+                ),
+                ChoiceDialogItem(
+                    label = "DirtyFrag",
+                    description = stringResource(
+                        if (dfOk) R.string.payload_method_df_ok else R.string.payload_method_df_unsupported,
+                    ),
+                    selected = state.settings.rootMethod == RootMethod.DIRTYFRAG,
+                ),
+                ChoiceDialogItem(
+                    label = "GhostLock",
+                    description = if (glAvailable) stringResource(R.string.payload_method_gl)
+                    else glUnavailableText,
+                    selected = state.settings.rootMethod == RootMethod.GHOSTLOCK,
+                ),
             ),
+            onSelect = { idx ->
+                // GhostLock недоступен (нет сборки в каталоге) — выбор игнорируем
+                if (idx == 2 && !glAvailable) return@ChoiceDialog
+                val m = RootMethod.entries.getOrNull(idx) ?: return@ChoiceDialog
+                vm.updateSettings { it.copy(rootMethod = m) }
+            },
         )
-        Spacer(Modifier.width(6.dp))
-        Column(Modifier.weight(1f)) {
-            Text(
-                label,
-                style = MaterialTheme.typography.titleSmall,
-                fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
-                color = tint,
-            )
-            Text(
-                description,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
     }
 }
