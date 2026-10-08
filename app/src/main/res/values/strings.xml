@@ -236,7 +236,7 @@
     <string name="log_traces_failed">Не удалось очистить временные файлы</string>
     <string name="log_custom_not_so">Выбранный файл не является .so — запуск невозможен</string>
     <string name="payload_not_found">Не найден</string>
-    <string name="other_demo_with_method">Демо (GhostLock)</string>
+    <string name="other_demo_with_method">Демо (%1$s)</string>
         <string name="other_demo_method_gl">Метод GhostLock</string>
     <string name="other_demo_method_df">Метод DirtyFrag</string>
     <string name="other_demo_gl">Демо GhostLock</string>

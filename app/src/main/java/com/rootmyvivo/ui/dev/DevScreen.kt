@@ -7,6 +7,7 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -147,23 +148,40 @@ fun DevScreen(vm: MainViewModel, state: UiState, onClose: () -> Unit, onRootStar
                         )
                     }
                 }
-                // Радиокнопки выбора метода — две строки после демо-кнопки
+                // Радиокнопки выбора метода — две строки после демо-кнопки;
+                // кликабельна вся строка, отступ между строками минимальный
                 androidx.compose.animation.AnimatedVisibility(visible = demoExpanded) {
-                    Column(Modifier.padding(top = 8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.padding(top = 6.dp)) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable(
+                                    interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() },
+                                    indication = null,
+                                ) { demoMethodDf = false },
+                        ) {
                             androidx.compose.material3.RadioButton(
                                 selected = !demoMethodDf,
-                                onClick = { demoMethodDf = false },
+                                onClick = null,
                             )
-                            Spacer(Modifier.width(6.dp))
+                            Spacer(Modifier.width(8.dp))
                             Text(stringResource(R.string.other_demo_method_gl), style = MaterialTheme.typography.bodyMedium)
                         }
-                        Row(verticalAlignment = Alignment.CenterVertically) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable(
+                                    interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() },
+                                    indication = null,
+                                ) { demoMethodDf = true },
+                        ) {
                             androidx.compose.material3.RadioButton(
                                 selected = demoMethodDf,
-                                onClick = { demoMethodDf = true },
+                                onClick = null,
                             )
-                            Spacer(Modifier.width(6.dp))
+                            Spacer(Modifier.width(8.dp))
                             Text(stringResource(R.string.other_demo_method_df), style = MaterialTheme.typography.bodyMedium)
                         }
                     }
