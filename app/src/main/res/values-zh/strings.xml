@@ -47,7 +47,7 @@
     <string name="phase_download">正在下载文件…</string>
     <string name="phase_deploy">准备</string>
     <string name="phase_exploit">正在运行漏洞利用…</string>
-    <string name="phase_ksu">持久化与管理器</string>
+    <string name="phase_ksu">持久化与清理</string>
     <string name="downloading">下载中…</string>
 
     <string name="settings_title">设置</string>
@@ -223,7 +223,8 @@
     <string name="log_traces_failed">删除临时文件失败</string>
     <string name="log_custom_not_so">所选文件不是 .so 库——无法运行</string>
     <string name="payload_not_found">未找到</string>
-        <string name="other_demo_gl">演示 GhostLock</string>
+        <string name="other_demo_with_method">演示 (GhostLock)</string>
+    <string name="other_demo_gl">演示 GhostLock</string>
     <string name="other_demo_df">演示 DirtyFrag</string>
     <string name="other_section_process">进程</string>
 

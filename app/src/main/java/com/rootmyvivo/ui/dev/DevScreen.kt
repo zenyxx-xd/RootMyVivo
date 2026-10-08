@@ -1,5 +1,12 @@
 package com.rootmyvivo.ui.dev
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -14,6 +21,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
+import androidx.compose.material.icons.rounded.KeyboardArrowDown
 import androidx.compose.material.icons.rounded.Bolt
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.CleaningServices
@@ -21,6 +29,7 @@ import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.Restore
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -39,6 +48,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -62,6 +72,7 @@ import kotlinx.coroutines.launch
 @Composable
 fun DevScreen(vm: MainViewModel, state: UiState, onClose: () -> Unit, onRootStarted: () -> Unit) {
     var demoState by remember { mutableStateOf<UiState?>(null) }
+    var demoMethodDf by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
     val ctx = LocalContext.current
     val appCtx = remember(ctx) { ctx.applicationContext }
@@ -73,17 +84,28 @@ fun DevScreen(vm: MainViewModel, state: UiState, onClose: () -> Unit, onRootStar
     /** Тот же редьюсер, что у боевого процесса: демо показывает ровно тот же UI */
     val demoUi = remember(appCtx) { FlowUiReducer(appCtx) }
 
-    // Демо-флоу рендерится тем же экраном процесса
-    demoState?.let { demo ->
-        FlowScreen(
-            state = demo,
-            canClose = true,
-            onClose = closeDemo,
-            onRetry = { runDemo(demoUi, scope, appCtx) { demoState = it } },
-            onSoftReboot = { closeDemo() },
-            onDismissSoftReboot = { demoState = demo.copy(softRebootPrompt = false) },
-        )
-        return
+    // Демо-флоу рендерится тем же экраном процесса, с переходом
+    AnimatedVisibility(
+        visible = demoState != null,
+        enter = slideInVertically(
+            animationSpec = tween(350, easing = FastOutSlowInEasing),
+            initialOffsetY = { it },
+        ) + fadeIn(tween(350)),
+        exit = slideOutVertically(
+            animationSpec = tween(280, easing = FastOutSlowInEasing),
+            targetOffsetY = { it },
+        ) + fadeOut(tween(280)),
+    ) {
+        demoState?.let { demo ->
+            FlowScreen(
+                state = demo,
+                canClose = true,
+                onClose = closeDemo,
+                onRetry = { runDemo(demoUi, scope, appCtx) { demoState = it } },
+                onSoftReboot = { closeDemo() },
+                onDismissSoftReboot = { demoState = demo.copy(softRebootPrompt = false) },
+            )
+        }
     }
 
     Scaffold(
@@ -122,27 +144,44 @@ fun DevScreen(vm: MainViewModel, state: UiState, onClose: () -> Unit, onRootStar
                     Spacer(Modifier.width(8.dp))
                     Text(stringResource(R.string.home_restart_exploit), maxLines = 1)
                 }
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                var demoExpanded by remember { mutableStateOf(false) }
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                     OutlinedButton(
-                        onClick = { runDemo(demoUi, scope, appCtx) { demoState = it } },
+                        onClick = {
+                            if (demoMethodDf) runDemoDf(demoUi, scope, appCtx) { demoState = it }
+                            else runDemo(demoUi, scope, appCtx) { demoState = it }
+                        },
                         enabled = !state.flowRunning,
                         modifier = Modifier.weight(1f),
                         shape = MaterialTheme.shapes.large,
                     ) {
                         Icon(Icons.Rounded.PlayArrow, null, modifier = Modifier.size(18.dp))
                         Spacer(Modifier.width(6.dp))
-                        Text(stringResource(R.string.other_demo_gl), maxLines = 1)
+                        Text(
+                            stringResource(R.string.other_demo_with_method, if (demoMethodDf) "DirtyFrag" else "GhostLock"),
+                            maxLines = 1,
+                        )
                     }
-                    val dfDemoEnabled = !state.flowRunning
-                    OutlinedButton(
-                        onClick = { runDemoDf(demoUi, scope, appCtx) { demoState = it } },
-                        enabled = dfDemoEnabled,
-                        modifier = Modifier.weight(1f),
-                        shape = MaterialTheme.shapes.large,
-                    ) {
-                        Icon(Icons.Rounded.PlayArrow, null, modifier = Modifier.size(18.dp))
-                        Spacer(Modifier.width(6.dp))
-                        Text(stringResource(R.string.other_demo_df), maxLines = 1)
+                    IconButton(onClick = { demoExpanded = !demoExpanded }) {
+                        Icon(
+                            Icons.Rounded.KeyboardArrowDown, null,
+                            modifier = Modifier.rotate(if (demoExpanded) 180f else 0f),
+                        )
+                    }
+                }
+                // Шарики выбора режима (radio, не кнопки)
+                AnimatedVisibility(visible = demoExpanded) {
+                    Row(Modifier.padding(top = 8.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        FilterChip(
+                            selected = !demoMethodDf,
+                            onClick = { demoMethodDf = false },
+                            label = { Text(stringResource(R.string.other_demo_gl)) },
+                        )
+                        FilterChip(
+                            selected = demoMethodDf,
+                            onClick = { demoMethodDf = true },
+                            label = { Text(stringResource(R.string.other_demo_df)) },
+                        )
                     }
                 }
             }

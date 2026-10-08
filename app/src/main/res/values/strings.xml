@@ -57,7 +57,7 @@
     <string name="phase_download">Скачивание файлов</string>
     <string name="phase_deploy">Подготовка</string>
     <string name="phase_exploit">Запуск эксплойта</string>
-    <string name="phase_ksu">Закрепление и менеджер</string>
+    <string name="phase_ksu">Закрепление и очистка</string>
 
     <!-- Настройки -->
     <string name="settings_title">Настройки</string>
@@ -236,7 +236,8 @@
     <string name="log_traces_failed">Не удалось очистить временные файлы</string>
     <string name="log_custom_not_so">Выбранный файл не является .so — запуск невозможен</string>
     <string name="payload_not_found">Не найден</string>
-        <string name="other_demo_gl">Демо GhostLock</string>
+    <string name="other_demo_with_method">Демо (GhostLock)</string>
+    <string name="other_demo_gl">Демо GhostLock</string>
     <string name="other_demo_df">Демо DirtyFrag</string>
     <string name="other_section_process">Процесс</string>
 

@@ -196,31 +196,6 @@ fun FlowScreen(
                 StatusCard(state, onRetry)
             }
 
-            // Загрузка файла (только во время активного скачивания)
-            state.downloadProgress?.let { p ->
-                Column(Modifier.padding(horizontal = 20.dp)) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(
-                            Icons.Rounded.Download, null,
-                            modifier = Modifier.size(16.dp),
-                            tint = MaterialTheme.colorScheme.secondary,
-                        )
-                        Spacer(Modifier.width(6.dp))
-                        Text(
-                            stringResource(R.string.downloading),
-                            style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
-                    Spacer(Modifier.height(6.dp))
-                    LinearProgressIndicator(
-                        progress = { p },
-                        modifier = Modifier.fillMaxWidth(),
-                        strokeCap = StrokeCap.Round,
-                    )
-                }
-            }
-
             // Поток лога (Dopamine-стиль): новые снизу, туман у самого верха
             if (state.log.isNotEmpty()) {
                 LogStream(
@@ -264,67 +239,40 @@ private fun StatusCard(state: UiState, onRetry: () -> Unit) {
         state.flowResult is FlowResult.Failure -> StatusKind.FAILURE
         else -> StatusKind.RUNNING
     }
-    // Цвет и форма карточки перетекают сами (один объект); контент
-    // кроссфейдится; прогрессбар — ВНЕ кроссфейда: позицию не перескакивает,
-    // а плавно уходит fade'ом при смене статуса
-    val color by androidx.compose.animation.animateColorAsState(
-        targetValue = when (kind) {
-            StatusKind.RUNNING -> MaterialTheme.colorScheme.surfaceContainerLow
-            StatusKind.SUCCESS -> MaterialTheme.colorScheme.primaryContainer
-            StatusKind.FAILURE -> MaterialTheme.colorScheme.errorContainer
+    AnimatedContent(
+        targetState = kind,
+        transitionSpec = {
+            androidx.compose.animation.ContentTransform(
+                targetContentEnter = (fadeIn(tween(280)) + slideInVertically(
+                    animationSpec = spring(stiffness = Spring.StiffnessMedium),
+                    initialOffsetY = { it / 4 },
+                )),
+                initialContentExit = (fadeOut(tween(220)) + slideOutVertically(
+                    animationSpec = spring(stiffness = Spring.StiffnessMedium),
+                    targetOffsetY = { -it / 4 },
+                )),
+                sizeTransform = androidx.compose.animation.SizeTransform(clip = false),
+            )
         },
-        animationSpec = tween(320),
-        label = "statusColor",
-    )
-    Surface(
-        modifier = Modifier.fillMaxWidth(),
-        shape = MaterialTheme.shapes.extraLarge,
-        color = color,
-    ) {
-        Column(
-            Modifier.padding(20.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(6.dp),
-        ) {
-            AnimatedContent(
-                targetState = kind,
-                transitionSpec = {
-                    (fadeIn(tween(280)) + slideInVertically(
-                        animationSpec = spring(stiffness = Spring.StiffnessMedium),
-                        initialOffsetY = { it / 4 },
-                    )) togetherWith (fadeOut(tween(220)) + slideOutVertically(
-                        animationSpec = spring(stiffness = Spring.StiffnessMedium),
-                        targetOffsetY = { -it / 4 },
-                    ))
-                },
-                label = "statusContent",
-            ) { k ->
-                when (k) {
-                    StatusKind.RUNNING -> RunningHeader(state)
-                    StatusKind.SUCCESS -> SuccessCard()
-                    StatusKind.FAILURE -> FailureCard(state, onRetry)
-                }
-            }
-            androidx.compose.animation.AnimatedVisibility(
-                visible = kind == StatusKind.RUNNING,
-                enter = fadeIn(tween(220)) + androidx.compose.animation.expandVertically(tween(260)),
-                exit = fadeOut(tween(260)) + androidx.compose.animation.shrinkVertically(tween(260)),
-            ) {
-                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    LinearProgressIndicator(
-                        progress = { if (state.stepTotal > 0) state.stepIndex.toFloat() / state.stepTotal else 0f },
-                        modifier = Modifier.fillMaxWidth(),
-                        strokeCap = StrokeCap.Round,
-                    )
-                }
-            }
+        label = "statusCard",
+    ) { k ->
+        when (k) {
+            StatusKind.RUNNING -> RunningCard(state)
+            StatusKind.SUCCESS -> SuccessCard()
+            StatusKind.FAILURE -> FailureCard(state, onRetry)
         }
     }
 }
 
 @Composable
-private fun RunningHeader(state: UiState) {
-    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+private fun RunningCard(state: UiState) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = MaterialTheme.shapes.large,
+        color = MaterialTheme.colorScheme.surfaceContainerLow,
+    ) {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
         // Плавная смена названия фазы (slide up/down)
         AnimatedContent(
             targetState = state.flowPhase,
@@ -355,6 +303,20 @@ private fun RunningHeader(state: UiState) {
             style = MaterialTheme.typography.labelMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
+        }
+        // Заливка бара анимируется: при смене шага полоска плавно едет к
+        // нужной позиции, а не пролетает мгновенно
+        val progress by animateFloatAsState(
+            targetValue = if (state.stepTotal > 0) state.stepIndex.toFloat() / state.stepTotal else 0f,
+            animationSpec = tween(320),
+            label = "stepProgress",
+        )
+        LinearProgressIndicator(
+            progress = { progress },
+            modifier = Modifier.fillMaxWidth(),
+            strokeCap = StrokeCap.Round,
+        )
+        }
     }
 }
 
