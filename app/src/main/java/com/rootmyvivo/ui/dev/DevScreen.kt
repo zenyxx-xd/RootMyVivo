@@ -7,7 +7,6 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -30,7 +29,6 @@ import androidx.compose.material.icons.rounded.CleaningServices
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.Restore
 import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
@@ -129,22 +127,70 @@ fun DevScreen(vm: MainViewModel, state: UiState, onClose: () -> Unit, onRootStar
                     Spacer(Modifier.width(8.dp))
                     Text(stringResource(R.string.home_restart_exploit), maxLines = 1)
                 }
-                // Две кнопки метода на одной строке (оригинальный дизайн):
-                // тап запускает демо выбранного метода; выбранный подсвечен,
-                // переключение анимировано
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    DemoMethodButton(
-                        label = stringResource(R.string.other_demo_method_gl),
-                        selected = !demoMethodDf,
-                        onClick = { pickDemoMethod(false); runDemo(demoUi, scope, appCtx) { demoState = it } },
+                var demoExpanded by remember { mutableStateOf(false) }
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                    OutlinedButton(
+                        onClick = {
+                            if (demoMethodDf) runDemoDf(demoUi, scope, appCtx) { demoState = it }
+                            else runDemo(demoUi, scope, appCtx) { demoState = it }
+                        },
+                        // Демо всегда кликабельно: активный процесс всё равно
+                        // перекрывает экран своим оверлеем
+                        enabled = true,
                         modifier = Modifier.weight(1f),
-                    )
-                    DemoMethodButton(
-                        label = stringResource(R.string.other_demo_method_df),
-                        selected = demoMethodDf,
-                        onClick = { pickDemoMethod(true); runDemoDf(demoUi, scope, appCtx) { demoState = it } },
-                        modifier = Modifier.weight(1f),
-                    )
+                        shape = MaterialTheme.shapes.large,
+                    ) {
+                        Icon(Icons.Rounded.PlayArrow, null, modifier = Modifier.size(18.dp))
+                        Spacer(Modifier.width(6.dp))
+                        Text(
+                            stringResource(R.string.other_demo_with_method, if (demoMethodDf) "DirtyFrag" else "GhostLock"),
+                            maxLines = 1,
+                        )
+                    }
+                    IconButton(onClick = { demoExpanded = !demoExpanded }) {
+                        Icon(
+                            Icons.Rounded.KeyboardArrowDown, null,
+                            modifier = Modifier.rotate(if (demoExpanded) 180f else 0f),
+                        )
+                    }
+                }
+                // Радиокнопки выбора метода — две строки после демо-кнопки;
+                // кликабельна вся строка, отступ между строками минимальный
+                androidx.compose.animation.AnimatedVisibility(visible = demoExpanded) {
+                    Column(Modifier.padding(top = 6.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable(
+                                    interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() },
+                                    indication = null,
+                                ) { pickDemoMethod(false) },
+                        ) {
+                            androidx.compose.material3.RadioButton(
+                                selected = !demoMethodDf,
+                                onClick = null,
+                            )
+                            Spacer(Modifier.width(8.dp))
+                            Text(stringResource(R.string.other_demo_method_gl), style = MaterialTheme.typography.titleSmall)
+                        }
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable(
+                                    interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() },
+                                    indication = null,
+                                ) { pickDemoMethod(true) },
+                        ) {
+                            androidx.compose.material3.RadioButton(
+                                selected = demoMethodDf,
+                                onClick = null,
+                            )
+                            Spacer(Modifier.width(8.dp))
+                            Text(stringResource(R.string.other_demo_method_df), style = MaterialTheme.typography.titleSmall)
+                        }
+                    }
                 }
             }
 
@@ -267,37 +313,6 @@ private fun SectionCaption(text: String) {
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
-    }
-}
-
-/** Кнопка метода демо: выбранный подсвечен, переключение анимировано. */
-@Composable
-private fun DemoMethodButton(
-    label: String,
-    selected: Boolean,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    val border by androidx.compose.animation.animateColorAsState(
-        targetValue = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant,
-        animationSpec = androidx.compose.animation.core.tween(250),
-        label = "demoBorder",
-    )
-    val text by androidx.compose.animation.animateColorAsState(
-        targetValue = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
-        animationSpec = androidx.compose.animation.core.tween(250),
-        label = "demoText",
-    )
-    OutlinedButton(
-        onClick = onClick,
-        modifier = modifier,
-        shape = MaterialTheme.shapes.large,
-        border = BorderStroke(1.dp, border),
-        colors = ButtonDefaults.outlinedButtonColors(contentColor = text),
-    ) {
-        Icon(Icons.Rounded.PlayArrow, null, modifier = Modifier.size(18.dp))
-        Spacer(Modifier.width(6.dp))
-        Text(label, maxLines = 2)
     }
 }
 
