@@ -352,10 +352,13 @@ private fun ChoiceRow(item: ChoiceDialogItem, onClick: () -> Unit) {
             .padding(horizontal = 24.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
+        // Радио всегда включено визуально (disabled-радио Material3
+        // схлопывает минимальную зону касания и строка уезжает влево);
+        // защита от выбора недоступного варианта — clickable(enabled)
+        // строки и guard в onSelect вызывающего
         RadioButton(
             selected = item.selected,
-            onClick = if (item.enabled) onClick else null,
-            enabled = item.enabled,
+            onClick = onClick,
         )
         Spacer(Modifier.width(14.dp))
         Column(Modifier.weight(1f)) {

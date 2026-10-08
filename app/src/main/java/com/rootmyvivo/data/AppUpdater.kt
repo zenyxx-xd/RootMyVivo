@@ -122,6 +122,13 @@ object AppUpdater {
      * Бета-суффикс различает бетки: 1.2.0-beta2 → 10200 + 2 = 10202
      * (базовый код + номер беты, как versionCode в gradle).
      */
+    /**
+     * Схема версий MMmmppBB: мажор·минор·патчи·бета (по 2 цифры).
+     * 1.2.0 → 1020000, 1.2.1 → 1020100, 1.2.0-beta3 → 1020003.
+     * Беты своей версии всегда меньше её стабильного кода и меньше любого
+     * следующего патча — апдейтер честно предлагает переход с беты на
+     * стабильную и на следующие версии.
+     */
     private fun versionNameToCode(ver: String): Long {
         val beta = Regex("""-beta(\d+)$""", RegexOption.IGNORE_CASE).find(ver)
             ?.groupValues?.get(1)?.toLongOrNull() ?: 0L
@@ -130,7 +137,7 @@ object AppUpdater {
         val maj = parts.getOrElse(0) { 0L }
         val min = parts.getOrElse(1) { 0L }
         val pat = parts.getOrElse(2) { 0L }
-        return maj * 10000L + min * 100L + pat + beta
+        return maj * 1000000L + min * 10000L + pat * 100L + beta
     }
 
     /**
