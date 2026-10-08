@@ -43,7 +43,7 @@
     <string name="flow_manager_missing">未找到管理器</string>
     <string name="flow_autoclose">页面将在 %1$d 秒后关闭</string>
     <string name="flow_open_manager">打开 %1$s</string>
-    <string name="flow_success">ROOT 已获取！</string>
+    <string name="flow_success">ROOT 已获取</string>
     <string name="flow_success_desc">Root 已激活，重启后会自动恢复</string>
     <string name="flow_failed">获取 root 失败</string>
     <string name="phase_catalog">正在加载目录…</string>
@@ -143,6 +143,7 @@
     <string name="hint_download">请检查网络连接后重试</string>
     <string name="hint_deploy">请重试</string>
     <string name="hint_exploit">这是时序博弈 — 重启手机后重试</string>
+    <string name="hint_df">很可能您的内核不受支持</string>
     <string name="hint_timeout">重启手机后重试</string>
     <string name="hint_ksu">用户空间重启可能会激活模块</string>
     <!-- 警告 -->
@@ -191,6 +192,15 @@
     <string name="home_restart_exploit">重新运行漏洞利用</string>
     <string name="home_supported_devices">支持的设备</string>
     <string name="supported_title">支持的设备</string>
+    <string name="payload_screen_title">负载</string>
+    <string name="payload_method_title">Root 方法</string>
+    <string name="payload_method_auto">自动</string>
+    <string name="payload_method_auto_df">DirtyFrag 适用于您的内核，优先使用</string>
+    <string name="payload_method_auto_gl">DirtyFrag 不适用 — 使用 GhostLock</string>
+    <string name="payload_method_df_ok">适用于您的内核（实验性）</string>
+    <string name="payload_method_df_unsupported">不适用于您的内核</string>
+    <string name="payload_method_gl">来自目录的内核构建负载</string>
+    <string name="payload_custom_title">自定义 payload.so</string>
     <string name="supported_count">%1$d 台设备 · %2$d 个内核</string>
     <string name="supported_your">你的设备</string>
     <string name="supported_temporarily_disabled">设备已暂时停用</string>

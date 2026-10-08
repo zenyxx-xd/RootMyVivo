@@ -43,7 +43,7 @@
     <string name="flow_manager_missing">Manager not found</string>
     <string name="flow_autoclose">Page closes in %1$d s</string>
     <string name="flow_open_manager">Open %1$s</string>
-    <string name="flow_success">ROOT OBTAINED!</string>
+    <string name="flow_success">ROOT OBTAINED</string>
     <string name="flow_success_desc">Root is active and restores itself after reboots</string>
     <string name="flow_failed">Failed to get root</string>
     <string name="phase_catalog">Loading catalog…</string>
@@ -143,6 +143,7 @@
     <string name="hint_download">Check your internet connection and try again</string>
     <string name="hint_deploy">Try again</string>
     <string name="hint_exploit">It\'s a timing lottery — reboot the phone and try again</string>
+    <string name="hint_df">Your kernel is most likely not supported</string>
     <string name="hint_timeout">Reboot the phone and try again</string>
     <string name="hint_ksu">A userspace reboot may activate the module</string>
     <!-- Warning -->
@@ -191,6 +192,15 @@
     <string name="home_restart_exploit">Restart exploit</string>
     <string name="home_supported_devices">Supported devices</string>
     <string name="supported_title">Supported devices</string>
+    <string name="payload_screen_title">Payload</string>
+    <string name="payload_method_title">Root method</string>
+    <string name="payload_method_auto">Auto</string>
+    <string name="payload_method_auto_df">DirtyFrag is applicable on your kernel, used first</string>
+    <string name="payload_method_auto_gl">DirtyFrag is not applicable — GhostLock is used</string>
+    <string name="payload_method_df_ok">Applicable on your kernel (experimental)</string>
+    <string name="payload_method_df_unsupported">Not applicable on your kernel</string>
+    <string name="payload_method_gl">Payload from the catalog for your kernel build</string>
+    <string name="payload_custom_title">Custom payload.so</string>
     <string name="supported_count">%1$d devices · %2$d kernels</string>
     <string name="supported_your">Your device</string>
     <string name="supported_temporarily_disabled">Device temporarily unavailable</string>

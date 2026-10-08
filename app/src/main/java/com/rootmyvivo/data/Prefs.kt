@@ -4,6 +4,18 @@ import android.content.Context
 
 enum class ThemeMode { AUTO, LIGHT, DARK }
 
+/** Метод рута: авто (по совместимости ядра) или явный выбор. */
+enum class RootMethod(val id: String) {
+    AUTO("auto"),
+    DIRTYFRAG("dirtyfrag"),
+    GHOSTLOCK("ghostlock");
+
+    companion object {
+        fun byId(id: String?): RootMethod =
+            entries.firstOrNull { it.id == id } ?: AUTO
+    }
+}
+
 /** Тема оформления: стиль поведения, цвета не меняет. */
 enum class AppThemeName(val id: String) {
     MONET("monet"),
@@ -31,6 +43,8 @@ data class Settings(
     val autoUpdateCheck: Boolean = true,
     /** Бета-канал: включён — апдейтер находит beta/pre-release версии */
     val betaChannel: Boolean = false,
+    /** Метод рута: авто или явный выбор (DirtyFrag / GhostLock) */
+    val rootMethod: RootMethod = RootMethod.AUTO,
 )
 
 /** Хранилище настроек и флагов (SharedPreferences — sync-чтение на старте). */
@@ -54,6 +68,7 @@ class Prefs(context: Context) {
         bootRestore = sp.getBoolean(KEY_BOOT_RESTORE, true),
         autoUpdateCheck = sp.getBoolean(KEY_AUTO_UPDATE, true),
         betaChannel = sp.getBoolean(KEY_BETA_CHANNEL, false),
+        rootMethod = RootMethod.byId(sp.getString(KEY_ROOT_METHOD, null)),
     )
 
     fun saveSettings(s: Settings) {
@@ -70,6 +85,7 @@ class Prefs(context: Context) {
             .putBoolean(KEY_BOOT_RESTORE, s.bootRestore)
             .putBoolean(KEY_AUTO_UPDATE, s.autoUpdateCheck)
             .putBoolean(KEY_BETA_CHANNEL, s.betaChannel)
+            .putString(KEY_ROOT_METHOD, s.rootMethod.id)
             .apply()
     }
 
@@ -191,5 +207,6 @@ class Prefs(context: Context) {
         const val KEY_TG_PROMO = "tgPromoDismissed"
         const val KEY_AUTO_UPDATE = "autoUpdateCheck"
     const val KEY_BETA_CHANNEL = "betaChannel"
+    const val KEY_ROOT_METHOD = "rootMethod"
     }
 }

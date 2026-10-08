@@ -362,17 +362,22 @@ private fun SuccessCard(state: UiState, onClose: () -> Unit, canClose: Boolean) 
                 textAlign = TextAlign.Center,
             )
             Spacer(Modifier.height(10.dp))
-            // FlowRow: кнопки переносятся на 2+ строки — весь текст виден
+            // FlowRow: кнопки переносятся на 2+ строки — весь текст виден;
+            // выход — второстепенный (без заливки), тексты по центру
             androidx.compose.foundation.layout.FlowRow(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(10.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                Button(
+                OutlinedButton(
                     onClick = onClose,
                     modifier = Modifier.weight(1f),
                 ) {
-                    Text(stringResource(R.string.flow_exit_home), maxLines = 2)
+                    Text(
+                        stringResource(R.string.flow_exit_home),
+                        maxLines = 2,
+                        textAlign = TextAlign.Center,
+                    )
                 }
                 Button(
                     onClick = {
@@ -397,6 +402,7 @@ private fun SuccessCard(state: UiState, onClose: () -> Unit, canClose: Boolean) 
                     Text(
                         stringResource(R.string.flow_open_manager, state.selectedKsu.displayName),
                         maxLines = 2,
+                        textAlign = TextAlign.Center,
                     )
                 }
             }
@@ -410,7 +416,7 @@ private fun SuccessCard(state: UiState, onClose: () -> Unit, canClose: Boolean) 
                     }
                     onClose()
                 }
-                Spacer(Modifier.height(4.dp))
+                Spacer(Modifier.height(14.dp))
                 Text(
                     stringResource(R.string.flow_autoclose, sec),
                     style = MaterialTheme.typography.bodySmall,
@@ -476,7 +482,7 @@ private fun failureHint(f: FlowResult.Failure): String? = when (f.reason) {
     FlowEvent.Reason.DOWNLOAD -> stringResource(R.string.hint_download)
     FlowEvent.Reason.DEPLOY -> stringResource(R.string.hint_deploy)
     FlowEvent.Reason.EXPLOIT -> stringResource(R.string.hint_exploit)
-    FlowEvent.Reason.DF -> null
+    FlowEvent.Reason.DF -> stringResource(R.string.hint_df)
     FlowEvent.Reason.TIMEOUT -> stringResource(R.string.hint_timeout)
     FlowEvent.Reason.STOPPED -> null
     FlowEvent.Reason.KSU -> stringResource(R.string.hint_ksu)

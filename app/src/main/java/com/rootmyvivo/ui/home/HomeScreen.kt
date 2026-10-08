@@ -107,6 +107,7 @@ fun HomeScreen(
     onOpenLastLog: () -> Unit = {},
     onOpenSupported: () -> Unit = {},
     onOpenFaq: () -> Unit = {},
+    onOpenPayload: () -> Unit = {},
 ) {
     var ksuDialog by remember { mutableStateOf(false) }
     var warnDialog by remember { mutableStateOf(false) }
@@ -114,11 +115,6 @@ fun HomeScreen(
     // Диалог остановки эксплойта — анти-мисклик, чекер «не показывать» в нём
     var stopDialog by remember { mutableStateOf(false) }
     var stopDontShow by remember { mutableStateOf(false) }
-    // Системный файловый менеджер (SAF): выбор кастомного payload.so —
-    // без скачиваний, деплоится именно выбранный файл
-    val pickPayload = rememberLauncherForActivityResult(
-        ActivityResultContracts.OpenDocument(),
-    ) { uri -> uri?.let(vm::onCustomPayloadPicked) }
     // Чекеры «больше не показывать» — локальные: фиксируются только кнопкой
     // действия. Отмена оставляет настройку нетронутой
     var warnDontShow by remember { mutableStateOf(false) }
@@ -251,8 +247,6 @@ fun HomeScreen(
                     warnDialog = true
                 }
             },
-            onPickPayload = { pickPayload.launch(arrayOf("*/*")) },
-            onClearPayload = vm::clearCustomPayload,
         )
         // Принудительная остановка во время выполнения — под главным статусом.
         // Подтверждение можно отключить чекером в диалоге
@@ -321,7 +315,12 @@ fun HomeScreen(
         }
 
         // Группа 1: рут-менеджер + пейлоад + история запусков
-        InfoGroup(state, onOpenLastLog = onOpenLastLog, onKsuClick = { ksuDialog = true })
+        InfoGroup(
+            state,
+            onOpenLastLog = onOpenLastLog,
+            onKsuClick = { ksuDialog = true },
+            onOpenPayload = onOpenPayload,
+        )
         // Устройство — отдельная группа с подзаголовком, как раньше
         DeviceGroup(state)
         // Группа 2: поддерживаемые устройства, FAQ
@@ -475,8 +474,6 @@ private fun Header() {
 private fun HeroCard(
     state: UiState,
     onRoot: () -> Unit,
-    onPickPayload: () -> Unit,
-    onClearPayload: () -> Unit,
 ) {
     val rooted = state.rootState == RootState.ROOTED
     // Кнопка рута активна всегда: эксплойт запускается из приложения,
@@ -559,143 +556,6 @@ private fun HeroCard(
                         )
                         Spacer(Modifier.height(16.dp))
                         RootButton(state, onRoot)
-                        // Кастомный пейлоад: карточка с контуром (как у кнопки
-                        // выбора, без заливки). Снимок держим до конца анимации
-                        // сворачивания — иначе контент исчезнет раньше выхода
-                        var shownPayload by remember { mutableStateOf(state.customPayload) }
-                        LaunchedEffect(state.customPayload) {
-                            state.customPayload?.let { shownPayload = it }
-                        }
-                        AnimatedVisibility(
-                            visible = state.customPayload != null,
-                            enter = expandVertically(tween(260)) + fadeIn(tween(260)),
-                            exit = shrinkVertically(tween(200)) + fadeOut(tween(200)),
-                        ) {
-                            shownPayload?.let { cp ->
-                                // Отступ — padding'ом самой карточки: контейнер
-                                // AnimatedVisibility кладёт детей в Box, и
-                                // отдельный Spacer внутрь высоты не добавил бы
-                                Surface(
-                                    shape = MaterialTheme.shapes.large,
-                                    color = Color.Transparent,
-                                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(top = 10.dp),
-                                ) {
-                                    Column(
-                                        Modifier.padding(start = 16.dp, end = 8.dp, top = 12.dp, bottom = 4.dp),
-                                        verticalArrangement = Arrangement.spacedBy(2.dp),
-                                    ) {
-                                        Row(
-                                            horizontalArrangement = Arrangement.spacedBy(5.dp),
-                                            verticalAlignment = Alignment.CenterVertically,
-                                        ) {
-                                            Icon(
-                                                Icons.Rounded.Code, null,
-                                                tint = MaterialTheme.colorScheme.primary,
-                                                modifier = Modifier.size(14.dp),
-                                            )
-                                            Text(
-                                                stringResource(R.string.home_custom_payload_selected),
-                                                style = MaterialTheme.typography.labelSmall,
-                                                fontWeight = FontWeight.SemiBold,
-                                                color = MaterialTheme.colorScheme.primary,
-                                            )
-                                        }
-                                        Row(
-                                            horizontalArrangement = Arrangement.spacedBy(10.dp),
-                                            verticalAlignment = Alignment.CenterVertically,
-                                        ) {
-                                            Icon(
-                                                Icons.Rounded.Description, null,
-                                                tint = MaterialTheme.colorScheme.primary,
-                                                modifier = Modifier.size(18.dp),
-                                            )
-                                            Column(Modifier.weight(1f)) {
-                                                Text(
-                                                    cp.displayName,
-                                                    style = MaterialTheme.typography.labelLarge,
-                                                    fontWeight = FontWeight.SemiBold,
-                                                    maxLines = 1,
-                                                )
-                                                Text(
-                                                    stringResource(
-                                                        R.string.home_custom_payload_size,
-                                                        "%.1f".format(cp.size / 1048576.0),
-                                                    ),
-                                                    style = MaterialTheme.typography.labelSmall,
-                                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                                )
-                                            }
-                                            TextButton(onClick = onClearPayload) {
-                                                Text(stringResource(R.string.home_custom_payload_cancel))
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                        // Выбор кастомного .so — внутри карточки под кнопкой
-                        // рута. При полученном ру ветка не рендерится вовсе;
-                        // при выбранном файле карточка выше показывает текущий.
-                        // Телефон официально не поддерживается — кнопка залита
-                        // (путь к руту единственный); иначе — обычный контур
-                        // Material без усиленной обводки (в светлой теме
-                        // контрастный контур выглядел лишним)
-                        AnimatedVisibility(
-                            visible = state.customPayload == null,
-                            enter = expandVertically(tween(260)) + fadeIn(tween(260)),
-                            exit = shrinkVertically(tween(200)) + fadeOut(tween(200)),
-                        ) {
-                            // Заливка (акцент) — только когда рут-кнопка
-                            // НЕАКТИВНА и метода нет (устройство не
-                            // поддерживается); при активной рут-кнопке —
-                            // просто контур
-                            val dfOkPick = state.device?.dirtyfragCompatible() == DeviceInfo.DfCompat.OK
-                            val filled = state.catalogState == CatalogState.READY &&
-                                state.payload == null && !dfOkPick
-                            AnimatedContent(
-                                targetState = filled,
-                                transitionSpec = { fadeIn(tween(200)) togetherWith fadeOut(tween(150)) },
-                                label = "pickStyle",
-                            ) { isFilled ->
-                                if (isFilled) {
-                                    Button(
-                                        onClick = onPickPayload,
-                                        enabled = !state.flowRunning,
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .padding(top = 10.dp),
-                                        shape = MaterialTheme.shapes.large,
-                                    ) {
-                                        Icon(Icons.Rounded.FolderOpen, null, modifier = Modifier.size(16.dp))
-                                        Spacer(Modifier.width(6.dp))
-                                        Text(stringResource(R.string.home_pick_payload), maxLines = 1)
-                                    }
-                                } else {
-                                    // В тёмной теме — усиленный контрастный контур,
-                                    // в светлой — обычный Material-контур
-                                    OutlinedButton(
-                                        onClick = onPickPayload,
-                                        enabled = !state.flowRunning,
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .padding(top = 10.dp),
-                                        shape = MaterialTheme.shapes.large,
-                                        border = if (isDark) {
-                                            BorderStroke(1.5.dp, MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f))
-                                        } else {
-                                            BorderStroke(1.dp, MaterialTheme.colorScheme.outline)
-                                        },
-                                    ) {
-                                        Icon(Icons.Rounded.FolderOpen, null, modifier = Modifier.size(16.dp))
-                                        Spacer(Modifier.width(6.dp))
-                                        Text(stringResource(R.string.home_pick_payload), maxLines = 1)
-                                    }
-                                }
-                            }
-                        }
                         // Бейдж ADB-закрепления: порт 5555 persist'нут, канал жив.
                         // Показывается только при активном канале — для первого
                         // запуска ничего не нужно, бейджа нет.
@@ -987,6 +847,7 @@ private fun InfoGroup(
     state: UiState,
     onOpenLastLog: () -> Unit,
     onKsuClick: () -> Unit,
+    onOpenPayload: () -> Unit = {},
 ) {
     SettingsGroup {
         // Рут-менеджер
@@ -1025,6 +886,14 @@ private fun InfoGroup(
                 state.payload != null || state.customPayload != null || dfOk -> Icons.Rounded.Verified
                 state.catalogState == CatalogState.READY -> Icons.Rounded.SearchOff
                 else -> Icons.Rounded.Search
+            },
+            // Строка кликабельна: открывает окно пейлоада (метод + кастомный .so)
+            onClick = onOpenPayload,
+            trailing = {
+                Icon(
+                    Icons.AutoMirrored.Rounded.KeyboardArrowRight, null,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
             },
         )
         SettingsDivider()

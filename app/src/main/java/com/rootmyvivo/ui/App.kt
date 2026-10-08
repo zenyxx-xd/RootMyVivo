@@ -60,6 +60,7 @@ private sealed interface RmvRoute : top.yukonga.miuix.kmp.nav.core.NavKey {
     @Serializable data object Theme : RmvRoute
     @Serializable data object About : RmvRoute
     @Serializable data object Supported : RmvRoute
+    @Serializable data object Payload : RmvRoute
     @Serializable data object Faq : RmvRoute
     @Serializable data object Other : RmvRoute
     @Serializable data object LogHistory : RmvRoute
@@ -146,6 +147,7 @@ fun App(vm: MainViewModel, state: UiState) {
                     state = state,
                     onRootStarted = { flowOpen = true },
                     onOpenSupported = { pushRoute(RmvRoute.Supported) },
+                    onOpenPayload = { pushRoute(RmvRoute.Payload) },
                     onOpenLastLog = { pushRoute(RmvRoute.LogHistory) },
                     onOpenFaq = { pushRoute(RmvRoute.Faq) },
                     onOpenTheme = { pushRoute(RmvRoute.Theme) },
@@ -161,6 +163,13 @@ fun App(vm: MainViewModel, state: UiState) {
             }
             entry<RmvRoute.Supported>(swipeDismiss = NavSwipeDirection.LeftToRight) {
                 com.rootmyvivo.ui.home.SupportedDevicesScreen(
+                    state = state,
+                    onClose = onBack,
+                )
+            }
+            entry<RmvRoute.Payload>(swipeDismiss = NavSwipeDirection.LeftToRight) {
+                com.rootmyvivo.ui.home.PayloadScreen(
+                    vm = vm,
                     state = state,
                     onClose = onBack,
                 )
@@ -262,6 +271,7 @@ private fun MainScaffold(
     onRootStarted: () -> Unit,
     onOpenLastLog: () -> Unit,
     onOpenSupported: () -> Unit,
+    onOpenPayload: () -> Unit = {},
     onOpenFaq: () -> Unit,
     onOpenTheme: () -> Unit,
     onOpenAbout: () -> Unit,
@@ -301,6 +311,7 @@ private fun MainScaffold(
                         onRootStarted = onRootStarted,
                         onOpenLastLog = onOpenLastLog,
                         onOpenSupported = onOpenSupported,
+                        onOpenPayload = onOpenPayload,
                         onOpenFaq = onOpenFaq,
                     )
                     else -> SettingsScreen(

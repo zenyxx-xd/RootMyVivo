@@ -49,7 +49,7 @@
     <string name="flow_manager_missing">Менеджер не найден</string>
     <string name="flow_autoclose">Страница закроется через %1$d с</string>
     <string name="flow_open_manager">Открыть %1$s</string>
-    <string name="flow_success">ROOT ПОЛУЧЕН!</string>
+    <string name="flow_success">ROOT ПОЛУЧЕН</string>
     <string name="flow_success_desc">Root активен и восстановится сам после перезагрузки</string>
     <string name="flow_failed">Не удалось получить root</string>
     <string name="action_back">Назад</string>
@@ -156,6 +156,7 @@
     <string name="hint_download">Проверь интернет-соединение и попробуй снова</string>
     <string name="hint_deploy">Попробуй ещё раз</string>
     <string name="hint_exploit">Это лотерея таймингов — перезагрузи телефон и попробуй снова</string>
+    <string name="hint_df">Скорее всего ваше ядро не поддерживается</string>
     <string name="hint_timeout">Перезагрузи телефон и попробуй ещё раз</string>
     <string name="hint_ksu">Перезагрузка userspace может активировать модуль</string>
     <!-- Предупреждение -->
@@ -204,6 +205,15 @@
     <string name="home_restart_exploit">Перезапустить эксплойт</string>
     <string name="home_supported_devices">Поддерживаемые устройства</string>
     <string name="supported_title">Поддерживаемые устройства</string>
+    <string name="payload_screen_title">Пейлоад</string>
+    <string name="payload_method_title">Метод рута</string>
+    <string name="payload_method_auto">Авто</string>
+    <string name="payload_method_auto_df">DirtyFrag — применим на вашем ядре, используется первым</string>
+    <string name="payload_method_auto_gl">DirtyFrag не применим — используется GhostLock</string>
+    <string name="payload_method_df_ok">Применим на вашем ядре (экспериментально)</string>
+    <string name="payload_method_df_unsupported">Не применим на вашем ядре</string>
+    <string name="payload_method_gl">Пейлоад из каталога под вашу сборку ядра</string>
+    <string name="payload_custom_title">Кастомный payload.so</string>
     <string name="supported_count">%1$d устройств · %2$d ядер</string>
     <string name="supported_your">Ваше устройство</string>
     <string name="supported_temporarily_disabled">Устройство временно отключено</string>
