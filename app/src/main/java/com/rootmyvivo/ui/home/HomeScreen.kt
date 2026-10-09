@@ -869,6 +869,11 @@ private fun InfoGroup(
         val dfOk = state.device?.dirtyfragCompatible() == DeviceInfo.DfCompat.OK
         val method = state.settings.rootMethod
         val routeSuffix = state.payload?.build?.route?.let { " · $it" } ?: ""
+        // Ядро с git-id: «в списке есть, но сборка другая» видно сразу
+        val homeKernelShort = state.device?.kernelShort.orEmpty()
+        val homeId5 = Regex("""(?:android\d+-\d+-g?)?([0-9a-f]{5,8})$""")
+            .find(state.device?.kernel.orEmpty())?.groupValues?.get(1)?.take(5)
+        val homeKernelLabel = if (homeId5 != null) "$homeKernelShort-$homeId5" else homeKernelShort
         SettingsRow(
             title = stringResource(R.string.status_payload),
             description = when {
@@ -882,9 +887,11 @@ private fun InfoGroup(
                 dfOk -> "DirtyFrag"
                 state.catalogState == CatalogState.LOADING ->
                     stringResource(R.string.payload_short_searching)
-                // каталог загружен, но записи для этого устройства нет —
-                // «поиск» больше не идёт, честно говорим «не найден»
-                state.catalogState == CatalogState.READY -> stringResource(R.string.payload_not_found)
+                // Ни DF, ни GL: точная причина с git-id сборки ядра
+                state.catalogState == CatalogState.READY && !state.deviceInCatalog ->
+                    stringResource(R.string.home_btn_unsupported_device)
+                state.catalogState == CatalogState.READY ->
+                    stringResource(R.string.home_btn_unsupported_kernel, homeKernelLabel)
                 else -> stringResource(R.string.catalog_error)
             },
             icon = when {

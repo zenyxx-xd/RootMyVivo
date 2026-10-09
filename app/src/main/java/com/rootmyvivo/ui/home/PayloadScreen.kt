@@ -73,16 +73,28 @@ fun PayloadScreen(
 
     // Доступность GhostLock: живая сборка в каталоге под это ядро
     val glAvailable = state.payload != null
+    // Ядро с git-id (5 символов, как чипы в поддерживаемых): по нему видно
+    // точную сборку — «ядро в списке есть, но сборка другая» больше не тайна
+    val kernelShort = state.device?.kernelShort.orEmpty()
+    val id5 = Regex("""(?:android\d+-\d+-g?)?([0-9a-f]{5,8})$""")
+        .find(state.device?.kernel.orEmpty())?.groupValues?.get(1)?.take(5)
+    val kernelLabel = if (id5 != null) "$kernelShort-$id5" else kernelShort
     // Причина недоступности GL — как на главной кнопке: тела нет в каталоге
-    // или ядро без сборки
+    // или ядро без сборки (с git-id)
     val glUnavailableText = when {
         state.catalogState == CatalogState.LOADING -> stringResource(R.string.payload_short_searching)
         state.catalogState != CatalogState.READY -> stringResource(R.string.catalog_error)
         !state.deviceInCatalog -> stringResource(R.string.home_btn_unsupported_device)
-        else -> stringResource(
-            R.string.home_btn_unsupported_kernel,
-            state.device?.kernelShort.orEmpty(),
-        )
+        else -> stringResource(R.string.home_btn_unsupported_kernel, kernelLabel)
+    }
+    // DF: привязки к девайсам нет — только ядро (с git-id)
+    val dfAvailable = state.device?.dirtyfragCompatible() == DeviceInfo.DfCompat.OK
+    val dfUnavailableText = stringResource(R.string.home_btn_unsupported_kernel, kernelLabel)
+    // Авто: что реально будет использоваться (DF — первый приоритет)
+    val autoText = when {
+        dfAvailable -> stringResource(R.string.payload_method_auto_df)
+        glAvailable -> stringResource(R.string.payload_method_auto_gl)
+        else -> stringResource(R.string.payload_method_auto_none)
     }
 
     val methodLabel = when (state.settings.rootMethod) {
@@ -211,25 +223,23 @@ fun PayloadScreen(
     }
 
     if (methodDialog) {
-        val dfOk = state.device?.dirtyfragCompatible() == DeviceInfo.DfCompat.OK
         ChoiceDialog(
             title = stringResource(R.string.payload_method_title),
             closeLabel = stringResource(R.string.action_close),
             onDismiss = { methodDialog = false },
             items = listOf(
+                // Авто всегда активно — это авто: выберет то, что доступно
                 ChoiceDialogItem(
                     label = stringResource(R.string.payload_method_auto),
-                    description = stringResource(
-                        if (dfOk) R.string.payload_method_auto_df else R.string.payload_method_auto_gl,
-                    ),
+                    description = autoText,
                     selected = state.settings.rootMethod == RootMethod.AUTO,
                 ),
                 ChoiceDialogItem(
                     label = "DirtyFrag",
-                    description = stringResource(
-                        if (dfOk) R.string.payload_method_df_ok else R.string.payload_method_df_unsupported,
-                    ),
+                    description = if (dfAvailable) stringResource(R.string.payload_method_df_ok)
+                    else dfUnavailableText,
                     selected = state.settings.rootMethod == RootMethod.DIRTYFRAG,
+                    enabled = dfAvailable,
                 ),
                 ChoiceDialogItem(
                     label = "GhostLock",
@@ -240,7 +250,8 @@ fun PayloadScreen(
                 ),
             ),
             onSelect = { idx ->
-                // GhostLock недоступен (нет сборки в каталоге) — выбор игнорируем
+                // Недоступные варианты не выбираются (серые)
+                if (idx == 1 && !dfAvailable) return@ChoiceDialog
                 if (idx == 2 && !glAvailable) return@ChoiceDialog
                 val m = RootMethod.entries.getOrNull(idx) ?: return@ChoiceDialog
                 vm.updateSettings { it.copy(rootMethod = m) }

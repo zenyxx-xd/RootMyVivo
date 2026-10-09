@@ -197,6 +197,7 @@
     <string name="payload_method_auto">自动</string>
     <string name="payload_method_auto_df">DirtyFrag 适用于您的内核，优先使用</string>
     <string name="payload_method_auto_gl">DirtyFrag 不适用 — 使用 GhostLock</string>
+    <string name="payload_method_auto_none">没有可用的受支持方法</string>
     <string name="payload_method_df_ok">适用于您的内核（实验性）</string>
     <string name="payload_method_df_unsupported">不适用于您的内核</string>
     <string name="payload_method_gl">来自目录的内核构建负载</string>

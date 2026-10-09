@@ -197,6 +197,7 @@
     <string name="payload_method_auto">Auto</string>
     <string name="payload_method_auto_df">DirtyFrag is applicable on your kernel, used first</string>
     <string name="payload_method_auto_gl">DirtyFrag is not applicable — GhostLock is used</string>
+    <string name="payload_method_auto_none">No supported method available</string>
     <string name="payload_method_df_ok">Applicable on your kernel (experimental)</string>
     <string name="payload_method_df_unsupported">Not applicable on your kernel</string>
     <string name="payload_method_gl">Payload from the catalog for your kernel build</string>
