@@ -316,6 +316,37 @@ class KsuInstaller(
      * грузить kernelsu.ko НЕЛЬЗЯ (дубликат в ядре, vermagic-промахи). Только
      * проверка su, установка менеджера и закрепление adb.
      */
+    /**
+     * DirtyFrag: докачать APK менеджера ДО запуска эксплойта — бутстрап
+     * поставит его сам из root-контекста (pm install), где su-деплой и
+     * системный установщик из фона не работают. Тихо, без лог-событий.
+     */
+    suspend fun stageManagerApkForDf(variant: KsuVariant): File? =
+        withContext(Dispatchers.IO) {
+            try {
+                val dpCtx = ctx.createDeviceProtectedStorageContext()
+                val dpDir = dpCtx.filesDir.parentFile ?: return@withContext null
+                val apk = File(dpDir, "manager.apk")
+                // Уже скачан и валиден — не качаем повторно
+                if (apk.exists() && apk.length() > 1_000_000) return@withContext apk
+                apk.delete()
+                for ((_, url) in managerApkCandidates(variant)) {
+                    if (!download(url, apk.absolutePath)) continue
+                    val pkg = try {
+                        ctx.packageManager.getPackageArchiveInfo(apk.absolutePath, 0)?.packageName
+                    } catch (_: Exception) { null } ?: run {
+                        apk.delete(); null
+                    }
+                    if (pkg != null && apk.length() > 1_000_000) return@withContext apk
+                    apk.delete()
+                }
+                null
+            } catch (e: Exception) {
+                Log.w(TAG, "stageManagerApkForDf failed: ${e.message}")
+                null
+            }
+        }
+
     suspend fun installManagerOnly(variant: KsuVariant): KsuResult =
         withContext(Dispatchers.IO) {
             val prefs = com.rootmyvivo.data.Prefs(ctx)
@@ -338,27 +369,40 @@ class KsuInstaller(
             if (installed) {
                 log(R.string.log_manager_already, LogLevel.OK, variant.displayName)
             } else {
-                // 2) Скачать APK и открыть СИСТЕМНЫЙ установщик: su-деплой
-                // тут невозможен — su-бинарник живёт в менеджере, без него
-                // «deploy manager.apk» всегда fail (курица и яйцо)
-                progress(R.string.log_manager_download, variant.displayName)
+                // 2) Основной путь: бутстрам УЖЕ поставил менеджер из
+                // root-контекста (pm install над докачанным APK). Если по
+                // какой-то причине не поставил — остался артефакт в dp-папке:
+                // дожимаем его системным установщиком (su-деплой тут
+                // невозможен — su-бинарник живёт в самом менеджере)
+                val dpCtx = ctx.createDeviceProtectedStorageContext()
+                val dpDir = dpCtx.filesDir.parentFile
+                val staged = dpDir?.let { File(it, "manager.apk") }
+                    ?.takeIf { it.exists() && it.length() > 1_000_000 }
                 var apkFile: File? = null
                 var actualPkg: String? = null
-                for ((_, url) in managerApkCandidates(variant)) {
-                    val apk = File(workDir, "manager.apk")
-                    apk.delete()
-                    if (!download(url, apk.absolutePath)) continue
-                    val pkg = try {
-                        ctx.packageManager.getPackageArchiveInfo(apk.absolutePath, 0)?.packageName
-                    } catch (_: Exception) { null } ?: continue
-                    if (isPackageInstalled(pkg)) {
+                if (staged != null) {
+                    apkFile = staged
+                    actualPkg = try {
+                        ctx.packageManager.getPackageArchiveInfo(staged.absolutePath, 0)?.packageName
+                    } catch (_: Exception) { null }
+                } else {
+                    progress(R.string.log_manager_download, variant.displayName)
+                    for ((_, url) in managerApkCandidates(variant)) {
+                        val apk = File(workDir, "manager.apk")
                         apk.delete()
-                        installed = true
+                        if (!download(url, apk.absolutePath)) continue
+                        val pkg = try {
+                            ctx.packageManager.getPackageArchiveInfo(apk.absolutePath, 0)?.packageName
+                        } catch (_: Exception) { null } ?: continue
+                        if (isPackageInstalled(pkg)) {
+                            apk.delete()
+                            installed = true
+                            break
+                        }
+                        apkFile = apk
+                        actualPkg = pkg
                         break
                     }
-                    apkFile = apk
-                    actualPkg = pkg
-                    break
                 }
                 if (apkFile != null && actualPkg != null) {
                     onEvent(FlowEvent.Complete(true))
