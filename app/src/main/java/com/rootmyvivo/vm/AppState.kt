@@ -103,6 +103,8 @@ data class UiState(
     val flowPhase: Phase? = null,
     val stepIndex: Int = 0,
     val stepTotal: Int = 6,
+    /** Прогресс процесса в процентах: двигается лог-событиями по весам */
+    val flowPercent: Int = 0,
     val downloadProgress: Float? = null,
     val log: List<LogEntry> = emptyList(),
     val exploitLive: ExploitLiveState = ExploitLiveState(),

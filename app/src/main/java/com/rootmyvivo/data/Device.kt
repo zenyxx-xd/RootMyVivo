@@ -35,7 +35,8 @@ data class DeviceInfo(
         val patchedFrom = when {
             maj == 5 && min == 10 -> 255
             maj == 5 && min == 15 -> 205
-            maj == 6 && min == 6 -> 138
+            // 6.6.127+: фикс уже в виво-сборках — по полевым логам verify FAILED
+            maj == 6 && min == 6 -> 127
             maj == 6 && min == 12 -> 87
             maj == 6 && min == 18 -> 29
             maj >= 7 -> if (maj == 7 && min == 0) 6 else 0

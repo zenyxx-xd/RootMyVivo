@@ -253,6 +253,10 @@ fun App(vm: MainViewModel, state: UiState) {
                 onRetry = { vm.startRoot() },
                 onSoftReboot = { vm.performSoftReboot() },
                 onDismissSoftReboot = { vm.dismissSoftReboot() },
+                onStopConfirmed = { dontShow ->
+                    if (dontShow) vm.updateSettings { it.copy(exploitStopConfirmDismissed = true) }
+                    vm.stopRoot()
+                },
             )
         }
 

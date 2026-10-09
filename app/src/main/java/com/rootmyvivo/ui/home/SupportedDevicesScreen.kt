@@ -160,8 +160,8 @@ fun SupportedDevicesScreen(
                                 animationSpec = tween(300, easing = FastOutSlowInEasing),
                             ) + fadeIn(tween(300, easing = FastOutSlowInEasing)),
                         ) {
-                            // После карточки пользователя — увеличенный отступ
-                            // до следующего тела
+                            // После карточки пользователя — таблица
+                            // поддержки DirtyFrag по веткам ядер
                             Column {
                                 DeviceRow(
                                     device = device,
@@ -171,6 +171,10 @@ fun SupportedDevicesScreen(
                                     currentBuild = if (mine) myBuildId ?: state.payload?.build?.id else null,
                                     buildsById = cat.builds,
                                 )
+                                if (mine) {
+                                    Spacer(Modifier.height(12.dp))
+                                    DirtyFragTableCard()
+                                }
                                 if (mine) Spacer(Modifier.height(12.dp))
                             }
                         }
@@ -178,6 +182,72 @@ fun SupportedDevicesScreen(
                 }
             }
             Spacer(Modifier.height(24.dp))
+        }
+    }
+}
+
+/**
+ * Таблица поддержки DirtyFrag по веткам ядер: до какого патча ветка
+ * уязвима. 6.6.127+ — уже пропатчено (полевые логи vivo). Таблица
+ * действительна только для vivo и может быть неточной.
+ */
+@Composable
+private fun DirtyFragTableCard() {
+    data class Row(val kernel: String, val status: String, val active: Boolean)
+    val rows = listOf(
+        Row("5.10", stringResource(R.string.df_table_active, "5.10.250"), true),
+        Row("5.15", stringResource(R.string.df_table_active, "5.15.200"), true),
+        Row("6.1", stringResource(R.string.df_table_dead), false),
+        Row("6.6", stringResource(R.string.df_table_active, "6.6.126"), true),
+        Row("6.6.127+", stringResource(R.string.df_table_patched, "6.6.127"), false),
+        Row("6.12", stringResource(R.string.df_table_active, "6.12.60"), true),
+        Row("6.18", stringResource(R.string.df_table_active, "6.18.28"), true),
+    )
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = MaterialTheme.shapes.large,
+        color = MaterialTheme.colorScheme.surfaceContainerLow,
+    ) {
+        Column(
+            Modifier.padding(horizontal = 16.dp, vertical = 14.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
+            Text(
+                "DirtyFrag",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.onSurface,
+            )
+            HorizontalDivider(
+                modifier = Modifier.padding(top = 8.dp, bottom = 4.dp),
+                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f),
+            )
+            rows.forEach { r ->
+                Row(Modifier.fillMaxWidth()) {
+                    Text(
+                        r.kernel,
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontFamily = FontFamily.Monospace,
+                        fontWeight = FontWeight.SemiBold,
+                        modifier = Modifier.width(90.dp),
+                    )
+                    Text(
+                        r.status,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = if (r.active) {
+                            MaterialTheme.colorScheme.primary
+                        } else {
+                            MaterialTheme.colorScheme.error
+                        },
+                    )
+                }
+            }
+            Spacer(Modifier.height(6.dp))
+            Text(
+                stringResource(R.string.df_table_note),
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.75f),
+            )
         }
     }
 }

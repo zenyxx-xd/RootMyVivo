@@ -113,8 +113,6 @@ fun HomeScreen(
     var warnDialog by remember { mutableStateOf(false) }
     var confirmAction by remember { mutableStateOf(false) }
     // Диалог остановки эксплойта — анти-мисклик, чекер «не показывать» в нём
-    var stopDialog by remember { mutableStateOf(false) }
-    var stopDontShow by remember { mutableStateOf(false) }
     // Чекеры «больше не показывать» — локальные: фиксируются только кнопкой
     // действия. Отмена оставляет настройку нетронутой
     var warnDontShow by remember { mutableStateOf(false) }
@@ -248,25 +246,6 @@ fun HomeScreen(
                 }
             },
         )
-        // Принудительная остановка во время выполнения — под главным статусом.
-        // Подтверждение можно отключить чекером в диалоге
-        if (state.flowRunning) {
-            OutlinedButton(
-                onClick = {
-                    if (state.settings.exploitStopConfirmDismissed) {
-                        vm.stopRoot()
-                    } else {
-                        stopDialog = true
-                    }
-                },
-                modifier = Modifier.fillMaxWidth(),
-                shape = MaterialTheme.shapes.large,
-            ) {
-                Icon(Icons.Rounded.StopCircle, null, modifier = Modifier.size(16.dp))
-                Spacer(Modifier.width(6.dp))
-                Text(stringResource(R.string.home_stop_exploit), maxLines = 1)
-            }
-        }
         // Действие при активном руте: перезагрузка userspace (как на iOS),
         // с подтверждением против мискликов. Перезапуск эксплойта остался
         // в меню разработчика
@@ -383,58 +362,6 @@ fun HomeScreen(
         )
     }
 
-    // Подтверждение остановки эксплойта — анти-мисклик, как у «Получить рут»:
-    // объясняем последствия, чекер фиксируется только подтверждением
-    if (stopDialog) {
-        androidx.compose.material3.AlertDialog(
-            onDismissRequest = { stopDialog = false },
-            title = {
-                Text(
-                    stringResource(R.string.home_stop_title),
-                    fontWeight = FontWeight.Bold,
-                )
-            },
-            text = {
-                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Text(
-                        stringResource(R.string.home_stop_text),
-                        style = MaterialTheme.typography.bodyMedium,
-                    )
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.padding(start = 8.dp),
-                    ) {
-                        androidx.compose.material3.Checkbox(
-                            checked = stopDontShow,
-                            onCheckedChange = { stopDontShow = it },
-                        )
-                        Text(
-                            stringResource(R.string.warn_dont_show),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
-                }
-            },
-            confirmButton = {
-                Button(onClick = {
-                    if (stopDontShow) {
-                        vm.updateSettings { it.copy(exploitStopConfirmDismissed = true) }
-                    }
-                    stopDialog = false
-                    vm.stopRoot()
-                }) {
-                    Text(stringResource(R.string.home_stop_go))
-                }
-            },
-            dismissButton = {
-                androidx.compose.material3.TextButton(onClick = { stopDialog = false }) {
-                    Text(stringResource(R.string.warn_cancel))
-                }
-            },
-            shape = MaterialTheme.shapes.extraLarge,
-        )
-    }
 
     // Меню выбора рут-менеджера — как в настройках, без закрытия после выбора
     if (ksuDialog) {

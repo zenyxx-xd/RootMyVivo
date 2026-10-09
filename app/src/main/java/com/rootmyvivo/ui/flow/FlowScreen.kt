@@ -26,6 +26,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.animation.fadeIn
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material.icons.rounded.StopCircle
 import androidx.compose.material.icons.rounded.Warning
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
@@ -112,6 +113,8 @@ fun FlowScreen(
     onRetry: () -> Unit,
     onSoftReboot: () -> Unit,
     onDismissSoftReboot: () -> Unit,
+    /** Полная остановка эксплойта: dontShow — зафиксировать «больше не спрашивать» */
+    onStopConfirmed: (dontShow: Boolean) -> Unit = { _ -> },
     /** Туман (размытие + непрозрачность) в потоке лога; просмотр лога — без него */
     fog: Boolean = true,
 ) {
@@ -192,12 +195,6 @@ fun FlowScreen(
                     .padding(horizontal = 0.dp),
                 verticalArrangement = Arrangement.spacedBy(14.dp),
             ) {
-            Spacer(Modifier.height(4.dp))
-
-            Box(Modifier.padding(horizontal = 20.dp)) {
-                StatusCard(state, onRetry, onClose, canClose)
-            }
-
             // Поток лога (Dopamine-стиль): новые снизу, туман у самого верха
             if (state.log.isNotEmpty()) {
                 LogStream(
@@ -216,7 +213,11 @@ fun FlowScreen(
                 Spacer(Modifier.weight(1f))
             }
 
-            Spacer(Modifier.height(12.dp))
+            // Статус — ВНИЗУ: без фона в рабочем состоянии, проценты у бара,
+            // стоп-кнопка; на успехе/провале трансформируется в карточки
+            Box(Modifier.padding(horizontal = 20.dp)) {
+                StatusCard(state, onRetry, onClose, canClose, onStopConfirmed)
+            }
             }
         }
     }
@@ -234,7 +235,13 @@ private enum class StatusKind { RUNNING, SUCCESS, FAILURE }
  * отдельной карточкой. Дизайн до/после — ровно прежний.
  */
 @Composable
-private fun StatusCard(state: UiState, onRetry: () -> Unit, onClose: () -> Unit, canClose: Boolean) {
+private fun StatusCard(
+    state: UiState,
+    onRetry: () -> Unit,
+    onClose: () -> Unit,
+    canClose: Boolean,
+    onStopConfirmed: (dontShow: Boolean) -> Unit,
+) {
     if (!state.flowRunning && state.flowResult == null) return
     val kind = when {
         state.flowResult is FlowResult.Success -> StatusKind.SUCCESS
@@ -259,22 +266,28 @@ private fun StatusCard(state: UiState, onRetry: () -> Unit, onClose: () -> Unit,
         label = "statusCard",
     ) { k ->
         when (k) {
-            StatusKind.RUNNING -> RunningCard(state)
+            StatusKind.RUNNING -> RunningCard(state, onStopConfirmed)
             StatusKind.SUCCESS -> SuccessCard(state, onClose, canClose)
             StatusKind.FAILURE -> FailureCard(state, onRetry)
         }
     }
 }
 
+/**
+ * Рабочее состояние — без фона, всё по центру: название фазы, бар с
+ * процентами справа от него, ниже кнопка полной остановки (на её месте
+ * после успеха окажутся две кнопки карточки успеха).
+ */
 @Composable
-private fun RunningCard(state: UiState) {
-    Surface(
-        modifier = Modifier.fillMaxWidth(),
-        shape = MaterialTheme.shapes.large,
-        color = MaterialTheme.colorScheme.surfaceContainerLow,
+private fun RunningCard(state: UiState, onStopConfirmed: (dontShow: Boolean) -> Unit) {
+    var stopDialog by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf(false) }
+    var stopDontShow by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf(false) }
+
+    Column(
+        Modifier.fillMaxWidth(),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
-        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
         // Плавная смена названия фазы (slide up/down)
         AnimatedContent(
             targetState = state.flowPhase,
@@ -300,25 +313,97 @@ private fun RunningCard(state: UiState) {
                 fontWeight = FontWeight.SemiBold,
             )
         }
-        Text(
-            "${state.stepIndex}/${state.stepTotal}",
-            style = MaterialTheme.typography.labelMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        }
-        // Заливка бара анимируется: при смене шага полоска плавно едет к
-        // нужной позиции, а не пролетает мгновенно
+        // Бар + проценты у его правого конца; заливка анимируется
         val progress by animateFloatAsState(
-            targetValue = if (state.stepTotal > 0) state.stepIndex.toFloat() / state.stepTotal else 0f,
+            targetValue = state.flowPercent / 100f,
             animationSpec = tween(320),
             label = "stepProgress",
         )
-        LinearProgressIndicator(
-            progress = { progress },
-            modifier = Modifier.fillMaxWidth(),
-            strokeCap = StrokeCap.Round,
-        )
+        Row(
+            Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            LinearProgressIndicator(
+                progress = { progress },
+                modifier = Modifier.weight(1f),
+                strokeCap = StrokeCap.Round,
+            )
+            Text(
+                "${state.flowPercent}%",
+                style = MaterialTheme.typography.labelMedium,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
         }
+        // Полная остановка эксплойта — второстепенная, без заливки
+        OutlinedButton(
+            onClick = {
+                if (state.settings.exploitStopConfirmDismissed) {
+                    onStopConfirmed(false)
+                } else {
+                    stopDialog = true
+                }
+            },
+            modifier = Modifier.fillMaxWidth(),
+            shape = MaterialTheme.shapes.large,
+        ) {
+            Icon(
+                Icons.Rounded.StopCircle, null,
+                modifier = Modifier.size(16.dp),
+            )
+            Spacer(Modifier.width(6.dp))
+            Text(stringResource(R.string.home_stop_exploit), maxLines = 1)
+        }
+    }
+
+    // Подтверждение остановки — анти-мисклик: последствия объясняем,
+    // чекер фиксируется только подтверждением
+    if (stopDialog) {
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = { stopDialog = false },
+            title = {
+                Text(
+                    stringResource(R.string.home_stop_title),
+                    fontWeight = FontWeight.Bold,
+                )
+            },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Text(
+                        stringResource(R.string.home_stop_text),
+                        style = MaterialTheme.typography.bodyMedium,
+                    )
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.padding(start = 8.dp),
+                    ) {
+                        androidx.compose.material3.Checkbox(
+                            checked = stopDontShow,
+                            onCheckedChange = { stopDontShow = it },
+                        )
+                        Text(
+                            stringResource(R.string.warn_dont_show),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
+            },
+            confirmButton = {
+                androidx.compose.material3.TextButton(onClick = {
+                    stopDialog = false
+                    onStopConfirmed(stopDontShow)
+                }) {
+                    Text(stringResource(R.string.home_stop_go))
+                }
+            },
+            dismissButton = {
+                androidx.compose.material3.TextButton(onClick = { stopDialog = false }) {
+                    Text(stringResource(R.string.warn_cancel))
+                }
+            },
+        )
     }
 }
 

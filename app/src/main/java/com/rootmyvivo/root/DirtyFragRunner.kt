@@ -24,6 +24,18 @@ import java.net.InetAddress
  */
 class DirtyFragRunner {
 
+    /** Живой процесс натива — для полной остановки по кнопке. */
+    @Volatile private var proc: Process? = null
+
+    /** Полная остановка: убить натив DirtyFrag. Страница-кэш патчи,
+     *  не дошедшие до cleanup, живут до перезагрузки — как у GL-стопа. */
+    fun cancel() {
+        try {
+            proc?.destroy()
+        } catch (_: Exception) {
+        }
+    }
+
     private companion object {
         val SU_MANAGERS = listOf(
             "me.weishu.kernelsu",
@@ -147,6 +159,7 @@ class DirtyFragRunner {
             val pb = ProcessBuilder(cmd)
             pb.redirectErrorStream(true)
             val p = pb.start()
+            proc = p
             p.inputStream.bufferedReader().forEachLine { onLine(it) }
             return p.waitFor()
         } finally {

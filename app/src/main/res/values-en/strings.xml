@@ -82,6 +82,7 @@
     <string name="flow_fail_other">Unknown error</string>
             <string name="log_df_root_iface">DirtyFrag root interface loaded, installing KernelSU manager</string>
             <string name="log_df_wait_manager">Waiting for the manager install confirmation…</string>
+            <string name="log_df_manager_stage_fail">Manager not preloaded — install will go through the system installer</string>
     <string name="home_method_df">DirtyFrag • universal</string>
     <string name="status_payload">Exploit</string>
     <string name="confirm_softreboot_text">A userspace reboot will restart the system interface: apps will close, no data will be lost.</string>
@@ -192,6 +193,10 @@
     <!-- Home -->
     <string name="home_restart_exploit">Restart exploit</string>
     <string name="home_supported_devices">Supported devices</string>
+    <string name="df_table_active">Active up to %1$s</string>
+    <string name="df_table_patched">Patched since %1$s</string>
+    <string name="df_table_dead">Not supported</string>
+    <string name="df_table_note">This table is valid for vivo devices only and may be inaccurate</string>
     <string name="supported_title">Supported devices</string>
     <string name="payload_screen_title">Exploit</string>
     <string name="payload_method_title">Root method</string>

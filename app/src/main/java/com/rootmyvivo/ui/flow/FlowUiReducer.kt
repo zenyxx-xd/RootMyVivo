@@ -47,16 +47,42 @@ class FlowUiReducer(private val ctx: Context) {
             ctx.getString(R.string.log_exploit_start)
         }
 
+    /** Проценты по фазам: база фазы — стартовое значение при её начале */
+    private fun phaseBase(phase: Phase?): Int = when (phase) {
+        Phase.CATALOG -> 2
+        Phase.PAYLOAD -> 5
+        Phase.DOWNLOAD -> 10
+        Phase.DEPLOY -> 35
+        Phase.EXPLOIT -> 50
+        Phase.KSU -> 88
+        null -> 1
+    }
+
+    /** Прирост процента по типу события (важность/приоритет) */
+    private fun bump(s: UiState, delta: Int): UiState =
+        s.copy(flowPercent = (s.flowPercent + delta).coerceIn(0, 99))
+
     fun apply(s: UiState, event: FlowEvent): UiState = when (event) {
         is FlowEvent.Step -> s.copy(
             flowPhase = event.phase,
             stepIndex = event.index,
             stepTotal = event.total,
             downloadProgress = null, // новый шаг — прогресс загрузки сброшен
+            // Новая фаза: проценты как минимум на её базе (вперёд — да,
+            // назад — нет: повторные Step той же фазы не откатывают)
+            flowPercent = maxOf(s.flowPercent, phaseBase(event.phase)),
         )
 
-        is FlowEvent.Log -> s.copy(
-            log = s.log + LogEntry(nextLogId(), event.line, event.level),
+        is FlowEvent.Log -> bump(
+            s.copy(
+                log = s.log + LogEntry(nextLogId(), event.line, event.level),
+            ),
+            // вес по важности: успех тяжелее информационной строки
+            when (event.level) {
+                LogLevel.OK -> 2
+                LogLevel.WARN, LogLevel.ERROR -> 1
+                else -> 1
+            },
         )
 
         is FlowEvent.Progress -> {
@@ -66,7 +92,10 @@ class FlowUiReducer(private val ctx: Context) {
                 if (it.status == LogLevel.RUNNING) it.copy(status = LogLevel.OK) else it
             }
             val kind = if (event.exploit) LogKind.EXPLOIT else LogKind.NORMAL
-            s.copy(log = closed + LogEntry(nextLogId(), event.text, LogLevel.RUNNING, kind))
+            bump(
+                s.copy(log = closed + LogEntry(nextLogId(), event.text, LogLevel.RUNNING, kind)),
+                2,
+            )
         }
 
         is FlowEvent.ProgressUpdate -> {
@@ -78,7 +107,7 @@ class FlowUiReducer(private val ctx: Context) {
 
         is FlowEvent.Complete -> {
             val idx = s.log.indexOfLast { it.status == LogLevel.RUNNING }
-            if (idx >= 0) {
+            val base = if (idx >= 0) {
                 val entry = s.log[idx]
                 val updated = entry.copy(
                     status = if (event.ok) LogLevel.OK else LogLevel.ERROR,
@@ -97,11 +126,21 @@ class FlowUiReducer(private val ctx: Context) {
             } else {
                 s
             }
+            bump(base, if (event.ok) 2 else 1)
         }
 
-        is FlowEvent.Download -> s.copy(
-            downloadProgress = if (event.total > 0) event.read.toFloat() / event.total else null,
-        )
+        is FlowEvent.Download -> {
+            val frac = if (event.total > 0) event.read.toFloat() / event.total else null
+            s.copy(
+                downloadProgress = frac,
+                // Скачивание двигает проценты внутри фазы (до базы следующей)
+                flowPercent = if (frac != null && s.flowPhase == Phase.DOWNLOAD) {
+                    maxOf(s.flowPercent, 10 + (frac * 20).toInt())
+                } else {
+                    s.flowPercent
+                },
+            )
+        }
 
         is FlowEvent.ExploitLive -> {
             val idx = s.log.indexOfLast { it.status == LogLevel.RUNNING && it.kind == LogKind.EXPLOIT }
@@ -124,13 +163,17 @@ class FlowUiReducer(private val ctx: Context) {
             val fresh = incoming.drop(k).map { LiveLogLine(++liveIdx, it) }
             val acc = (prev + fresh).takeLast(500)
             val text = exploitText(event.attempt, event.max)
-            s.copy(
-                log = if (idx >= 0) {
-                    s.log.toMutableList().apply { set(idx, s.log[idx].copy(text = text)) }
-                } else {
-                    s.log
-                },
-                exploitLive = ExploitLiveState(event.attempt, event.max, acc),
+            // Живые строки натива — тоже движение прогресса (мелкими шажками)
+            bump(
+                s.copy(
+                    log = if (idx >= 0) {
+                        s.log.toMutableList().apply { set(idx, s.log[idx].copy(text = text)) }
+                    } else {
+                        s.log
+                    },
+                    exploitLive = ExploitLiveState(event.attempt, event.max, acc),
+                ),
+                fresh.size.coerceAtMost(2),
             )
         }
 
@@ -139,6 +182,7 @@ class FlowUiReducer(private val ctx: Context) {
             rootState = RootState.ROOTED,
             downloadProgress = null,
             softRebootPrompt = event.softRebootRecommended,
+            flowPercent = 100,
         )
 
         FlowEvent.NeedsSoftReboot -> s.copy(
@@ -146,6 +190,7 @@ class FlowUiReducer(private val ctx: Context) {
             rootState = RootState.ROOTED,
             downloadProgress = null,
             softRebootPrompt = true,
+            flowPercent = 100,
         )
 
         is FlowEvent.Failure -> s.copy(

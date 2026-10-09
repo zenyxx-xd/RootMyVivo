@@ -95,6 +95,7 @@
     <string name="flow_fail_other">Неизвестная ошибка</string>
             <string name="log_df_root_iface">Root-интерфейс DirtyFrag загружен, ставлю менеджер KernelSU</string>
     <string name="log_df_wait_manager">Ожидание подтверждения установки менеджера…</string>
+    <string name="log_df_manager_stage_fail">Менеджер не докачан — установка пройдёт через системный установщик</string>
     <string name="home_method_df">DirtyFrag • универсальный</string>
     <string name="status_payload">Эксплоит</string>
     <string name="confirm_softreboot_text">Перезагрузка userspace перезапустит системный интерфейс: приложения закроются, данные не потеряются.</string>
@@ -205,6 +206,10 @@
     <!-- Главная -->
     <string name="home_restart_exploit">Перезапустить эксплойт</string>
     <string name="home_supported_devices">Поддерживаемые устройства</string>
+    <string name="df_table_active">Активен до %1$s</string>
+    <string name="df_table_patched">Пропатчено с %1$s</string>
+    <string name="df_table_dead">Не поддерживается</string>
+    <string name="df_table_note">Таблица действительна только для устройств vivo и может быть неточной</string>
     <string name="supported_title">Поддерживаемые устройства</string>
     <string name="payload_screen_title">Эксплоит</string>
     <string name="payload_method_title">Метод рута</string>
