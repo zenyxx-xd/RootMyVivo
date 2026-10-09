@@ -82,7 +82,8 @@
     <string name="flow_fail_other">Unknown error</string>
             <string name="log_df_root_iface">DirtyFrag root interface loaded, installing KernelSU manager</string>
             <string name="log_df_wait_manager">Waiting for the manager install confirmation…</string>
-            <string name="log_df_manager_stage_fail">Manager not preloaded — install will go through the system installer</string>
+                <string name="log_df_manager_manual">Manager not installed — confirm the install dialog or install manually</string>
+    <string name="log_df_manager_stage_fail">Manager not preloaded — install will go through the system installer</string>
     <string name="home_method_df">DirtyFrag • universal</string>
     <string name="status_payload">Exploit</string>
     <string name="confirm_softreboot_text">A userspace reboot will restart the system interface: apps will close, no data will be lost.</string>
@@ -175,6 +176,7 @@
 <string name="warn_dont_show">Don\'t show again</string>
     <string name="copy_log">Copy log</string>
         <string name="copied_to_clipboard">Copied to clipboard</string>
+        <string name="copy_log_button">Copy log</string>
     <string name="log_copied">Log copied to clipboard</string>
 
     <!-- App update -->
@@ -196,6 +198,11 @@
     <string name="df_table_active">Active up to %1$s</string>
     <string name="df_table_patched">Patched since %1$s</string>
     <string name="df_table_dead">Not supported</string>
+        <string name="supported_gl_section">GhostLock method</string>
+    <string name="supported_kernels">Supported kernels</string>
+    <string name="payload_available_section">Available exploits</string>
+    <string name="payload_method_used_df">DirtyFrag method is used (active up to %1$s)</string>
+    <string name="payload_method_used_gl">GhostLock method is used</string>
     <string name="supported_title">Supported devices</string>
     <string name="payload_screen_title">Exploit</string>
     <string name="payload_method_title">Root method</string>
@@ -262,6 +269,8 @@
     <string name="settings_df_all_kernels_desc">Runs the exploit on patched kernels too — the kernel module for your KMI is still required (6.1 and non-GKI stay unavailable)</string>
     <string name="other_demo_gl">Demo GhostLock</string>
     <string name="other_demo_df">Demo DirtyFrag</string>
+        <string name="other_restart_desc">Restarting the exploit is available only when root is already active</string>
+    <string name="other_demo_desc">Demo run without touching the device: shows the flow window with real logs of the selected method</string>
     <string name="other_section_process">Process</string>
 
     <!-- First-run Telegram promo -->
@@ -310,7 +319,7 @@
     <string name="faq_a_notinstalled">The KernelSU module loaded but the manager does not see it yet. Press \"Userspace reboot\" on the home screen — it usually activates the module. If it does not helping: do a full reboot, pick a different manager on the home screen and run the process again. If nothing works with any manager — write in the comments and attach the run log (see \"How to report a bug\").</string>
 
     <string name="faq_q_exploitfail">\"Exploit finished without root\" or timeout</string>
-    <string name="faq_a_exploitfail">Getting root is a timing lottery: sometimes the first attempts miss, and that is normal. Reboot the phone and try again — flipping the system \"temperature\" often helps: a fresh boot or a warmed-up device may both improve chances. Do not launch the process dozens of times in a row — give the phone a few minutes. If root still fails after about ten attempts — write in the comments with the log attached.</string>
+    <string name="faq_a_exploitfail">For DirtyFrag: if the log shows "patch #1 verify FAILED: page cache not modified", your kernel is already patched (see the support table; for 6.6 the fix ships with 6.6.127) — this method will not work on it. For GhostLock it really is a timing lottery: reboot the phone and try again, do not run it dozens of times in a row. If it keeps failing, send the log ("Copy log" button at the bottom of the flow window).</string>
 
     <string name="faq_q_appclosed">The app closed during the process</string>
     <string name="faq_a_appclosed">Nothing bad: the exploit keeps running on the device even with the app closed. Just open the app again — it detects the running process and resumes watching it and writing the log. Finished runs are always available in \"Run history\" on the home screen.</string>

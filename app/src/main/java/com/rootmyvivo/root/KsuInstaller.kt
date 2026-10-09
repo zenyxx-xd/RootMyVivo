@@ -405,6 +405,13 @@ class KsuInstaller(
                     }
                 }
                 if (apkFile != null && actualPkg != null) {
+                    // Бутстрап мог уже поставить его (root-контекст) —
+                    // тогда диалог не нужен вовсе
+                    if (isPackageInstalled(actualPkg)) {
+                        prefs.managerPackage = actualPkg
+                        complete(true, R.string.log_manager_install_ok)
+                        apkFile.delete()
+                    } else {
                     onEvent(FlowEvent.Complete(true))
                     progress(R.string.log_manager_install)
                     withContext(Dispatchers.Main) {
@@ -437,7 +444,8 @@ class KsuInstaller(
                         complete(true, R.string.log_manager_install_ok)
                         apkFile.delete()
                     } else {
-                        complete(false, R.string.log_manager_install_fail)
+                        complete(false, R.string.log_df_manager_manual)
+                    }
                     }
                 } else if (!installed) {
                     // APK не скачался — старый root-деплой как последний фолбэк

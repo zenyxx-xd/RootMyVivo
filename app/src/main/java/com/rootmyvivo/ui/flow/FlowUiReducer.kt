@@ -50,17 +50,27 @@ class FlowUiReducer(private val ctx: Context) {
     /** Проценты по фазам: база фазы — стартовое значение при её начале */
     private fun phaseBase(phase: Phase?): Int = when (phase) {
         Phase.CATALOG -> 2
-        Phase.PAYLOAD -> 5
-        Phase.DOWNLOAD -> 10
-        Phase.DEPLOY -> 35
-        Phase.EXPLOIT -> 50
-        Phase.KSU -> 88
+        Phase.PAYLOAD -> 4
+        Phase.DOWNLOAD -> 8
+        Phase.DEPLOY -> 20
+        Phase.EXPLOIT -> 30
+        Phase.KSU -> 80
         null -> 1
     }
 
-    /** Прирост процента по типу события (важность/приоритет) */
+    /** Потолок процента внутри фазы: не даём лог-событиям уехать далеко
+     *  за пределы фазы (эксплойт начинался на 80% — теперь максимум 72) */
+    private fun phaseCap(phase: Phase?): Int = when (phase) {
+        Phase.DOWNLOAD -> 18
+        Phase.DEPLOY -> 28
+        Phase.EXPLOIT -> 72
+        Phase.KSU -> 96
+        else -> 99
+    }
+
+    /** Прирост процента по типу события (важность/приоритет), с потолком фазы */
     private fun bump(s: UiState, delta: Int): UiState =
-        s.copy(flowPercent = (s.flowPercent + delta).coerceIn(0, 99))
+        s.copy(flowPercent = (s.flowPercent + delta).coerceIn(0, phaseCap(s.flowPhase)))
 
     fun apply(s: UiState, event: FlowEvent): UiState = when (event) {
         is FlowEvent.Step -> s.copy(

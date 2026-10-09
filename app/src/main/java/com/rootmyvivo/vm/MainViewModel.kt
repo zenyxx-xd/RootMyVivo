@@ -564,7 +564,27 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     /** Время старта текущего/последнего запуска — для метаданных истории. */
     private var runStartedAt = System.currentTimeMillis()
 
+    /** Момент последнего применённого события — троттлинг 0.1с: пачки
+     *  лог-строк вылетают по одной, не залпом (красиво в терминале) */
+    private var lastFlowEventAt = 0L
+
     private fun applyFlowEvent(event: FlowEvent) {
+        // Троттлинг — только для «текстовых» событий (Log/Progress/Complete);
+        // Step/Download/Success/Failure применяются мгновенно
+        val textual = event is FlowEvent.Log || event is FlowEvent.Progress ||
+            event is FlowEvent.Complete
+        if (textual) {
+            val now = System.currentTimeMillis()
+            val wait = 100L - (now - lastFlowEventAt)
+            if (wait > 0) {
+                try {
+                    Thread.sleep(wait)
+                } catch (_: InterruptedException) {
+                    Thread.currentThread().interrupt()
+                }
+            }
+            lastFlowEventAt = System.currentTimeMillis()
+        }
         var s = ui.apply(_state.value, event)
         when (event) {
             is FlowEvent.Step ->

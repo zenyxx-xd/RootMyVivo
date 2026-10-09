@@ -16,14 +16,11 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
-import androidx.compose.material.icons.rounded.Cancel
-import androidx.compose.material.icons.rounded.CheckCircle
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -51,16 +48,13 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.rootmyvivo.R
 import com.rootmyvivo.data.CatalogDevice
-import com.rootmyvivo.data.DeviceInfo
-import com.rootmyvivo.data.PayloadCatalog
 import com.rootmyvivo.vm.CatalogState
 import com.rootmyvivo.vm.UiState
 
 /**
- * Поддерживаемые устройства: три секции с подзаголовками — «Ваше устройство»
- * (карточка юзера: DF по его ветке ядра + GL-пейлоады), «Метод DirtyFrag»
- * (таблица по веткам) и «Все устройства vivo/iQOO» (каталог, сортировка
- * по алфавиту названий).
+ * Поддерживаемые устройства: секция «Метод GhostLock» (каталог 6.1-ядер,
+ * счётчик, карточки без иконок) и карточка DirtyFrag «Все устройства
+ * vivo/iQOO» с таблицей ядер. Карточка юзера переехала на экран эксплойта.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -101,18 +95,8 @@ fun SupportedDevicesScreen(
                     LinearProgressIndicator(Modifier.fillMaxWidth())
                 }
                 else -> {
-                    // ── Секция: Ваше устройство ──
-                    SectionTitle(stringResource(R.string.supported_your))
-                    UserDeviceCard(state, cat)
-
-                    // ── Секция: Метод DirtyFrag ──
-                    SectionTitle(stringResource(R.string.supported_df_section))
-                    DirtyFragTableCard()
-
-                    // ── Секция: Все устройства vivo/iQOO ──
-                    SectionTitle(stringResource(R.string.supported_all_devices))
-                    // Показываем: живые тела и глобально отключённые (без ядер);
-                    // тело со списком только мёртвых сборок не показываем
+                    // ── Метод GhostLock: каталог 6.1-ядер ──
+                    SectionTitle(stringResource(R.string.supported_gl_section))
                     val shown = cat.devices.filter {
                         cat.kernelsOf(it).isEmpty() || cat.isSupported(it)
                     }
@@ -143,10 +127,13 @@ fun SupportedDevicesScreen(
                             DeviceRow(
                                 device = device,
                                 kernels = cat.kernelsOf(device),
-                                buildsById = cat.builds,
                             )
                         }
                     }
+
+                    // ── Все устройства vivo/iQOO: таблица DirtyFrag ──
+                    SectionTitle(stringResource(R.string.supported_all_devices))
+                    DirtyFragTableCard()
                 }
             }
             Spacer(Modifier.height(24.dp))
@@ -168,166 +155,6 @@ private fun SectionTitle(text: String) {
 }
 
 /**
- * Карточка устройства пользователя — показывается ВСЕГДА (даже без
- * записи в каталоге). Крестик слева — только когда недоступен ни один
- * метод: DF-ветка без ko/6.1 И нет живых GL-сборок.
- */
-@Composable
-private fun UserDeviceCard(state: UiState, cat: PayloadCatalog) {
-    val d = state.device ?: return
-    // Каталожное тело юзера (может не быть — карточка всё равно рисуется)
-    val myDev = cat.devices.firstOrNull { dev ->
-        (d.model.isNotEmpty() && dev.models.any { it.equals(d.model, true) }) ||
-            (d.marketName.isNotEmpty() && dev.names.any { it.equals(d.marketName, true) })
-    }
-    val kernels = myDev?.let { cat.kernelsOf(it) } ?: emptyList()
-    // Живое ядро юзера — для подсветки чипа
-    val myBuildId = kernels.firstOrNull {
-        it.build.ready && d.kernel.isNotEmpty() && it.build.specificity(d.kernel) > 0
-    }?.build?.id
-
-    // DF по ветке ядра юзера: галочка, если ko под ветку есть (не 6.1)
-    val parts = d.kernelShort.split(".").map { it.toIntOrNull() ?: 0 }
-    val maj = parts.getOrNull(0) ?: 0
-    val min = parts.getOrNull(1) ?: 0
-    val dfActive = (maj == 5 && min == 10) || (maj == 5 && min == 15) ||
-        (maj == 6 && (min == 6 || min == 12 || min == 18))
-    val dfLimit = when {
-        maj == 5 && min == 10 -> "5.10.254"
-        maj == 5 && min == 15 -> "5.15.204"
-        maj == 6 && min == 6 -> "6.6.137"
-        maj == 6 && min == 12 -> "6.12.86"
-        maj == 6 && min == 18 -> "6.18.28"
-        else -> ""
-    }
-    // Крестик карточки — ни один метод недоступен
-    val disabled = myDev != null && kernels.isEmpty()
-    val noMethod = !dfActive && (myDev == null || kernels.none { it.build.ready })
-
-    Surface(
-        modifier = Modifier.fillMaxWidth(),
-        shape = MaterialTheme.shapes.large,
-        color = MaterialTheme.colorScheme.surfaceContainerLow,
-        border = if (noMethod || disabled) {
-            BorderStroke(1.dp, MaterialTheme.colorScheme.error.copy(alpha = 0.5f))
-        } else {
-            BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
-        },
-    ) {
-        Column(Modifier.padding(horizontal = 16.dp, vertical = 14.dp)) {
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Icon(
-                    if (noMethod || disabled) Icons.Rounded.Cancel else Icons.Rounded.CheckCircle,
-                    null,
-                    tint = if (noMethod || disabled) {
-                        MaterialTheme.colorScheme.error
-                    } else {
-                        MaterialTheme.colorScheme.primary
-                    },
-                    modifier = Modifier.size(20.dp),
-                )
-                Text(
-                    myDev?.title ?: listOf(d.marketName, d.model)
-                        .filter { it.isNotEmpty() }.joinToString(" • "),
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold,
-                    modifier = Modifier.weight(1f, fill = false),
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                )
-            }
-            HorizontalDivider(
-                modifier = Modifier.padding(top = 12.dp, bottom = 12.dp),
-                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f),
-            )
-            // DirtyFrag: по ветке ядра юзера, без привязки к девайсу
-            MethodStatusLine(
-                name = "DirtyFrag",
-                available = dfActive,
-                status = if (dfActive) {
-                    stringResource(R.string.df_table_active, dfLimit)
-                } else {
-                    stringResource(R.string.df_table_dead)
-                },
-            )
-            Spacer(Modifier.height(8.dp))
-            // GhostLock: пейлоады каталога для ядер тела; галочки нет —
-            // галочка/крестик решаются на уровне всей карточки
-            Text(
-                "GhostLock",
-                style = MaterialTheme.typography.bodyMedium,
-                fontWeight = FontWeight.SemiBold,
-            )
-            if (disabled) {
-                Spacer(Modifier.height(4.dp))
-                Text(
-                    stringResource(R.string.supported_temporarily_disabled),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.error,
-                )
-            } else if (kernels.isNotEmpty()) {
-                Spacer(Modifier.height(6.dp))
-                FlowRow(
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
-                    verticalArrangement = Arrangement.spacedBy(6.dp),
-                ) {
-                    kernels.forEach { dk ->
-                        KernelChip(
-                            label = dk.build.label,
-                            ready = dk.build.ready,
-                            current = dk.build.id == myBuildId,
-                            experimental = dk.build.experimental,
-                        )
-                    }
-                }
-            } else {
-                Spacer(Modifier.height(4.dp))
-                Text(
-                    stringResource(R.string.payload_not_found),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-        }
-    }
-}
-
-/** Строка статуса метода в карточке юзера: иконка + имя + текст. */
-@Composable
-private fun MethodStatusLine(name: String, available: Boolean, status: String) {
-    Row(
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Icon(
-            if (available) Icons.Rounded.CheckCircle else Icons.Rounded.Cancel,
-            null,
-            tint = if (available) {
-                MaterialTheme.colorScheme.primary
-            } else {
-                MaterialTheme.colorScheme.error
-            },
-            modifier = Modifier.size(16.dp),
-        )
-        Column {
-            Text(
-                name,
-                style = MaterialTheme.typography.bodyMedium,
-                fontWeight = FontWeight.SemiBold,
-            )
-            Text(
-                status,
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
-    }
-}
-
-/**
  * Таблица поддержки DirtyFrag по веткам ядер: до какого патча ветка
  * уязвима (фикс ветки минус один). Таблица действительна только для
  * устройств vivo/iQOO и может быть неточной.
@@ -339,7 +166,7 @@ private fun DirtyFragTableCard() {
         Row("5.10", stringResource(R.string.df_table_active, "5.10.254"), true),
         Row("5.15", stringResource(R.string.df_table_active, "5.15.204"), true),
         Row("6.1", stringResource(R.string.df_table_dead), false),
-        Row("6.6", stringResource(R.string.df_table_active, "6.6.137"), true),
+        Row("6.6", stringResource(R.string.df_table_active, "6.6.126"), true),
         Row("6.12", stringResource(R.string.df_table_active, "6.12.86"), true),
         Row("6.18", stringResource(R.string.df_table_active, "6.18.28"), true),
     )
@@ -352,14 +179,15 @@ private fun DirtyFragTableCard() {
             Modifier.padding(horizontal = 16.dp, vertical = 14.dp),
             verticalArrangement = Arrangement.spacedBy(6.dp),
         ) {
+            // Поддерживаемые ядра — таблица веток под этим заголовком
             Text(
-                "DirtyFrag",
-                style = MaterialTheme.typography.titleMedium,
+                stringResource(R.string.supported_kernels),
+                style = MaterialTheme.typography.bodyMedium,
                 fontWeight = FontWeight.SemiBold,
                 color = MaterialTheme.colorScheme.onSurface,
             )
             HorizontalDivider(
-                modifier = Modifier.padding(top = 8.dp, bottom = 4.dp),
+                modifier = Modifier.padding(top = 4.dp, bottom = 4.dp),
                 color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f),
             )
             rows.forEach { r ->
@@ -393,15 +221,14 @@ private fun DirtyFragTableCard() {
 }
 
 /**
- * Карточка тела каталога: иконка статуса, заголовок «нейм • код»,
- * разделитель, чипы ядер.
+ * Карточка тела каталога: заголовок «нейм • код», разделитель, чипы ядер.
+ * Без галочек/крестиков — статус решает наличие живых чипов.
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun DeviceRow(
     device: CatalogDevice,
     kernels: List<com.rootmyvivo.data.DeviceKernel>,
-    buildsById: Map<String, com.rootmyvivo.data.KernelBuild> = emptyMap(),
 ) {
     val supported = kernels.isNotEmpty()
     Surface(
@@ -410,29 +237,14 @@ private fun DeviceRow(
         color = MaterialTheme.colorScheme.surfaceContainerLow,
     ) {
         Column(Modifier.padding(horizontal = 16.dp, vertical = 14.dp)) {
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Icon(
-                    if (supported) Icons.Rounded.CheckCircle else Icons.Rounded.Cancel,
-                    null,
-                    tint = if (supported) {
-                        MaterialTheme.colorScheme.primary
-                    } else {
-                        MaterialTheme.colorScheme.error
-                    },
-                    modifier = Modifier.size(20.dp),
-                )
-                Text(
-                    device.title,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold,
-                    modifier = Modifier.weight(1f, fill = false),
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                )
-            }
+            Text(
+                device.title,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+                modifier = Modifier.fillMaxWidth(),
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+            )
             HorizontalDivider(
                 modifier = Modifier.padding(top = 12.dp, bottom = 12.dp),
                 color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f),
@@ -452,8 +264,7 @@ private fun DeviceRow(
                         KernelChip(
                             label = dk.build.label,
                             ready = dk.build.ready,
-                            current = false,
-                            experimental = buildsById[dk.build.id]?.experimental == true,
+                            experimental = dk.build.experimental,
                         )
                     }
                 }
@@ -465,29 +276,20 @@ private fun DeviceRow(
 /** Метка сборки ядра: живые — обычным текстом (experimental — с «(beta)»
  *  в скобках), мёртвые (patched/unsupported) — зачёркнутым. */
 @Composable
-private fun KernelChip(label: String, ready: Boolean, current: Boolean, experimental: Boolean = false) {
+private fun KernelChip(label: String, ready: Boolean, experimental: Boolean = false) {
     Surface(
         shape = MaterialTheme.shapes.small,
-        color = when {
-            current -> MaterialTheme.colorScheme.primary
-            ready -> MaterialTheme.colorScheme.surfaceContainerHigh
-            else -> Color.Transparent
-        },
-        border = when {
-            current -> null
-            ready -> null
-            else -> BorderStroke(1.dp, MaterialTheme.colorScheme.error.copy(alpha = 0.5f))
-        },
+        color = if (ready) MaterialTheme.colorScheme.surfaceContainerHigh else Color.Transparent,
+        border = if (!ready) BorderStroke(1.dp, MaterialTheme.colorScheme.error.copy(alpha = 0.5f)) else null,
     ) {
         Text(
             if (experimental && ready) "$label (beta)" else label,
             style = MaterialTheme.typography.labelMedium,
             fontFamily = FontFamily.Monospace,
-            fontWeight = if (current) FontWeight.Bold else FontWeight.Normal,
-            color = when {
-                current -> MaterialTheme.colorScheme.onPrimary
-                ready -> MaterialTheme.colorScheme.onSurfaceVariant
-                else -> MaterialTheme.colorScheme.error.copy(alpha = 0.6f)
+            color = if (ready) {
+                MaterialTheme.colorScheme.onSurfaceVariant
+            } else {
+                MaterialTheme.colorScheme.error.copy(alpha = 0.6f)
             },
             textDecoration = if (ready) null else TextDecoration.LineThrough,
             maxLines = 1,

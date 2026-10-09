@@ -30,12 +30,12 @@ import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.Restore
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -54,7 +54,6 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.rootmyvivo.R
-import com.rootmyvivo.data.Catalog
 import com.rootmyvivo.root.FlowEvent
 import com.rootmyvivo.root.LogLevel
 import com.rootmyvivo.root.Phase
@@ -127,30 +126,8 @@ fun DevScreen(vm: MainViewModel, state: UiState, onClose: () -> Unit, onRootStar
                     Spacer(Modifier.width(8.dp))
                     Text(stringResource(R.string.home_restart_exploit), maxLines = 1)
                 }
+                SectionCaption(stringResource(R.string.other_restart_desc))
                 var demoExpanded by remember { mutableStateOf(false) }
-                // Разрешить DirtyFrag на всех ядрах: PATCHED-ядра тоже
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.padding(top = 12.dp),
-                ) {
-                    Column(Modifier.weight(1f)) {
-                        Text(
-                            stringResource(R.string.settings_df_all_kernels),
-                            style = MaterialTheme.typography.bodyMedium,
-                        )
-                        Text(
-                            stringResource(R.string.settings_df_all_kernels_desc),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
-                    androidx.compose.material3.Switch(
-                        checked = state.settings.allowDfAllKernels,
-                        onCheckedChange = { v ->
-                            vm.updateSettings { it.copy(allowDfAllKernels = v) }
-                        },
-                    )
-                }
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                     OutlinedButton(
                         onClick = {
@@ -188,22 +165,6 @@ fun DevScreen(vm: MainViewModel, state: UiState, onClose: () -> Unit, onRootStar
                                 .clickable(
                                     interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() },
                                     indication = null,
-                                ) { pickDemoMethod(false) },
-                        ) {
-                            androidx.compose.material3.RadioButton(
-                                selected = !demoMethodDf,
-                                onClick = null,
-                            )
-                            Spacer(Modifier.width(8.dp))
-                            Text(stringResource(R.string.other_demo_method_gl), style = MaterialTheme.typography.titleSmall)
-                        }
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable(
-                                    interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() },
-                                    indication = null,
                                 ) { pickDemoMethod(true) },
                         ) {
                             androidx.compose.material3.RadioButton(
@@ -213,15 +174,57 @@ fun DevScreen(vm: MainViewModel, state: UiState, onClose: () -> Unit, onRootStar
                             Spacer(Modifier.width(8.dp))
                             Text(stringResource(R.string.other_demo_method_df), style = MaterialTheme.typography.titleSmall)
                         }
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable(
+                                    interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() },
+                                    indication = null,
+                                ) { pickDemoMethod(false) },
+                        ) {
+                            androidx.compose.material3.RadioButton(
+                                selected = !demoMethodDf,
+                                onClick = null,
+                            )
+                            Spacer(Modifier.width(8.dp))
+                            Text(stringResource(R.string.other_demo_method_gl), style = MaterialTheme.typography.titleSmall)
+                        }
                     }
+                }
+                SectionCaption(stringResource(R.string.other_demo_desc))
+                HorizontalDivider(
+                    modifier = Modifier.padding(vertical = 4.dp),
+                    color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f),
+                )
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 4.dp),
+                ) {
+                    Column(Modifier.weight(1f)) {
+                        Text(
+                            stringResource(R.string.settings_df_all_kernels),
+                            style = MaterialTheme.typography.bodyLarge,
+                        )
+                        Text(
+                            stringResource(R.string.settings_df_all_kernels_desc),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                    androidx.compose.material3.Switch(
+                        checked = state.settings.allowDfAllKernels,
+                        onCheckedChange = { v ->
+                            vm.updateSettings { it.copy(allowDfAllKernels = v) }
+                        },
+                    )
                 }
             }
 
             // ── Root ──
             DevSection(title = stringResource(R.string.settings_root)) {
-                SectionCaption(
-                    stringResource(R.string.settings_clean_traces_desc),
-                )
                 OutlinedButton(
                     onClick = vm::cleanRootTraces,
                     enabled = rooted && !state.flowRunning,
@@ -232,40 +235,7 @@ fun DevScreen(vm: MainViewModel, state: UiState, onClose: () -> Unit, onRootStar
                     Spacer(Modifier.width(8.dp))
                     Text(stringResource(R.string.settings_clean_traces), maxLines = 1)
                 }
-            }
-
-            // ── Каталог ──
-            DevSection(title = stringResource(R.string.settings_catalog)) {
-                var url by remember(state.settings.catalogUrl) { mutableStateOf(state.settings.catalogUrl) }
-                OutlinedTextField(
-                    value = url,
-                    onValueChange = { url = it },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = MaterialTheme.shapes.medium,
-                    textStyle = MaterialTheme.typography.bodySmall,
-                    trailingIcon = {
-                        if (url != Catalog.DEFAULT_URL) {
-                            IconButton(onClick = {
-                                vm.setCatalogUrl(Catalog.DEFAULT_URL)
-                            }) {
-                                Icon(
-                                    Icons.Rounded.Restore, null,
-                                    tint = MaterialTheme.colorScheme.primary,
-                                )
-                            }
-                        }
-                    },
-                )
-                Button(
-                    onClick = { vm.setCatalogUrl(url) },
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = MaterialTheme.shapes.large,
-                ) {
-                    Icon(Icons.Rounded.Check, null, modifier = Modifier.size(18.dp))
-                    Spacer(Modifier.width(8.dp))
-                    Text(stringResource(R.string.action_save), maxLines = 1)
-                }
+                SectionCaption(stringResource(R.string.settings_clean_traces_desc))
             }
 
             Spacer(Modifier.height(8.dp))

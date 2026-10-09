@@ -128,32 +128,6 @@ fun FlowScreen(
                         Icon(Icons.AutoMirrored.Rounded.ArrowBack, stringResource(R.string.action_back))
                     }
                 },
-                actions = {
-                    // Копировать лог
-                    val clipboard = androidx.compose.ui.platform.LocalClipboardManager.current
-                    val ctx = androidx.compose.ui.platform.LocalContext.current
-                    IconButton(
-                        onClick = {
-                            // Основной лог + живой лог эксплойта (попытки/этапы
-                            // из live.log) — вместе, чтобы в копии был полный
-                            // диф при разборе проблем
-                            val text = buildString {
-                                append(state.log.joinToString("\n") { it.text })
-                                if (state.exploitLive.lines.isNotEmpty()) {
-                                    append("\n\n=== exploit live log ===\n")
-                                    append(state.exploitLive.lines.joinToString("\n") { it.text })
-                                }
-                            }
-                            clipboard.setText(androidx.compose.ui.text.AnnotatedString(text))
-                            android.widget.Toast.makeText(ctx, ctx.getString(R.string.log_copied), android.widget.Toast.LENGTH_SHORT).show()
-                        },
-                    ) {
-                        Icon(
-                            Icons.Rounded.ContentCopy,
-                            stringResource(R.string.copy_log),
-                        )
-                    }
-                },
             )
         },
     ) { padding ->
@@ -218,6 +192,43 @@ fun FlowScreen(
             Box(Modifier.padding(horizontal = 20.dp)) {
                 StatusCard(state, onRetry, onClose, canClose, onStopConfirmed)
             }
+            // Копирование лога — кнопка в стиле стоп-кнопки, под статусом.
+            // В копии — статус каждой строки маркером, как в приложении
+            if (state.log.isNotEmpty()) {
+                val clipboard = androidx.compose.ui.platform.LocalClipboardManager.current
+                val ctx = androidx.compose.ui.platform.LocalContext.current
+                OutlinedButton(
+                    onClick = {
+                        fun marker(e: LogEntry): String = when (e.status) {
+                            LogLevel.OK -> "[\u2713] "
+                            LogLevel.ERROR -> "[\u2717] "
+                            LogLevel.RUNNING -> "[\u2022] "
+                            else -> ""
+                        }
+                        val text = buildString {
+                            append(state.log.joinToString("\n") { marker(it) + it.text })
+                            if (state.exploitLive.lines.isNotEmpty()) {
+                                append("\n\n=== exploit live log ===\n")
+                                append(state.exploitLive.lines.joinToString("\n") { it.text })
+                            }
+                        }
+                        clipboard.setText(androidx.compose.ui.text.AnnotatedString(text))
+                        android.widget.Toast.makeText(ctx, ctx.getString(R.string.log_copied), android.widget.Toast.LENGTH_SHORT).show()
+                    },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 20.dp),
+                    shape = MaterialTheme.shapes.large,
+                ) {
+                    Icon(
+                        Icons.Rounded.ContentCopy, null,
+                        modifier = Modifier.size(16.dp),
+                    )
+                    Spacer(Modifier.width(6.dp))
+                    Text(stringResource(R.string.copy_log_button), maxLines = 1)
+                }
+            }
+            Spacer(Modifier.height(14.dp))
             }
         }
     }
@@ -427,12 +438,12 @@ private fun SuccessCard(state: UiState, onClose: () -> Unit, canClose: Boolean) 
         color = MaterialTheme.colorScheme.primaryContainer,
     ) {
         Column(
-            Modifier.padding(20.dp),
+            Modifier.padding(16.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             Icon(
                 Icons.Rounded.CheckCircle, null,
-                modifier = Modifier.size(56.dp),
+                modifier = Modifier.size(48.dp),
                 tint = MaterialTheme.colorScheme.primary,
             )
             Spacer(Modifier.height(8.dp))
@@ -540,7 +551,7 @@ private fun FailureCard(state: UiState, onRetry: () -> Unit) {
         color = MaterialTheme.colorScheme.errorContainer,
     ) {
         Column(
-            Modifier.padding(20.dp),
+            Modifier.padding(16.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(6.dp),
         ) {

@@ -34,12 +34,15 @@ object LocalRunner {
         -1 to (e.message ?: "local exec error")
     }
 
-    /** Запустить команду в фоне (не ждём): пишет stdout/stderr в logFile. */
+    /** Запустить команду в фоне (не ждём): пишет stdout/stderr в logFile,
+     *  PID фон-процесса — в bg.pid рядом с логом (для полной остановки). */
     fun execBackground(command: String, env: Map<String, String> = emptyMap(), logFile: File? = null): Boolean = try {
         // Фон — через вложенный sh: команда возвращается сразу,
         // вывод идёт в лог напрямую, без reader-потока.
         val redir = if (logFile != null) " > '${logFile.absolutePath}' 2>&1" else ""
-        val full = "($command$redir &)"
+        val pidFile = logFile?.let { File(it.parentFile, "bg.pid") }
+        val pidPart = if (pidFile != null) "; echo \\$! > '${pidFile.absolutePath}'" else ""
+        val full = "($command$redir &$pidPart)"
         val pb = ProcessBuilder("sh", "-c", full)
         pb.environment().putAll(env)
         pb.start()
@@ -47,6 +50,25 @@ object LocalRunner {
     } catch (e: Exception) {
         Log.e(TAG, "execBackground failed: $command", e)
         false
+    }
+
+    /**
+     * Полная остановка фонового процесса (кнопка «Остановить эксплойт»):
+     * убиваем по записанному PID — иначе GL-натив продолжает жить
+     * в фоне после закрытия окна.
+     */
+    fun stopBackground(homeDir: File?): Boolean {
+        val pidFile = homeDir?.let { File(it, "bg.pid") } ?: return false
+        return try {
+            val pid = pidFile.readText().trim()
+            pidFile.delete()
+            if (pid.isNotEmpty()) {
+                exec("kill -9 $pid 2>/dev/null; kill -9 \$(pgrep -P $pid) 2>/dev/null", timeoutSec = 10).first >= 0
+            } else false
+        } catch (e: Exception) {
+            Log.w(TAG, "stopBackground: ${e.message}")
+            false
+        }
     }
 
     /** Скопировать файл локально (деплой без транспорта). */

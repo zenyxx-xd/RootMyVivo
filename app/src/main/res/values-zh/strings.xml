@@ -82,7 +82,8 @@
     <string name="flow_fail_other">未知错误</string>
             <string name="log_df_root_iface">DirtyFrag root 接口已加载，正在安装 KernelSU 管理器</string>
             <string name="log_df_wait_manager">等待管理器安装确认…</string>
-            <string name="log_df_manager_stage_fail">管理器未预下载 — 将通过系统安装器安装</string>
+                <string name="log_df_manager_manual">管理器未安装 — 请确认安装对话框或手动安装</string>
+    <string name="log_df_manager_stage_fail">管理器未预下载 — 将通过系统安装器安装</string>
     <string name="home_method_df">DirtyFrag • 通用</string>
     <string name="status_payload">漏洞利用</string>
     <string name="confirm_softreboot_text">用户空间重启将重启系统界面：应用将关闭，数据不会丢失。</string>
@@ -175,6 +176,7 @@
 <string name="warn_dont_show">不再显示</string>
     <string name="copy_log">复制日志</string>
         <string name="copied_to_clipboard">已复制到剪贴板</string>
+        <string name="copy_log_button">复制日志</string>
     <string name="log_copied">日志已复制到剪贴板</string>
 
     <!-- 应用更新 -->
@@ -196,6 +198,11 @@
     <string name="df_table_active">在 %1$s 之前可用</string>
     <string name="df_table_patched">自 %1$s 起已修补</string>
     <string name="df_table_dead">不受支持</string>
+        <string name="supported_gl_section">GhostLock 方法</string>
+    <string name="supported_kernels">受支持的内核</string>
+    <string name="payload_available_section">可用的漏洞利用</string>
+    <string name="payload_method_used_df">使用 DirtyFrag 方法（在 %1$s 之前可用）</string>
+    <string name="payload_method_used_gl">使用 GhostLock 方法</string>
     <string name="supported_title">支持的设备</string>
     <string name="payload_screen_title">漏洞利用</string>
     <string name="payload_method_title">Root 方法</string>
@@ -262,6 +269,8 @@
     <string name="settings_df_all_kernels_desc">也会在已修补的内核上运行漏洞利用 — 仍需要 KMI 对应的内核模块（6.1 和 non-GKI 不可用）</string>
     <string name="other_demo_gl">演示 GhostLock</string>
     <string name="other_demo_df">演示 DirtyFrag</string>
+        <string name="other_restart_desc">仅当 root 已激活时才能重启漏洞利用</string>
+    <string name="other_demo_desc">不影响设备的演示运行：以所选方法的真实日志展示执行窗口</string>
     <string name="other_section_process">进程</string>
 
     <!-- 首次启动 Telegram 提示 -->
@@ -310,7 +319,7 @@
     <string name="faq_a_notinstalled">KernelSU 模块已加载，但管理器尚未识别。请按几下主界面的"重启用户空间"——通常之后模块就会激活。仍无效：完全重启，在主界面换另一个管理器并重新执行。若所有管理器都不行——请附运行日志到评论区反馈（见"如何报告错误"）。</string>
 
     <string name="faq_q_exploitfail">"exploit 结束但未获得 root"或超时</string>
-    <string name="faq_a_exploitfail">获取 root 是时序的运气活：前几次失败很正常。重启手机再试——换一种 system 状态往往有效：刚重启后或设备运行一段时间后概率都更高。不要连续执行几十次——让手机休息几分钟。若约十次后仍失败——请附日志到评论区反馈。</string>
+    <string name="faq_a_exploitfail">对于 DirtyFrag：如果日志中显示 "patch #1 verify FAILED: page cache not modified"，说明您的内核已修补（参见支持表格，6.6 的修复随 6.6.127 发布）——此方法在该内核上无法使用。对于 GhostLock 确实是时序博弈：重启手机后再试，不要连续运行几十次。如果仍然失败，请发送日志（流程窗口底部的“复制日志”按钮）。</string>
 
     <string name="faq_q_appclosed">执行过程中应用被关闭</string>
     <string name="faq_a_appclosed">没关系：即使应用关闭，exploit 仍会继续在设备上执行。重新打开应用即可——它会发现在运行的进程并继续监视和记录日志。已完成的运行记录随时可在主界面"运行历史"中查看。</string>

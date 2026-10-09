@@ -119,7 +119,7 @@ fun AboutScreen(vm: MainViewModel, state: UiState, onClose: () -> Unit) {
                 color = MaterialTheme.colorScheme.primaryContainer,
             ) {
                 Column(
-                    Modifier.padding(22.dp),
+                    Modifier.padding(18.dp),
                     horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
                     // Плотный вектор (ic_app_logo): сам замок без лаунчерных
@@ -127,9 +127,9 @@ fun AboutScreen(vm: MainViewModel, state: UiState, onClose: () -> Unit) {
                     Image(
                         painter = painterResource(R.drawable.ic_app_logo),
                         contentDescription = null,
-                        modifier = Modifier.size(76.dp),
+                        modifier = Modifier.size(62.dp),
                     )
-                    Spacer(Modifier.height(10.dp))
+                    Spacer(Modifier.height(7.dp))
                     Text(
                         stringResource(R.string.app_name),
                         style = MaterialTheme.typography.headlineSmall,

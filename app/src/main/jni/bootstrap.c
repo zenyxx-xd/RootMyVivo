@@ -195,14 +195,18 @@ int main(void)
     /* Менеджер ставим СРАЗУ из root-контекста: su-бинарник живёт в
      * менеджере, и без него приложение не может поставить APK ни через
      * su-деплой, ни (на части прошивок) через системный установщик из
-     * фона. APK приложение докачивает ДО запуска эксплойта. */
+     * фона. APK приложение докачивает ДО запуска эксплойта.
+     * Копируем в /data/local/tmp (vivo-порой pm не читает /data/user_de)
+     * и пишем вывод в лог для диагностики. */
     const char *manager_apk = "/data/user_de/0/com.rootmyvivo/manager.apk";
     if (access(manager_apk, F_OK) == 0) {
         char *inst[] = {
             "/system/bin/sh", "-c",
-            "pm install -r /data/user_de/0/com.rootmyvivo/manager.apk "
-            ">/dev/null 2>&1 || pm install -r --no-verify "
-            "/data/user_de/0/com.rootmyvivo/manager.apk >/dev/null 2>&1",
+            "cp /data/user_de/0/com.rootmyvivo/manager.apk /data/local/tmp/rmv_manager.apk"
+            " && (pm install -r /data/local/tmp/rmv_manager.apk"
+            " || pm install -r --no-verify /data/local/tmp/rmv_manager.apk)"
+            " > /data/local/tmp/rmv_manager.log 2>&1;"
+            " rm -f /data/local/tmp/rmv_manager.apk",
             NULL,
         };
         run(inst);

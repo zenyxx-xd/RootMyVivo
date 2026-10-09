@@ -42,6 +42,8 @@ import androidx.compose.material.icons.rounded.CheckCircle
 import androidx.compose.material.icons.rounded.CloudDownload
 import androidx.compose.material.icons.rounded.Code
 import androidx.compose.material.icons.rounded.Description
+import androidx.compose.material.icons.rounded.History
+import androidx.compose.material.icons.rounded.Terminal
 import androidx.compose.material.icons.rounded.FolderOpen
 import androidx.compose.material.icons.automirrored.rounded.HelpOutline
 import androidx.compose.material.icons.rounded.Usb
@@ -829,7 +831,7 @@ private fun InfoGroup(
                 else -> stringResource(R.string.catalog_error)
             },
             icon = when {
-                state.payload != null || state.customPayload != null || dfOk -> Icons.Rounded.Verified
+                state.payload != null || state.customPayload != null || dfOk -> Icons.Rounded.Terminal
                 state.catalogState == CatalogState.READY -> Icons.Rounded.SearchOff
                 else -> Icons.Rounded.Search
             },
@@ -847,7 +849,7 @@ private fun InfoGroup(
         // входа к логам всегда под рукой, на свежей установке не спрятана
         SettingsRow(
             title = stringResource(R.string.home_lastlog),
-            icon = Icons.Rounded.Description,
+            icon = Icons.Rounded.History,
             onClick = onOpenLastLog,
             trailing = {
                 Icon(
