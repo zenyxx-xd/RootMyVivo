@@ -95,7 +95,10 @@ fun SupportedDevicesScreen(
                     LinearProgressIndicator(Modifier.fillMaxWidth())
                 }
                 else -> {
-                    // ── Метод GhostLock: каталог 6.1-ядер ──
+                    // ── DirtyFrag: карточка «Все устройства vivo/iQOO» ──
+                    DirtyFragTableCard()
+
+                    // ── Метод GhostLock: каталог ──
                     SectionTitle(stringResource(R.string.supported_gl_section))
                     val shown = cat.devices.filter {
                         cat.kernelsOf(it).isEmpty() || cat.isSupported(it)
@@ -130,10 +133,6 @@ fun SupportedDevicesScreen(
                             )
                         }
                     }
-
-                    // ── Все устройства vivo/iQOO: таблица DirtyFrag ──
-                    SectionTitle(stringResource(R.string.supported_all_devices))
-                    DirtyFragTableCard()
                 }
             }
             Spacer(Modifier.height(24.dp))
@@ -179,10 +178,10 @@ private fun DirtyFragTableCard() {
             Modifier.padding(horizontal = 16.dp, vertical = 14.dp),
             verticalArrangement = Arrangement.spacedBy(6.dp),
         ) {
-            // Поддерживаемые ядра — таблица веток под этим заголовком
+            // Заголовок карточки — как имена устройств на карточках GhostLock
             Text(
-                stringResource(R.string.supported_kernels),
-                style = MaterialTheme.typography.bodyMedium,
+                stringResource(R.string.supported_all_devices),
+                style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.SemiBold,
                 color = MaterialTheme.colorScheme.onSurface,
             )

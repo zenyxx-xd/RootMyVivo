@@ -43,6 +43,8 @@ import androidx.compose.material.icons.rounded.CloudDownload
 import androidx.compose.material.icons.rounded.Code
 import androidx.compose.material.icons.rounded.Description
 import androidx.compose.material.icons.rounded.History
+import androidx.compose.material.icons.rounded.Lock
+import androidx.compose.material.icons.rounded.LockOpen
 import androidx.compose.material.icons.rounded.Terminal
 import androidx.compose.material.icons.rounded.FolderOpen
 import androidx.compose.material.icons.automirrored.rounded.HelpOutline
@@ -571,7 +573,16 @@ private fun RootButton(state: UiState, onRoot: () -> Unit) {
             disabledContentColor = contentColor,
         ),
     ) {
-        Icon(Icons.Rounded.Bolt, null, modifier = Modifier.size(24.dp))
+        // Замок: закрыт — рута нет, открыт — рут есть (как в иконке приложения)
+        Icon(
+            if (state.rootState == com.rootmyvivo.vm.RootState.ROOTED) {
+                Icons.Rounded.LockOpen
+            } else {
+                Icons.Rounded.Lock
+            },
+            null,
+            modifier = Modifier.size(24.dp),
+        )
         Spacer(Modifier.width(10.dp))
         AnimatedContent(
             targetState = label,

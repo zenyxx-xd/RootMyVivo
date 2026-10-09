@@ -213,6 +213,8 @@
     <string name="df_table_dead">Не поддерживается</string>
         <string name="supported_gl_section">Метод GhostLock</string>
     <string name="supported_kernels">Поддерживаемые ядра</string>
+        <string name="payload_df_desc_long">Запись в память ядра через ESP-расшифровку page cache (CVE-2026-43284): детерминированный, без гонок и таймингов. Работает по ветке ядра без привязки к моделям: 6.6 — до 6.6.126, точные границы — в списке устройств. 6.1 и non-GKI не поддерживаются.</string>
+    <string name="payload_gl_desc_long">Эксплойт гонки futex PI (CVE-2026-43499): пейлоад под конкретную сборку ядра из каталога. Остался для ядер 6.1.x, где примитив DirtyFrag отсутствует в принципе. Привязан к моделям — смотри список устройств.</string>
     <string name="payload_available_section">Доступные эксплоиты</string>
     <string name="payload_method_used_df">Используется метод DirtyFrag (активен до %1$s)</string>
     <string name="payload_method_used_gl">Используется метод GhostLock</string>

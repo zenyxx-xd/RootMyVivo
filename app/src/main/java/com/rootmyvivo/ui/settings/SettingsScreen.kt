@@ -96,21 +96,6 @@ fun SettingsScreen(
             // Material You (динамические цвета) — только в экране темы
         }
 
-        // ── Рут ──
-        SettingsGroup(title = stringResource(R.string.settings_root)) {
-            SettingsRow(
-                title = stringResource(R.string.settings_boot_restore),
-                description = stringResource(R.string.settings_boot_restore_desc),
-                icon = Icons.Rounded.RestartAlt,
-                trailing = {
-                    Switch(
-                        checked = state.settings.bootRestore,
-                        onCheckedChange = { v -> vm.updateSettings { it.copy(bootRestore = v) } },
-                    )
-                },
-            )
-        }
-
         // ── Другое ──
         SettingsGroup {
             SettingsRow(

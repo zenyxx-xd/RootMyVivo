@@ -200,6 +200,8 @@
     <string name="df_table_dead">Not supported</string>
         <string name="supported_gl_section">GhostLock method</string>
     <string name="supported_kernels">Supported kernels</string>
+        <string name="payload_df_desc_long">Kernel memory write via in-kernel ESP page-cache decryption (CVE-2026-43284): deterministic, no races or timing. Works per kernel branch without device binding: 6.6 up to 6.6.126, exact bounds in the device list. 6.1 and non-GKI are not supported.</string>
+    <string name="payload_gl_desc_long">Futex PI race exploit (CVE-2026-43499): payload for a specific kernel build from the catalog. Remains for 6.1.x kernels where the DirtyFrag primitive is absent. Device-bound — see the device list.</string>
     <string name="payload_available_section">Available exploits</string>
     <string name="payload_method_used_df">DirtyFrag method is used (active up to %1$s)</string>
     <string name="payload_method_used_gl">GhostLock method is used</string>

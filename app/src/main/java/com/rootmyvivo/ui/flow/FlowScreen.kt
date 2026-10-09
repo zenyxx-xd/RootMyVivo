@@ -128,6 +128,38 @@ fun FlowScreen(
                         Icon(Icons.AutoMirrored.Rounded.ArrowBack, stringResource(R.string.action_back))
                     }
                 },
+                actions = {
+                    // Копировать лог — в углу, только в живом процессе
+                    // (в истории запусков копирование — кнопкой внизу)
+                    if (fog && state.log.isNotEmpty()) {
+                        val clipboard = androidx.compose.ui.platform.LocalClipboardManager.current
+                        val ctx = androidx.compose.ui.platform.LocalContext.current
+                        IconButton(
+                            onClick = {
+                                fun marker(e: LogEntry): String = when (e.status) {
+                                    LogLevel.OK -> "[✓] "
+                                    LogLevel.ERROR -> "[✗] "
+                                    LogLevel.RUNNING -> "[•] "
+                                    else -> ""
+                                }
+                                val text = buildString {
+                                    append(state.log.joinToString("\n") { marker(it) + it.text })
+                                    if (state.exploitLive.lines.isNotEmpty()) {
+                                        append("\n\n=== exploit live log ===\n")
+                                        append(state.exploitLive.lines.joinToString("\n") { it.text })
+                                    }
+                                }
+                                clipboard.setText(androidx.compose.ui.text.AnnotatedString(text))
+                                android.widget.Toast.makeText(ctx, ctx.getString(R.string.log_copied), android.widget.Toast.LENGTH_SHORT).show()
+                            },
+                        ) {
+                            Icon(
+                                Icons.Rounded.ContentCopy,
+                                stringResource(R.string.copy_log),
+                            )
+                        }
+                    }
+                },
             )
         },
     ) { padding ->
@@ -192,9 +224,9 @@ fun FlowScreen(
             Box(Modifier.padding(horizontal = 20.dp)) {
                 StatusCard(state, onRetry, onClose, canClose, onStopConfirmed)
             }
-            // Копирование лога — кнопка в стиле стоп-кнопки, под статусом.
-            // В копии — статус каждой строки маркером, как в приложении
-            if (state.log.isNotEmpty()) {
+            // Копирование лога — кнопка внизу ТОЛЬКО в истории запусков
+            // (в живом процессе копирование вернулось в верхний угол)
+            if (state.log.isNotEmpty() && !fog) {
                 val clipboard = androidx.compose.ui.platform.LocalClipboardManager.current
                 val ctx = androidx.compose.ui.platform.LocalContext.current
                 OutlinedButton(

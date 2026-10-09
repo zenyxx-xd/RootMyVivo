@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -27,6 +28,7 @@ import androidx.compose.material.icons.rounded.Bolt
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.CleaningServices
 import androidx.compose.material.icons.rounded.PlayArrow
+import androidx.compose.material.icons.rounded.Rule
 import androidx.compose.material.icons.rounded.Restore
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -193,34 +195,6 @@ fun DevScreen(vm: MainViewModel, state: UiState, onClose: () -> Unit, onRootStar
                     }
                 }
                 SectionCaption(stringResource(R.string.other_demo_desc))
-                HorizontalDivider(
-                    modifier = Modifier.padding(vertical = 4.dp),
-                    color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f),
-                )
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 4.dp),
-                ) {
-                    Column(Modifier.weight(1f)) {
-                        Text(
-                            stringResource(R.string.settings_df_all_kernels),
-                            style = MaterialTheme.typography.bodyLarge,
-                        )
-                        Text(
-                            stringResource(R.string.settings_df_all_kernels_desc),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
-                    androidx.compose.material3.Switch(
-                        checked = state.settings.allowDfAllKernels,
-                        onCheckedChange = { v ->
-                            vm.updateSettings { it.copy(allowDfAllKernels = v) }
-                        },
-                    )
-                }
             }
 
             // ── Root ──
@@ -236,6 +210,33 @@ fun DevScreen(vm: MainViewModel, state: UiState, onClose: () -> Unit, onRootStar
                     Text(stringResource(R.string.settings_clean_traces), maxLines = 1)
                 }
                 SectionCaption(stringResource(R.string.settings_clean_traces_desc))
+            }
+
+            // ── DirtyFrag: разрешить на всех ядрах — отдельная карточка ──
+            DevSection(title = stringResource(R.string.settings_df_all_kernels)) {
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Icon(
+                        Icons.Rounded.Rule, null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(22.dp),
+                    )
+                    Text(
+                        stringResource(R.string.settings_df_all_kernels_desc),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.weight(1f),
+                    )
+                    androidx.compose.material3.Switch(
+                        checked = state.settings.allowDfAllKernels,
+                        onCheckedChange = { v ->
+                            vm.updateSettings { it.copy(allowDfAllKernels = v) }
+                        },
+                    )
+                }
             }
 
             Spacer(Modifier.height(8.dp))
@@ -297,10 +298,15 @@ private fun DevSection(
     }
 }
 
-/** Поясняющая строка внутри секции. */
+/** Поясняющая строка внутри секции: прижата к кнопке, чуть правее её края. */
 @Composable
 private fun SectionCaption(text: String) {
-    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+    Row(
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        modifier = Modifier
+            .offset(y = (-6).dp)
+            .padding(start = 20.dp),
+    ) {
         Text(
             text,
             style = MaterialTheme.typography.bodySmall,

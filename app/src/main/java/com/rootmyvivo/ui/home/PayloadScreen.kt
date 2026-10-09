@@ -94,28 +94,6 @@ fun PayloadScreen(
             // ── Карточка устройства юзера (переехала из поддерживаемых) ──
             UserDeviceCard(state)
 
-            // ── Метод рута — клон строки «Эксплоит» главной ──
-            val is61 = state.device?.kernelShort?.startsWith("6.1.") == true
-            val methodDesc = when {
-                state.customPayload != null ->
-                    stringResource(R.string.home_custom_payload_active, state.customPayload.displayName)
-                is61 -> state.payload?.let { p ->
-                    buildString {
-                        append("GhostLock • ").append(p.build.label)
-                        p.build.route?.let { append(" • ").append(it.uppercase()) }
-                    }
-                } ?: stringResource(R.string.payload_not_found)
-                state.device != null -> stringResource(R.string.home_method_df)
-                else -> ""
-            }
-            SettingsGroup {
-                SettingsRow(
-                    title = stringResource(R.string.payload_method_title),
-                    description = methodDesc,
-                    icon = Icons.Rounded.RocketLaunch,
-                )
-            }
-
             // ── Кастомный payload.so (без подзаголовка) ──
             SettingsGroup {
                 Column(Modifier.padding(horizontal = 16.dp, vertical = 10.dp)) {
@@ -203,12 +181,12 @@ fun PayloadScreen(
                 ) {
                     ExploitEntry(
                         name = "DirtyFrag",
-                        description = stringResource(R.string.payload_method_df_ok),
+                        description = stringResource(R.string.payload_df_desc_long),
                     )
                     HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
                     ExploitEntry(
                         name = "GhostLock",
-                        description = stringResource(R.string.payload_method_gl),
+                        description = stringResource(R.string.payload_gl_desc_long),
                     )
                 }
             }
@@ -268,17 +246,16 @@ private fun UserDeviceCard(state: UiState) {
     val maj = parts.getOrNull(0) ?: 0
     val min = parts.getOrNull(1) ?: 0
     val dfCompat = d.dirtyfragCompatible()
-    val dfLimit = when {
-        maj == 5 && min == 10 -> "5.10.254"
-        maj == 5 && min == 15 -> "5.15.204"
-        maj == 6 && min == 6 -> "6.6.126"
-        maj == 6 && min == 12 -> "6.12.86"
-        maj == 6 && min == 18 -> "6.18.28"
-        else -> ""
-    }
     val is61 = maj == 6 && min == 1
     val glAvailable = kernels.any { it.build.ready } || state.payload != null
-    val nothingSupported = dfCompat == DeviceInfo.DfCompat.UNSUPPORTED && !glAvailable
+    // Метод по dfAllowed (учитывает тумблер «DF на всех ядрах»), не по голой совместимости
+    val dfUsed = d.dfAllowed(state.settings.allowDfAllKernels)
+    val nothingSupported = !dfUsed && !glAvailable
+    // Имя девайса из каталога: «iQOO Neo 11 (V2520A)»
+    val heroName = state.payload?.device?.marketName?.takeIf { it.isNotEmpty() }
+        ?: myDev?.marketName?.takeIf { it.isNotEmpty() }
+        ?: d.marketName
+    val heroTitle = "$heroName (${d.model})"
 
     Surface(
         modifier = Modifier.fillMaxWidth(),
@@ -289,16 +266,16 @@ private fun UserDeviceCard(state: UiState) {
             Modifier.padding(horizontal = 16.dp, vertical = 14.dp),
             verticalArrangement = Arrangement.spacedBy(6.dp),
         ) {
-            // Заголовок — имя девайса, размер как у заголовка окна
+            // Заголовок — имя девайса из каталога + модель в скобках
             Text(
-                myDev?.title ?: listOf(d.marketName, d.model)
-                    .filter { it.isNotEmpty() }.joinToString(" • "),
+                heroTitle,
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold,
                 modifier = Modifier.fillMaxWidth(),
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
             // Ядро — одна строка, дальше многоточие
             if (d.kernel.isNotEmpty()) {
                 Text(
@@ -310,7 +287,7 @@ private fun UserDeviceCard(state: UiState) {
                     overflow = TextOverflow.Ellipsis,
                 )
             }
-            Spacer(Modifier.height(2.dp))
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
             if (nothingSupported) {
                 // Ни DF, ни GL — крестик и честный отказ
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -326,52 +303,13 @@ private fun UserDeviceCard(state: UiState) {
                     )
                 }
             } else {
+                // Используемый метод — крупнее, без скобок и дублей
                 Text(
-                    if (is61) stringResource(R.string.payload_method_used_gl)
-                    else stringResource(R.string.payload_method_used_df, dfLimit),
-                    style = MaterialTheme.typography.bodyMedium,
+                    if (dfUsed) "DirtyFrag" else "GhostLock",
+                    style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.primary,
                 )
-                // Поддерживаемые ядра: таблетки как в каталоге
-                Text(
-                    stringResource(R.string.supported_kernels),
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                if (kernels.isNotEmpty()) {
-                    androidx.compose.foundation.layout.FlowRow(
-                        horizontalArrangement = Arrangement.spacedBy(6.dp),
-                        verticalArrangement = Arrangement.spacedBy(6.dp),
-                    ) {
-                        kernels.forEach { dk ->
-                            Surface(
-                                shape = MaterialTheme.shapes.small,
-                                color = if (dk.build.ready) {
-                                    MaterialTheme.colorScheme.surfaceContainerHigh
-                                } else {
-                                    Color.Transparent
-                                },
-                            ) {
-                                Text(
-                                    if (dk.build.experimental && dk.build.ready) "${dk.build.label} (beta)" else dk.build.label,
-                                    style = MaterialTheme.typography.labelMedium,
-                                    fontFamily = FontFamily.Monospace,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    maxLines = 1,
-                                    modifier = Modifier.padding(horizontal = 9.dp, vertical = 5.dp),
-                                )
-                            }
-                        }
-                    }
-                } else if (!is61) {
-                    // DF-устройства без каталога: поддерживается их ветка
-                    Text(
-                        stringResource(R.string.df_table_active, dfLimit),
-                        style = MaterialTheme.typography.labelMedium,
-                        fontFamily = FontFamily.Monospace,
-                        color = MaterialTheme.colorScheme.primary,
-                    )
-                }
             }
         }
     }

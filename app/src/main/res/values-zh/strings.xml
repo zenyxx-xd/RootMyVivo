@@ -200,6 +200,8 @@
     <string name="df_table_dead">不受支持</string>
         <string name="supported_gl_section">GhostLock 方法</string>
     <string name="supported_kernels">受支持的内核</string>
+        <string name="payload_df_desc_long">通过内核内 ESP page-cache 解密写入内核内存（CVE-2026-43284）：确定性、无竞争、无需时序。按内核分支工作，不绑定机型：6.6 到 6.6.126，具体边界见设备列表。不支持 6.1 和 non-GKI。</string>
+    <string name="payload_gl_desc_long">Futex PI 竞争漏洞利用（CVE-2026-43499）：来自目录的特定内核构建负载。保留给 6.1.x 内核（那里没有 DirtyFrag 原语）。绑定机型 — 见设备列表。</string>
     <string name="payload_available_section">可用的漏洞利用</string>
     <string name="payload_method_used_df">使用 DirtyFrag 方法（在 %1$s 之前可用）</string>
     <string name="payload_method_used_gl">使用 GhostLock 方法</string>
