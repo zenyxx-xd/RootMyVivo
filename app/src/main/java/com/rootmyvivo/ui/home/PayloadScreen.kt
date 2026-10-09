@@ -76,6 +76,13 @@ fun PayloadScreen(
 
     // Доступность GhostLock: живая сборка в каталоге под это ядро
     val glAvailable = state.payload != null
+    // GL-пейлоад как на главной: «GhostLock • 6.6.127-24b70 • PSELECT»
+    val glPayloadDesc = state.payload?.let { p ->
+        buildString {
+            append("GhostLock • ").append(p.build.label)
+            p.build.route?.let { append(" • ").append(it.uppercase()) }
+        }
+    } ?: ""
     // Ядро с git-id (5 символов, как чипы в поддерживаемых): по нему видно
     // точную сборку — «ядро в списке есть, но сборка другая» больше не тайна
     val kernelShort = state.device?.kernelShort.orEmpty()
@@ -129,19 +136,23 @@ fun PayloadScreen(
         ) {
             Spacer(Modifier.height(4.dp))
 
-            // ── Главная карточка окна: статус методов на этом устройстве ──
+            // ── Главная карточка окна: девайс + ядро + статус методов ──
             ExploitHeroCard(
+                deviceTitle = state.device?.let { d ->
+                    if (d.kernelShort.isNotEmpty()) "${d.marketName} • ${d.model}" else d.marketName
+                } ?: "",
+                kernel = state.device?.kernel.orEmpty(),
                 dfAvailable = dfAvailable,
                 glAvailable = glAvailable,
                 dfStatusText = if (dfAvailable) stringResource(R.string.payload_status_supported)
                 else dfUnavailableText,
-                glStatusText = if (glAvailable) stringResource(R.string.payload_status_supported)
+                glStatusText = if (glAvailable) glPayloadDesc
                 else glUnavailableText,
                 autoText = autoText,
             )
 
-            // ── Метод рута ──
-            SettingsGroup(title = stringResource(R.string.payload_method_title)) {
+            // ── Метод рута (без подзаголовка) ──
+            SettingsGroup {
                 SettingsRow(
                     title = stringResource(R.string.payload_method_title),
                     description = methodLabel,
@@ -156,8 +167,8 @@ fun PayloadScreen(
                 )
             }
 
-            // ── Кастомный payload.so ──
-            SettingsGroup(title = stringResource(R.string.payload_custom_title)) {
+            // ── Кастомный payload.so (без подзаголовка) ──
+            SettingsGroup {
                 // Кнопки — с горизонтальным отступом как в «Другом»:
                 // у группы его нет (строки носят свой паддинг сами)
                 Column(Modifier.padding(horizontal = 16.dp, vertical = 10.dp)) {
@@ -277,42 +288,47 @@ fun PayloadScreen(
 }
 
 /**
- * Главная карточка окна эксплойта: живой статус обоих методов на этом
- * устройстве. Заголовок меняется по ситуации (оба / только DF / только
- * GL / ничего), цвет карточки перетекает: оба — акцент, один — мягкий,
- * ни одного — тревожный. Под заголовком — что реально будет использоваться.
+ * Главная карточка окна эксплойта: девайс и ядро (как на главной) +
+ * живой статус обоих методов. Заголовок меняется по ситуации (оба /
+ * только DF / только GL / ничего). Без акцентной заливки — та же
+ * подложка, что у остальных карточек приложения.
  */
 @Composable
 private fun ExploitHeroCard(
+    deviceTitle: String,
+    kernel: String,
     dfAvailable: Boolean,
     glAvailable: Boolean,
     dfStatusText: String,
     glStatusText: String,
     autoText: String,
 ) {
-    val containerColor by androidx.compose.animation.animateColorAsState(
-        targetValue = when {
-            dfAvailable && glAvailable -> MaterialTheme.colorScheme.primaryContainer
-            dfAvailable || glAvailable -> MaterialTheme.colorScheme.secondaryContainer
-            else -> MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.55f)
-        },
-        animationSpec = androidx.compose.animation.core.tween(400),
-        label = "heroColor",
-    )
-    val onContainer = when {
-        dfAvailable && glAvailable -> MaterialTheme.colorScheme.onPrimaryContainer
-        dfAvailable || glAvailable -> MaterialTheme.colorScheme.onSecondaryContainer
-        else -> MaterialTheme.colorScheme.onErrorContainer
-    }
     Surface(
         modifier = Modifier.fillMaxWidth(),
         shape = MaterialTheme.shapes.extraLarge,
-        color = containerColor,
+        color = MaterialTheme.colorScheme.surfaceContainerLow,
     ) {
         Column(
             Modifier.padding(20.dp),
             verticalArrangement = Arrangement.spacedBy(4.dp),
         ) {
+            // Девайс: имя • кодовая модель — как заголовок карточки
+            Text(
+                deviceTitle,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+            )
+            // Полное ядро (mono, до трёх строк — как на главной)
+            if (kernel.isNotEmpty()) {
+                Text(
+                    kernel,
+                    style = MaterialTheme.typography.bodySmall,
+                    fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 3,
+                )
+            }
+            Spacer(Modifier.height(4.dp))
             val headline = when {
                 dfAvailable && glAvailable -> stringResource(R.string.payload_hero_both)
                 dfAvailable -> stringResource(R.string.payload_hero_df)
@@ -321,31 +337,29 @@ private fun ExploitHeroCard(
             }
             Text(
                 headline,
-                style = MaterialTheme.typography.titleLarge,
+                style = MaterialTheme.typography.titleSmall,
                 fontWeight = FontWeight.Bold,
-                color = onContainer,
+                color = MaterialTheme.colorScheme.primary,
             )
             Text(
                 autoText,
-                style = MaterialTheme.typography.bodyMedium,
-                color = onContainer.copy(alpha = 0.75f),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-            Spacer(Modifier.height(8.dp))
-            HorizontalDivider(color = onContainer.copy(alpha = 0.2f))
-            Spacer(Modifier.height(8.dp))
-            // Статусы методов: иконка + имя + причина
+            Spacer(Modifier.height(6.dp))
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
+            Spacer(Modifier.height(6.dp))
+            // Статусы методов: иконка + имя + статус/причина
             MethodStatusRow(
                 name = "DirtyFrag",
                 available = dfAvailable,
                 statusText = dfStatusText,
-                tint = onContainer,
             )
             Spacer(Modifier.height(6.dp))
             MethodStatusRow(
                 name = "GhostLock",
                 available = glAvailable,
                 statusText = glStatusText,
-                tint = onContainer,
             )
         }
     }
@@ -356,7 +370,6 @@ private fun MethodStatusRow(
     name: String,
     available: Boolean,
     statusText: String,
-    tint: androidx.compose.ui.graphics.Color,
 ) {
     Row(
         horizontalArrangement = Arrangement.spacedBy(10.dp),
@@ -365,7 +378,8 @@ private fun MethodStatusRow(
         Icon(
             if (available) Icons.Rounded.CheckCircle else Icons.Rounded.Cancel,
             null,
-            tint = if (available) tint else tint.copy(alpha = 0.55f),
+            tint = if (available) MaterialTheme.colorScheme.primary
+            else MaterialTheme.colorScheme.error,
             modifier = Modifier.size(18.dp),
         )
         Column {
@@ -373,12 +387,11 @@ private fun MethodStatusRow(
                 name,
                 style = MaterialTheme.typography.titleSmall,
                 fontWeight = FontWeight.SemiBold,
-                color = tint,
             )
             Text(
                 statusText,
                 style = MaterialTheme.typography.bodySmall,
-                color = tint.copy(alpha = 0.75f),
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
                 maxLines = 2,
             )
         }
