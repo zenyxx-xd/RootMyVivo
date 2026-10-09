@@ -316,10 +316,19 @@ class KsuInstaller(
      */
     suspend fun installManagerOnly(variant: KsuVariant): KsuResult =
         withContext(Dispatchers.IO) {
-            progress(R.string.log_ksu_verify)
-            val (vCode, vOut) = Transport.su(ctx, "id")
-            val rooted = vCode == 0 && vOut.contains("uid=0")
+            // Менеджер ПЕРВЫМ: su-клиент KernelSU живёт в менеджере — без
+            // него su в PATH нет и проверка всегда «fail» (а soft reboot на
+            // части ядер вешает систему). Затем верификация с ретраями —
+            // менеджеру нужны секунды на рукопожатие с KSU-интерфейсом
             installManager(variant)
+            progress(R.string.log_ksu_verify)
+            var rooted = false
+            for (attempt in 1..5) {
+                val (vCode, vOut) = Transport.su(ctx, "id", timeoutSec = 15)
+                rooted = vCode == 0 && vOut.contains("uid=0")
+                if (rooted) break
+                kotlinx.coroutines.delay(2000L)
+            }
             if (rooted) {
                 complete(true, R.string.log_ksu_active, variant.displayName)
                 KsuResult.ACTIVE
