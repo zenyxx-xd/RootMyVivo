@@ -94,7 +94,7 @@
     <string name="flow_fail_ksu">KernelSU не активировался</string>
     <string name="flow_fail_other">Неизвестная ошибка</string>
             <string name="log_df_root_iface">Root-интерфейс DirtyFrag загружен, ставлю менеджер KernelSU</string>
-    <string name="home_method_df">DirtyFrag (встроенный метод, экспериментально)</string>
+    <string name="home_method_df">DirtyFrag (универсально)</string>
     <string name="status_payload">Пейлоад</string>
     <string name="confirm_softreboot_text">Перезагрузка userspace перезапустит системный интерфейс: приложения закроются, данные не потеряются.</string>
     <string name="confirm_softreboot_title">Перезапустить интерфейс?</string>
@@ -208,12 +208,13 @@
     <string name="payload_screen_title">Пейлоад</string>
     <string name="payload_method_title">Метод рута</string>
     <string name="payload_method_auto">Авто</string>
-    <string name="payload_method_auto_df">DirtyFrag — применим на вашем ядре, используется первым</string>
-    <string name="payload_method_auto_gl">DirtyFrag не применим — используется GhostLock</string>
+    <string name="payload_method_auto_df">Используется DirtyFrag</string>
+    <string name="payload_method_auto_gl">Используется GhostLock</string>
     <string name="payload_method_auto_none">Ни один метод не поддерживается</string>
-    <string name="payload_method_df_ok">Применим на вашем ядре (экспериментально)</string>
+    <string name="payload_method_df_ok">Запись в память ядра через ESP-расшифровку page cache (CVE-2026-43284)</string>
     <string name="payload_method_df_unsupported">Не применим на вашем ядре</string>
-    <string name="payload_method_gl">Пейлоад из каталога под вашу сборку ядра</string>
+    <string name="payload_method_gl">Эксплойт гонки futex PI (CVE-2026-43499), пейлоад под вашу сборку ядра</string>
+    <string name="payload_method_recommended">Рекомендуется</string>
     <string name="payload_custom_title">Кастомный payload.so</string>
     <string name="supported_count">%1$d устройств · %2$d ядер</string>
     <string name="supported_your">Ваше устройство</string>

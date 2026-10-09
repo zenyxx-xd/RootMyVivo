@@ -81,7 +81,7 @@
     <string name="flow_fail_ksu">KernelSU did not activate</string>
     <string name="flow_fail_other">Unknown error</string>
             <string name="log_df_root_iface">DirtyFrag root interface loaded, installing KernelSU manager</string>
-    <string name="home_method_df">DirtyFrag (built-in method, experimental)</string>
+    <string name="home_method_df">DirtyFrag (universal)</string>
     <string name="status_payload">Payload</string>
     <string name="confirm_softreboot_text">A userspace reboot will restart the system interface: apps will close, no data will be lost.</string>
     <string name="confirm_softreboot_title">Restart the interface?</string>
@@ -195,12 +195,13 @@
     <string name="payload_screen_title">Payload</string>
     <string name="payload_method_title">Root method</string>
     <string name="payload_method_auto">Auto</string>
-    <string name="payload_method_auto_df">DirtyFrag is applicable on your kernel, used first</string>
-    <string name="payload_method_auto_gl">DirtyFrag is not applicable — GhostLock is used</string>
+    <string name="payload_method_auto_df">DirtyFrag is used</string>
+    <string name="payload_method_auto_gl">GhostLock is used</string>
     <string name="payload_method_auto_none">No supported method available</string>
-    <string name="payload_method_df_ok">Applicable on your kernel (experimental)</string>
+    <string name="payload_method_df_ok">Kernel memory write via in-kernel ESP page-cache decryption (CVE-2026-43284)</string>
     <string name="payload_method_df_unsupported">Not applicable on your kernel</string>
-    <string name="payload_method_gl">Payload from the catalog for your kernel build</string>
+    <string name="payload_method_gl">Futex PI race exploit (CVE-2026-43499), payload for your kernel build</string>
+    <string name="payload_method_recommended">Recommended</string>
     <string name="payload_custom_title">Custom payload.so</string>
     <string name="supported_count">%1$d devices · %2$d kernels</string>
     <string name="supported_your">Your device</string>

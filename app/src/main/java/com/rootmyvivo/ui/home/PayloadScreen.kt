@@ -99,7 +99,7 @@ fun PayloadScreen(
 
     val methodLabel = when (state.settings.rootMethod) {
         RootMethod.AUTO -> stringResource(R.string.payload_method_auto)
-        RootMethod.DIRTYFRAG -> "DirtyFrag"
+        RootMethod.DIRTYFRAG -> stringResource(R.string.home_method_df)
         RootMethod.GHOSTLOCK -> "GhostLock"
     }
 
@@ -240,6 +240,8 @@ fun PayloadScreen(
                     else dfUnavailableText,
                     selected = state.settings.rootMethod == RootMethod.DIRTYFRAG,
                     enabled = dfAvailable,
+                    // «Рекомендуется» — только когда оба метода доступны
+                    badge = if (dfAvailable && glAvailable) stringResource(R.string.payload_method_recommended) else null,
                 ),
                 ChoiceDialogItem(
                     label = "GhostLock",

@@ -879,7 +879,8 @@ private fun InfoGroup(
             description = when {
                 state.customPayload != null ->
                     stringResource(R.string.home_custom_payload_active, state.customPayload.displayName)
-                method == com.rootmyvivo.data.RootMethod.DIRTYFRAG -> "DirtyFrag"
+                method == com.rootmyvivo.data.RootMethod.DIRTYFRAG ->
+                    stringResource(R.string.home_method_df)
                 method == com.rootmyvivo.data.RootMethod.GHOSTLOCK ->
                     state.payload?.displayName?.plus(routeSuffix)
                         ?: stringResource(R.string.payload_not_found)

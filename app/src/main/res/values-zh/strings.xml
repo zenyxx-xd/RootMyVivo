@@ -81,7 +81,7 @@
     <string name="flow_fail_ksu">KernelSU 未激活</string>
     <string name="flow_fail_other">未知错误</string>
             <string name="log_df_root_iface">DirtyFrag root 接口已加载，正在安装 KernelSU 管理器</string>
-    <string name="home_method_df">DirtyFrag（内置方法，实验性）</string>
+    <string name="home_method_df">DirtyFrag（通用）</string>
     <string name="status_payload">载荷</string>
     <string name="confirm_softreboot_text">用户空间重启将重启系统界面：应用将关闭，数据不会丢失。</string>
     <string name="confirm_softreboot_title">重启系统界面？</string>
@@ -195,12 +195,13 @@
     <string name="payload_screen_title">负载</string>
     <string name="payload_method_title">Root 方法</string>
     <string name="payload_method_auto">自动</string>
-    <string name="payload_method_auto_df">DirtyFrag 适用于您的内核，优先使用</string>
-    <string name="payload_method_auto_gl">DirtyFrag 不适用 — 使用 GhostLock</string>
+    <string name="payload_method_auto_df">使用 DirtyFrag</string>
+    <string name="payload_method_auto_gl">使用 GhostLock</string>
     <string name="payload_method_auto_none">没有可用的受支持方法</string>
-    <string name="payload_method_df_ok">适用于您的内核（实验性）</string>
+    <string name="payload_method_df_ok">通过内核内 ESP page-cache 解密写入内核内存（CVE-2026-43284）</string>
     <string name="payload_method_df_unsupported">不适用于您的内核</string>
-    <string name="payload_method_gl">来自目录的内核构建负载</string>
+    <string name="payload_method_gl">Futex PI 竞争漏洞利用（CVE-2026-43499），适配您内核构建的负载</string>
+    <string name="payload_method_recommended">推荐</string>
     <string name="payload_custom_title">自定义 payload.so</string>
     <string name="supported_count">%1$d 台设备 · %2$d 个内核</string>
     <string name="supported_your">你的设备</string>

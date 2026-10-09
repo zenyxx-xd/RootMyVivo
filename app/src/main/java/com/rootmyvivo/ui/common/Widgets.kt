@@ -235,6 +235,8 @@ data class ChoiceDialogItem(
     val selected: Boolean = false,
     /** false — вариант недоступен: серый, без клика (плашка не едет) */
     val enabled: Boolean = true,
+    /** Маленькая акцентная таблетка справа от заголовка (напр. «Рекомендуется») */
+    val badge: String? = null,
 )
 
 /**
@@ -354,21 +356,39 @@ private fun ChoiceRow(item: ChoiceDialogItem, onClick: () -> Unit) {
     ) {
         // Радио всегда включено визуально (disabled-радио Material3
         // схлопывает минимальную зону касания и строка уезжает влево);
-        // защита от выбора недоступного варианта — clickable(enabled)
-        // строки и guard в onSelect вызывающего
+        // на недоступном варианте — пустой клик: ни реакции, ни закрытия
         RadioButton(
             selected = item.selected,
-            onClick = onClick,
+            onClick = if (item.enabled) onClick else ({}),
         )
         Spacer(Modifier.width(14.dp))
         Column(Modifier.weight(1f)) {
-            Text(
-                item.label,
-                style = MaterialTheme.typography.bodyLarge,
-                fontWeight = if (item.selected) FontWeight.SemiBold else FontWeight.Normal,
-                color = if (item.enabled) androidx.compose.ui.graphics.Color.Unspecified
-                else disabledColor,
-            )
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    item.label,
+                    style = MaterialTheme.typography.bodyLarge,
+                    fontWeight = if (item.selected) FontWeight.SemiBold else FontWeight.Normal,
+                    color = if (item.enabled) androidx.compose.ui.graphics.Color.Unspecified
+                    else disabledColor,
+                )
+                item.badge?.let { badge ->
+                    Spacer(Modifier.width(8.dp))
+                    // Таблетка как «Ваше устройство» в поддерживаемых
+                    Surface(
+                        shape = MaterialTheme.shapes.small,
+                        color = if (item.enabled) MaterialTheme.colorScheme.primary
+                        else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f),
+                    ) {
+                        Text(
+                            badge,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = if (item.enabled) MaterialTheme.colorScheme.onPrimary
+                            else MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(horizontal = 7.dp, vertical = 2.dp),
+                        )
+                    }
+                }
+            }
             item.description?.let { desc ->
                 Spacer(Modifier.height(2.dp))
                 Text(
