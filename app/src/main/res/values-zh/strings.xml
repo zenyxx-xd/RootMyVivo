@@ -81,6 +81,7 @@
     <string name="flow_fail_ksu">KernelSU 未激活</string>
     <string name="flow_fail_other">未知错误</string>
             <string name="log_df_root_iface">DirtyFrag root 接口已加载，正在安装 KernelSU 管理器</string>
+            <string name="log_df_wait_manager">等待管理器安装确认…</string>
     <string name="home_method_df">DirtyFrag • 通用</string>
     <string name="status_payload">漏洞利用</string>
     <string name="confirm_softreboot_text">用户空间重启将重启系统界面：应用将关闭，数据不会丢失。</string>

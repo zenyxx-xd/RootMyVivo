@@ -137,18 +137,32 @@ fun PayloadScreen(
             Spacer(Modifier.height(4.dp))
 
             // ── Главная карточка окна: девайс + ядро + статус методов ──
+            // Заголовок: имя из каталога + кодовая модель в скобках
+            val heroDeviceTitle = state.device?.let { d ->
+                val name = state.payload?.device?.marketName?.takeIf { it.isNotEmpty() } ?: d.marketName
+                if (d.model.isNotEmpty()) "$name (${d.model})" else name
+            } ?: ""
+            // GL при поддержке: «Поддерживается (6.6.127-24b70 • PSELECT)»
+            val glHeroStatus = if (glAvailable) {
+                state.payload?.let { p ->
+                    buildString {
+                        append(stringResource(R.string.payload_status_supported))
+                        append(" (").append(p.build.label)
+                        p.build.route?.let { append(" • ").append(it.uppercase()) }
+                        append(")")
+                    }
+                } ?: stringResource(R.string.payload_status_supported)
+            } else {
+                glUnavailableText
+            }
             ExploitHeroCard(
-                deviceTitle = state.device?.let { d ->
-                    if (d.kernelShort.isNotEmpty()) "${d.marketName} • ${d.model}" else d.marketName
-                } ?: "",
+                deviceTitle = heroDeviceTitle,
                 kernel = state.device?.kernel.orEmpty(),
                 dfAvailable = dfAvailable,
                 glAvailable = glAvailable,
                 dfStatusText = if (dfAvailable) stringResource(R.string.payload_status_supported)
                 else dfUnavailableText,
-                glStatusText = if (glAvailable) glPayloadDesc
-                else glUnavailableText,
-                autoText = autoText,
+                glStatusText = glHeroStatus,
             )
 
             // ── Метод рута (без подзаголовка) ──
@@ -289,9 +303,8 @@ fun PayloadScreen(
 
 /**
  * Главная карточка окна эксплойта: девайс и ядро (как на главной) +
- * живой статус обоих методов. Заголовок меняется по ситуации (оба /
- * только DF / только GL / ничего). Без акцентной заливки — та же
- * подложка, что у остальных карточек приложения.
+ * статус обоих методов. Без акцентной заливки — та же подложка, что у
+ * остальных карточек приложения.
  */
 @Composable
 private fun ExploitHeroCard(
@@ -301,7 +314,6 @@ private fun ExploitHeroCard(
     glAvailable: Boolean,
     dfStatusText: String,
     glStatusText: String,
-    autoText: String,
 ) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
@@ -312,11 +324,11 @@ private fun ExploitHeroCard(
             Modifier.padding(20.dp),
             verticalArrangement = Arrangement.spacedBy(4.dp),
         ) {
-            // Девайс: имя • кодовая модель — как заголовок карточки
+            // Заголовок карточки: «iQOO Neo 11 (PD2520)» — крупно
             Text(
                 deviceTitle,
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold,
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold,
             )
             // Полное ядро (mono, до трёх строк — как на главной)
             if (kernel.isNotEmpty()) {
@@ -328,34 +340,15 @@ private fun ExploitHeroCard(
                     maxLines = 3,
                 )
             }
-            Spacer(Modifier.height(4.dp))
-            val headline = when {
-                dfAvailable && glAvailable -> stringResource(R.string.payload_hero_both)
-                dfAvailable -> stringResource(R.string.payload_hero_df)
-                glAvailable -> stringResource(R.string.payload_hero_gl)
-                else -> stringResource(R.string.payload_hero_none)
-            }
-            Text(
-                headline,
-                style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.primary,
-            )
-            Text(
-                autoText,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            Spacer(Modifier.height(6.dp))
+            Spacer(Modifier.height(8.dp))
             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
             Spacer(Modifier.height(6.dp))
-            // Статусы методов: иконка + имя + статус/причина
+            // Статусы методов: иконка + имя + статус/причина — компактно
             MethodStatusRow(
                 name = "DirtyFrag",
                 available = dfAvailable,
                 statusText = dfStatusText,
             )
-            Spacer(Modifier.height(6.dp))
             MethodStatusRow(
                 name = "GhostLock",
                 available = glAvailable,
@@ -372,7 +365,7 @@ private fun MethodStatusRow(
     statusText: String,
 ) {
     Row(
-        horizontalArrangement = Arrangement.spacedBy(10.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Icon(
@@ -380,17 +373,17 @@ private fun MethodStatusRow(
             null,
             tint = if (available) MaterialTheme.colorScheme.primary
             else MaterialTheme.colorScheme.error,
-            modifier = Modifier.size(18.dp),
+            modifier = Modifier.size(14.dp),
         )
         Column {
             Text(
                 name,
-                style = MaterialTheme.typography.titleSmall,
+                style = MaterialTheme.typography.bodyMedium,
                 fontWeight = FontWeight.SemiBold,
             )
             Text(
                 statusText,
-                style = MaterialTheme.typography.bodySmall,
+                style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 maxLines = 2,
             )

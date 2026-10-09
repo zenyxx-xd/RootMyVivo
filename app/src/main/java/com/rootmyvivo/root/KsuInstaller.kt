@@ -1,7 +1,9 @@
 package com.rootmyvivo.root
 
 import android.content.Context
+import android.content.Intent
 import android.util.Log
+import androidx.core.content.FileProvider
 import com.rootmyvivo.R
 import com.rootmyvivo.data.DeviceInfo
 import com.rootmyvivo.shell.Transport
@@ -316,17 +318,97 @@ class KsuInstaller(
      */
     suspend fun installManagerOnly(variant: KsuVariant): KsuResult =
         withContext(Dispatchers.IO) {
-            // Менеджер ПЕРВЫМ: su-клиент KernelSU живёт в менеджере — без
-            // него su в PATH нет и проверка всегда «fail» (а soft reboot на
-            // части ядер вешает систему). Затем верификация с ретраями —
-            // менеджеру нужны секунды на рукопожатие с KSU-интерфейсом
-            installManager(variant)
+            val prefs = com.rootmyvivo.data.Prefs(ctx)
+            val knownPkgs = listOf(variant.packageName, prefs.managerPackage)
+                .filter { it.isNotEmpty() }.distinct()
+
+            suspend fun suWorks(): Boolean {
+                val (c, out) = Transport.su(ctx, "id", timeoutSec = 10)
+                return c == 0 && out.contains("uid=0")
+            }
+
+            // 1) Менеджер уже стоит — установку пропускаем
+            var installed = false
+            for (pkg in knownPkgs) {
+                if (isPackageInstalled(pkg)) {
+                    installed = true
+                    break
+                }
+            }
+            if (installed) {
+                log(R.string.log_manager_already, LogLevel.OK, variant.displayName)
+            } else {
+                // 2) Скачать APK и открыть СИСТЕМНЫЙ установщик: su-деплой
+                // тут невозможен — su-бинарник живёт в менеджере, без него
+                // «deploy manager.apk» всегда fail (курица и яйцо)
+                progress(R.string.log_manager_download, variant.displayName)
+                var apkFile: File? = null
+                var actualPkg: String? = null
+                for ((_, url) in managerApkCandidates(variant)) {
+                    val apk = File(workDir, "manager.apk")
+                    apk.delete()
+                    if (!download(url, apk.absolutePath)) continue
+                    val pkg = try {
+                        ctx.packageManager.getPackageArchiveInfo(apk.absolutePath, 0)?.packageName
+                    } catch (_: Exception) { null } ?: continue
+                    if (isPackageInstalled(pkg)) {
+                        apk.delete()
+                        installed = true
+                        break
+                    }
+                    apkFile = apk
+                    actualPkg = pkg
+                    break
+                }
+                if (apkFile != null && actualPkg != null) {
+                    onEvent(FlowEvent.Complete(true))
+                    progress(R.string.log_manager_install)
+                    withContext(Dispatchers.Main) {
+                        try {
+                            val uri = FileProvider.getUriForFile(
+                                ctx, "${ctx.packageName}.fileprovider", apkFile,
+                            )
+                            ctx.startActivity(
+                                Intent(Intent.ACTION_VIEW).apply {
+                                    setDataAndType(uri, "application/vnd.android.package-archive")
+                                    addFlags(
+                                        Intent.FLAG_GRANT_READ_URI_PERMISSION or
+                                            Intent.FLAG_ACTIVITY_NEW_TASK,
+                                    )
+                                },
+                            )
+                        } catch (_: Exception) {
+                        }
+                    }
+                    // Ждём подтверждения в системном установщике
+                    progress(R.string.log_df_wait_manager)
+                    val deadline = System.currentTimeMillis() + 90_000L
+                    while (System.currentTimeMillis() < deadline &&
+                        !isPackageInstalled(actualPkg)
+                    ) {
+                        kotlinx.coroutines.delay(2000L)
+                    }
+                    if (isPackageInstalled(actualPkg)) {
+                        prefs.managerPackage = actualPkg
+                        complete(true, R.string.log_manager_install_ok)
+                        apkFile.delete()
+                    } else {
+                        complete(false, R.string.log_manager_install_fail)
+                    }
+                } else if (!installed) {
+                    // APK не скачался — старый root-деплой как последний фолбэк
+                    installManager(variant)
+                }
+            }
+
+            // 3) Верификация su с ретраями: менеджеру нужно время подняться
             progress(R.string.log_ksu_verify)
             var rooted = false
-            for (attempt in 1..5) {
-                val (vCode, vOut) = Transport.su(ctx, "id", timeoutSec = 15)
-                rooted = vCode == 0 && vOut.contains("uid=0")
-                if (rooted) break
+            for (attempt in 1..15) {
+                if (suWorks()) {
+                    rooted = true
+                    break
+                }
                 kotlinx.coroutines.delay(2000L)
             }
             if (rooted) {
