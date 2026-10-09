@@ -18,10 +18,13 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
 import androidx.compose.material.icons.rounded.Bolt
+import androidx.compose.material.icons.rounded.Cancel
+import androidx.compose.material.icons.rounded.CheckCircle
 import androidx.compose.material.icons.rounded.Code
 import androidx.compose.material.icons.rounded.Description
 import androidx.compose.material.icons.rounded.FolderOpen
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -99,7 +102,7 @@ fun PayloadScreen(
 
     val methodLabel = when (state.settings.rootMethod) {
         RootMethod.AUTO -> stringResource(R.string.payload_method_auto)
-        RootMethod.DIRTYFRAG -> stringResource(R.string.home_method_df)
+        RootMethod.DIRTYFRAG -> "DirtyFrag"
         RootMethod.GHOSTLOCK -> "GhostLock"
     }
 
@@ -125,6 +128,17 @@ fun PayloadScreen(
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             Spacer(Modifier.height(4.dp))
+
+            // ── Главная карточка окна: статус методов на этом устройстве ──
+            ExploitHeroCard(
+                dfAvailable = dfAvailable,
+                glAvailable = glAvailable,
+                dfStatusText = if (dfAvailable) stringResource(R.string.payload_status_supported)
+                else dfUnavailableText,
+                glStatusText = if (glAvailable) stringResource(R.string.payload_status_supported)
+                else glUnavailableText,
+                autoText = autoText,
+            )
 
             // ── Метод рута ──
             SettingsGroup(title = stringResource(R.string.payload_method_title)) {
@@ -259,5 +273,114 @@ fun PayloadScreen(
                 vm.updateSettings { it.copy(rootMethod = m) }
             },
         )
+    }
+}
+
+/**
+ * Главная карточка окна эксплойта: живой статус обоих методов на этом
+ * устройстве. Заголовок меняется по ситуации (оба / только DF / только
+ * GL / ничего), цвет карточки перетекает: оба — акцент, один — мягкий,
+ * ни одного — тревожный. Под заголовком — что реально будет использоваться.
+ */
+@Composable
+private fun ExploitHeroCard(
+    dfAvailable: Boolean,
+    glAvailable: Boolean,
+    dfStatusText: String,
+    glStatusText: String,
+    autoText: String,
+) {
+    val containerColor by androidx.compose.animation.animateColorAsState(
+        targetValue = when {
+            dfAvailable && glAvailable -> MaterialTheme.colorScheme.primaryContainer
+            dfAvailable || glAvailable -> MaterialTheme.colorScheme.secondaryContainer
+            else -> MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.55f)
+        },
+        animationSpec = androidx.compose.animation.core.tween(400),
+        label = "heroColor",
+    )
+    val onContainer = when {
+        dfAvailable && glAvailable -> MaterialTheme.colorScheme.onPrimaryContainer
+        dfAvailable || glAvailable -> MaterialTheme.colorScheme.onSecondaryContainer
+        else -> MaterialTheme.colorScheme.onErrorContainer
+    }
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = MaterialTheme.shapes.extraLarge,
+        color = containerColor,
+    ) {
+        Column(
+            Modifier.padding(20.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
+            val headline = when {
+                dfAvailable && glAvailable -> stringResource(R.string.payload_hero_both)
+                dfAvailable -> stringResource(R.string.payload_hero_df)
+                glAvailable -> stringResource(R.string.payload_hero_gl)
+                else -> stringResource(R.string.payload_hero_none)
+            }
+            Text(
+                headline,
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold,
+                color = onContainer,
+            )
+            Text(
+                autoText,
+                style = MaterialTheme.typography.bodyMedium,
+                color = onContainer.copy(alpha = 0.75f),
+            )
+            Spacer(Modifier.height(8.dp))
+            HorizontalDivider(color = onContainer.copy(alpha = 0.2f))
+            Spacer(Modifier.height(8.dp))
+            // Статусы методов: иконка + имя + причина
+            MethodStatusRow(
+                name = "DirtyFrag",
+                available = dfAvailable,
+                statusText = dfStatusText,
+                tint = onContainer,
+            )
+            Spacer(Modifier.height(6.dp))
+            MethodStatusRow(
+                name = "GhostLock",
+                available = glAvailable,
+                statusText = glStatusText,
+                tint = onContainer,
+            )
+        }
+    }
+}
+
+@Composable
+private fun MethodStatusRow(
+    name: String,
+    available: Boolean,
+    statusText: String,
+    tint: androidx.compose.ui.graphics.Color,
+) {
+    Row(
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(
+            if (available) Icons.Rounded.CheckCircle else Icons.Rounded.Cancel,
+            null,
+            tint = if (available) tint else tint.copy(alpha = 0.55f),
+            modifier = Modifier.size(18.dp),
+        )
+        Column {
+            Text(
+                name,
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.SemiBold,
+                color = tint,
+            )
+            Text(
+                statusText,
+                style = MaterialTheme.typography.bodySmall,
+                color = tint.copy(alpha = 0.75f),
+                maxLines = 2,
+            )
+        }
     }
 }

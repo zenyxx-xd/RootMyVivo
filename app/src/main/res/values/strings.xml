@@ -94,8 +94,8 @@
     <string name="flow_fail_ksu">KernelSU не активировался</string>
     <string name="flow_fail_other">Неизвестная ошибка</string>
             <string name="log_df_root_iface">Root-интерфейс DirtyFrag загружен, ставлю менеджер KernelSU</string>
-    <string name="home_method_df">DirtyFrag (универсально)</string>
-    <string name="status_payload">Пейлоад</string>
+    <string name="home_method_df">DirtyFrag • универсальный</string>
+    <string name="status_payload">Эксплоит</string>
     <string name="confirm_softreboot_text">Перезагрузка userspace перезапустит системный интерфейс: приложения закроются, данные не потеряются.</string>
     <string name="confirm_softreboot_title">Перезапустить интерфейс?</string>
     <string name="home_softreboot">Перезагрузка userspace</string>
@@ -205,7 +205,7 @@
     <string name="home_restart_exploit">Перезапустить эксплойт</string>
     <string name="home_supported_devices">Поддерживаемые устройства</string>
     <string name="supported_title">Поддерживаемые устройства</string>
-    <string name="payload_screen_title">Пейлоад</string>
+    <string name="payload_screen_title">Эксплоит</string>
     <string name="payload_method_title">Метод рута</string>
     <string name="payload_method_auto">Авто</string>
     <string name="payload_method_auto_df">Используется DirtyFrag</string>
@@ -215,6 +215,11 @@
     <string name="payload_method_df_unsupported">Не применим на вашем ядре</string>
     <string name="payload_method_gl">Эксплойт гонки futex PI (CVE-2026-43499), пейлоад под вашу сборку ядра</string>
     <string name="payload_method_recommended">Рекомендуется</string>
+    <string name="payload_hero_both">Оба метода доступны</string>
+    <string name="payload_hero_df">Доступен DirtyFrag</string>
+    <string name="payload_hero_gl">Доступен GhostLock</string>
+    <string name="payload_hero_none">Нет доступных методов</string>
+    <string name="payload_status_supported">Поддерживается</string>
     <string name="payload_custom_title">Кастомный payload.so</string>
     <string name="supported_count">%1$d устройств · %2$d ядер</string>
     <string name="supported_your">Ваше устройство</string>

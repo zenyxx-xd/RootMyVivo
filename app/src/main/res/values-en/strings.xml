@@ -81,8 +81,8 @@
     <string name="flow_fail_ksu">KernelSU did not activate</string>
     <string name="flow_fail_other">Unknown error</string>
             <string name="log_df_root_iface">DirtyFrag root interface loaded, installing KernelSU manager</string>
-    <string name="home_method_df">DirtyFrag (universal)</string>
-    <string name="status_payload">Payload</string>
+    <string name="home_method_df">DirtyFrag • universal</string>
+    <string name="status_payload">Exploit</string>
     <string name="confirm_softreboot_text">A userspace reboot will restart the system interface: apps will close, no data will be lost.</string>
     <string name="confirm_softreboot_title">Restart the interface?</string>
     <string name="home_softreboot">Userspace reboot</string>
@@ -192,7 +192,7 @@
     <string name="home_restart_exploit">Restart exploit</string>
     <string name="home_supported_devices">Supported devices</string>
     <string name="supported_title">Supported devices</string>
-    <string name="payload_screen_title">Payload</string>
+    <string name="payload_screen_title">Exploit</string>
     <string name="payload_method_title">Root method</string>
     <string name="payload_method_auto">Auto</string>
     <string name="payload_method_auto_df">DirtyFrag is used</string>
@@ -202,6 +202,11 @@
     <string name="payload_method_df_unsupported">Not applicable on your kernel</string>
     <string name="payload_method_gl">Futex PI race exploit (CVE-2026-43499), payload for your kernel build</string>
     <string name="payload_method_recommended">Recommended</string>
+    <string name="payload_hero_both">Both methods available</string>
+    <string name="payload_hero_df">DirtyFrag available</string>
+    <string name="payload_hero_gl">GhostLock available</string>
+    <string name="payload_hero_none">No methods available</string>
+    <string name="payload_status_supported">Supported</string>
     <string name="payload_custom_title">Custom payload.so</string>
     <string name="supported_count">%1$d devices · %2$d kernels</string>
     <string name="supported_your">Your device</string>

@@ -864,11 +864,17 @@ private fun InfoGroup(
             },
         )
         SettingsDivider()
-        // Пейлоад / метод: как выбрано в окне пейлоада (авто — по
-        // совместимости; DF/GL — явно), с маршрутом GhostLock из каталога
+        // Эксплоит / метод: как выбрано в окне эксплойта (авто — по
+        // совместимости, DF первым; GL — с ядром и маршрутом из каталога)
         val dfOk = state.device?.dirtyfragCompatible() == DeviceInfo.DfCompat.OK
         val method = state.settings.rootMethod
-        val routeSuffix = state.payload?.build?.route?.let { " · $it" } ?: ""
+        // GL: «GhostLock • 6.6.127-24b70 • PSELECT»
+        val glDesc = state.payload?.let { p ->
+            buildString {
+                append("GhostLock • ").append(p.build.label)
+                p.build.route?.let { append(" • ").append(it.uppercase()) }
+            }
+        }
         // Ядро с git-id: «в списке есть, но сборка другая» видно сразу
         val homeKernelShort = state.device?.kernelShort.orEmpty()
         val homeId5 = Regex("""(?:android\d+-\d+-g?)?([0-9a-f]{5,8})$""")
@@ -882,10 +888,10 @@ private fun InfoGroup(
                 method == com.rootmyvivo.data.RootMethod.DIRTYFRAG ->
                     stringResource(R.string.home_method_df)
                 method == com.rootmyvivo.data.RootMethod.GHOSTLOCK ->
-                    state.payload?.displayName?.plus(routeSuffix)
-                        ?: stringResource(R.string.payload_not_found)
-                state.payload != null -> state.payload.displayName + routeSuffix
-                dfOk -> "DirtyFrag"
+                    glDesc ?: stringResource(R.string.payload_not_found)
+                // Авто: DF — первый приоритет, как в реальном запуске
+                dfOk -> stringResource(R.string.home_method_df)
+                glDesc != null -> glDesc
                 state.catalogState == CatalogState.LOADING ->
                     stringResource(R.string.payload_short_searching)
                 // Ни DF, ни GL: точная причина с git-id сборки ядра
