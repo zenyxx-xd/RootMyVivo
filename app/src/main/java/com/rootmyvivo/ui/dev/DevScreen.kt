@@ -128,6 +128,29 @@ fun DevScreen(vm: MainViewModel, state: UiState, onClose: () -> Unit, onRootStar
                     Text(stringResource(R.string.home_restart_exploit), maxLines = 1)
                 }
                 var demoExpanded by remember { mutableStateOf(false) }
+                // Разрешить DirtyFrag на всех ядрах: PATCHED-ядра тоже
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.padding(top = 12.dp),
+                ) {
+                    Column(Modifier.weight(1f)) {
+                        Text(
+                            stringResource(R.string.settings_df_all_kernels),
+                            style = MaterialTheme.typography.bodyMedium,
+                        )
+                        Text(
+                            stringResource(R.string.settings_df_all_kernels_desc),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                    androidx.compose.material3.Switch(
+                        checked = state.settings.allowDfAllKernels,
+                        onCheckedChange = { v ->
+                            vm.updateSettings { it.copy(allowDfAllKernels = v) }
+                        },
+                    )
+                }
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                     OutlinedButton(
                         onClick = {

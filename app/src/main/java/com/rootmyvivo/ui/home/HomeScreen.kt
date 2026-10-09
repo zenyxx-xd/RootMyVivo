@@ -516,7 +516,7 @@ private fun HeroCard(
 private fun RootButton(state: UiState, onRoot: () -> Unit) {
     // DirtyFrag — первый приоритет: применим по ядру → кнопка активна без
     // каталога (универсальный метод встроен в APK)
-    val dfOk = state.device?.dirtyfragCompatible() == com.rootmyvivo.data.DeviceInfo.DfCompat.OK
+    val dfOk = state.device?.dfAllowed(state.settings.allowDfAllKernels) == true
     val ready = state.payload != null || state.customPayload != null || dfOk
     val enabled = ready && !state.flowRunning
     val kernelShort = state.device?.kernelShort.orEmpty()
@@ -793,7 +793,7 @@ private fun InfoGroup(
         SettingsDivider()
         // Эксплоит / метод: как выбрано в окне эксплойта (авто — по
         // совместимости, DF первым; GL — с ядром и маршрутом из каталога)
-        val dfOk = state.device?.dirtyfragCompatible() == DeviceInfo.DfCompat.OK
+        val dfOk = state.device?.dfAllowed(state.settings.allowDfAllKernels) == true
         val method = state.settings.rootMethod
         // GL: «GhostLock • 6.6.127-24b70 • PSELECT»
         val glDesc = state.payload?.let { p ->

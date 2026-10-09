@@ -98,7 +98,7 @@ fun PayloadScreen(
         else -> stringResource(R.string.home_btn_unsupported_kernel, kernelLabel)
     }
     // DF: привязки к девайсам нет — только ядро (с git-id)
-    val dfAvailable = state.device?.dirtyfragCompatible() == DeviceInfo.DfCompat.OK
+    val dfAvailable = state.device?.dfAllowed(state.settings.allowDfAllKernels) == true
     val dfUnavailableText = stringResource(R.string.home_btn_unsupported_kernel, kernelLabel)
     // Авто: что реально будет использоваться (DF — первый приоритет)
     val autoText = when {

@@ -209,7 +209,6 @@
     <string name="df_table_active">Активен до %1$s</string>
     <string name="df_table_patched">Пропатчено с %1$s</string>
     <string name="df_table_dead">Не поддерживается</string>
-    <string name="df_table_note">Таблица действительна только для устройств vivo и может быть неточной</string>
     <string name="supported_title">Поддерживаемые устройства</string>
     <string name="payload_screen_title">Эксплоит</string>
     <string name="payload_method_title">Метод рута</string>
@@ -228,7 +227,10 @@
     <string name="payload_status_supported">Поддерживается</string>
     <string name="payload_custom_title">Кастомный payload.so</string>
     <string name="supported_count">%1$d устройств · %2$d ядер</string>
-    <string name="supported_your">Ваше устройство</string>
+        <string name="supported_df_section">Метод DirtyFrag</string>
+    <string name="supported_all_devices">Все устройства vivo/iQOO</string>
+    <string name="df_table_note">Таблица действительна только для устройств vivo и iQOO и может быть неточной</string>
+<string name="supported_your">Ваше устройство</string>
     <string name="supported_temporarily_disabled">Устройство временно отключено</string>
     <string name="update_none_found">Обновлений нет</string>
     <string name="link_open_failed">Не удалось открыть ссылку</string>
@@ -269,6 +271,8 @@
     <string name="other_demo_with_method">Демо (%1$s)</string>
         <string name="other_demo_method_gl">Метод GhostLock</string>
     <string name="other_demo_method_df">Метод DirtyFrag</string>
+        <string name="settings_df_all_kernels">Разрешить DirtyFrag на всех ядрах</string>
+    <string name="settings_df_all_kernels_desc">Запускает эксплойт и на ядрах с фиксом ветки — ko своего KMI всё равно обязателен (6.1 и non-GKI недоступны)</string>
     <string name="other_demo_gl">Демо GhostLock</string>
     <string name="other_demo_df">Демо DirtyFrag</string>
     <string name="other_section_process">Процесс</string>

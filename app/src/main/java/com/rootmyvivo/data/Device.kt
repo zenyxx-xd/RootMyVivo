@@ -14,37 +14,57 @@ data class DeviceInfo(
     val securityPatch: String,
     val soc: String,
 ) {
-    /** DirtyFrag (CVE-2026-43284): применим ли примитив на этом ядре. */
-    enum class DfCompat { OK, PATCHED, NON_GKI }
+    /**
+     * DirtyFrag (CVE-2026-43284):
+     * OK — применим; PATCHED — фикс порога ветки уже в ядре (можно
+     * разрешить вручную, ko под KMI есть); UNSUPPORTED — DF невозможен
+     * в принципе: non-GKI, 6.1.x (примитив мёртв) или ветка без ko.
+     */
+    enum class DfCompat { OK, PATCHED, UNSUPPORTED }
+
+    /** Ветка ядра без ko-модуля в приложении — DF недоступен вообще. */
+    private fun dfHasKo(maj: Int, min: Int): Boolean =
+        (maj == 5 && min == 10) || (maj == 5 && min == 15) ||
+            (maj == 6 && (min == 6 || min == 12 || min == 18))
 
     /**
      * Решение по ядру (таблица порогов фикса от 2026-05-08, SKBFL_SHARED_FRAG):
-     *  - весь 6.1.x — не поддерживается (mitigation в ядре, DF-модуля нет);
-     *  - ядро ≥ порога своей ветки — пропатчено (esp больше не пишет в page
-     *    cache): 5.10→5.10.255, 5.15→5.15.205, 6.1→6.1.171, 6.6→6.6.138,
-     *    6.12→6.12.87 (в тегах ≤6.12.60 фикса нет), 6.18→6.18.29, 7.0→7.0.6;
+     *  - весь 6.1.x — мёртв: accidental mitigation, ko в приложении нет;
+     *  - ядро ≥ порога своей ветки — пропатчено: 5.10→5.10.255,
+     *    5.15→5.15.205, 6.6→6.6.138, 6.12→6.12.87, 6.18→6.18.29, 7.0→7.0.6;
      *  - non-GKI (нет androidNN в uname) — не поддерживается;
      *  - иначе — применим (экспериментально: ko собираем сами, vivo не
      *    тестировано).
      */
     fun dirtyfragCompatible(): DfCompat {
-        if (!Regex("""android\d+""").containsMatchIn(kernel)) return DfCompat.NON_GKI
         val parts = kernelShort.split(".").map { it.toIntOrNull() ?: 0 }
         val maj = parts.getOrNull(0) ?: 0
         val min = parts.getOrNull(1) ?: 0
+        // 6.1 и ветки без ko — недоступны при любых настройках
+        if (maj == 6 && min == 1) return DfCompat.UNSUPPORTED
+        if (!dfHasKo(maj, min)) return DfCompat.UNSUPPORTED
         val patchedFrom = when {
             maj == 5 && min == 10 -> 255
             maj == 5 && min == 15 -> 205
-            // 6.6.127+: фикс уже в виво-сборках — по полевым логам verify FAILED
-            maj == 6 && min == 6 -> 127
+            maj == 6 && min == 6 -> 138
             maj == 6 && min == 12 -> 87
             maj == 6 && min == 18 -> 29
-            maj >= 7 -> if (maj == 7 && min == 0) 6 else 0
             else -> 0
         }
         val patch = parts.getOrNull(2) ?: 0
         if (patchedFrom in 1..patch) return DfCompat.PATCHED
         return DfCompat.OK
+    }
+
+    /**
+     * Итоговое «запускать ли DF»: OK — да; PATCHED — только если юзер
+     * разрешил «DF на всех ядрах» в настройках (ko его KMI есть, риск
+     * верификации на нём); UNSUPPORTED — никогда.
+     */
+    fun dfAllowed(allowPatched: Boolean): Boolean = when (dirtyfragCompatible()) {
+        DfCompat.OK -> true
+        DfCompat.PATCHED -> allowPatched
+        DfCompat.UNSUPPORTED -> false
     }
 
     companion object {

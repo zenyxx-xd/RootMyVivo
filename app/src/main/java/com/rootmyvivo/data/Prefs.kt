@@ -45,6 +45,9 @@ data class Settings(
     val betaChannel: Boolean = false,
     /** Метод рута: авто или явный выбор (DirtyFrag / GhostLock) */
     val rootMethod: RootMethod = RootMethod.AUTO,
+    /** Разрешить DirtyFrag на всех ядрах: игнорировать порог фикса
+     *  ветки (ko своего KMI всё равно обязателен) */
+    val allowDfAllKernels: Boolean = false,
 )
 
 /** Хранилище настроек и флагов (SharedPreferences — sync-чтение на старте). */
@@ -69,6 +72,7 @@ class Prefs(context: Context) {
         autoUpdateCheck = sp.getBoolean(KEY_AUTO_UPDATE, true),
         betaChannel = sp.getBoolean(KEY_BETA_CHANNEL, false),
         rootMethod = RootMethod.byId(sp.getString(KEY_ROOT_METHOD, null)),
+        allowDfAllKernels = sp.getBoolean(KEY_ALLOW_DF_ALL, false),
     )
 
     fun saveSettings(s: Settings) {
@@ -86,6 +90,7 @@ class Prefs(context: Context) {
             .putBoolean(KEY_AUTO_UPDATE, s.autoUpdateCheck)
             .putBoolean(KEY_BETA_CHANNEL, s.betaChannel)
             .putString(KEY_ROOT_METHOD, s.rootMethod.id)
+            .putBoolean(KEY_ALLOW_DF_ALL, s.allowDfAllKernels)
             .apply()
     }
 
@@ -208,5 +213,6 @@ class Prefs(context: Context) {
         const val KEY_AUTO_UPDATE = "autoUpdateCheck"
     const val KEY_BETA_CHANNEL = "betaChannel"
     const val KEY_ROOT_METHOD = "rootMethod"
+    const val KEY_ALLOW_DF_ALL = "allowDfAllKernels"
     }
 }

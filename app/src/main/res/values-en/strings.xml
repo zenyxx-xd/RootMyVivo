@@ -196,7 +196,6 @@
     <string name="df_table_active">Active up to %1$s</string>
     <string name="df_table_patched">Patched since %1$s</string>
     <string name="df_table_dead">Not supported</string>
-    <string name="df_table_note">This table is valid for vivo devices only and may be inaccurate</string>
     <string name="supported_title">Supported devices</string>
     <string name="payload_screen_title">Exploit</string>
     <string name="payload_method_title">Root method</string>
@@ -215,7 +214,10 @@
     <string name="payload_status_supported">Supported</string>
     <string name="payload_custom_title">Custom payload.so</string>
     <string name="supported_count">%1$d devices · %2$d kernels</string>
-    <string name="supported_your">Your device</string>
+        <string name="supported_df_section">DirtyFrag method</string>
+    <string name="supported_all_devices">All vivo/iQOO devices</string>
+    <string name="df_table_note">This table is valid for vivo and iQOO devices only and may be inaccurate</string>
+<string name="supported_your">Your device</string>
     <string name="supported_temporarily_disabled">Device temporarily unavailable</string>
     <string name="update_none_found">No updates available</string>
     <string name="link_open_failed">Couldn\'t open the link</string>
@@ -256,6 +258,8 @@
         <string name="other_demo_with_method">Demo (%1$s)</string>
         <string name="other_demo_method_gl">Method GhostLock</string>
     <string name="other_demo_method_df">Method DirtyFrag</string>
+        <string name="settings_df_all_kernels">Allow DirtyFrag on all kernels</string>
+    <string name="settings_df_all_kernels_desc">Runs the exploit on patched kernels too — the kernel module for your KMI is still required (6.1 and non-GKI stay unavailable)</string>
     <string name="other_demo_gl">Demo GhostLock</string>
     <string name="other_demo_df">Demo DirtyFrag</string>
     <string name="other_section_process">Process</string>
