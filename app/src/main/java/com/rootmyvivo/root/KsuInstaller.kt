@@ -358,6 +358,16 @@ class KsuInstaller(
                 return c == 0 && out.contains("uid=0")
             }
 
+            // 0) Бутстрап (root-контекст) только что поставил persist-порт,
+            // вписал наш adb-ключ и рестартил adbd: ждём канал и включаем
+            // adb-транспорт — дальше вся установка идёт через ADB shell
+            // (allow-shell root), как в проверенном GL-флоу
+            val adbUp = com.rootmyvivo.shell.Transport.adbWaitAlive(ctx, timeoutMs = 30_000L)
+            if (adbUp) {
+                Log.i(TAG, "adb transport up after bootstrap persist")
+                prefs.firstRootDone = true
+            }
+
             // 1) Менеджер уже стоит — установку пропускаем
             var installed = false
             for (pkg in knownPkgs) {
@@ -593,8 +603,15 @@ class KsuInstaller(
         }
 
     private suspend fun isPackageInstalled(pkg: String): Boolean {
-        val (_, pathOut) = LocalRunner.exec("pm path $pkg", timeoutSec = 30)
-        return pathOut.startsWith("package:")
+        // PackageManager API, НЕ shell-pm: непривилегированное приложение
+        // не может вызывать pm — старая проверка ВСЕГДА возвращала false
+        // после DF-эксплойта («менеджер не установлен» ложно)
+        return try {
+            ctx.packageManager.getPackageInfo(pkg, 0)
+            true
+        } catch (_: Exception) {
+            false
+        }
     }
 
     /** Деплой APK + root-скрипт pm install; true если скрипт отработал. */

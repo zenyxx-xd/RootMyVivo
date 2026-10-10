@@ -138,7 +138,7 @@ fun App(vm: MainViewModel, state: UiState) {
                 cornerClipMode = NavCornerClipMode.Leading,
                 dimAmount = 0.5f,
                 backdropColor = MaterialTheme.colorScheme.surfaceContainer,
-                blockInputDuringTransition = false,
+                blockInputDuringTransition = true,
             ),
         ) {
             entry<RmvRoute.Main>(swipeDismiss = NavSwipeDirection.None) {

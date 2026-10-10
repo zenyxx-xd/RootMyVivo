@@ -1,6 +1,7 @@
 package com.rootmyvivo.ui.dev
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
@@ -161,7 +162,12 @@ fun DevScreen(vm: MainViewModel, state: UiState, onClose: () -> Unit, onRootStar
                 // Радиокнопки выбора метода — две строки после демо-кнопки;
                 // кликабельна вся строка, отступ между строками минимальный
                 androidx.compose.animation.AnimatedVisibility(visible = demoExpanded) {
-                    Column(Modifier.padding(top = 6.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Column(
+                        Modifier
+                            .padding(top = 2.dp, start = 8.dp)
+                            .animateContentSize(),
+                        verticalArrangement = Arrangement.spacedBy(4.dp),
+                    ) {
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
                             modifier = Modifier
@@ -214,48 +220,21 @@ fun DevScreen(vm: MainViewModel, state: UiState, onClose: () -> Unit, onRootStar
                 SectionCaption(stringResource(R.string.settings_clean_traces_desc))
             }
 
-            // ── DirtyFrag: разрешить на всех ядрах — отдельная карточка ──
-            DevSection(title = null) {
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 8.dp),
-                ) {
-                    // Иконка как у настройки автообновления: круглый бекграунд
-                    androidx.compose.foundation.layout.Box(
-                        Modifier
-                            .size(40.dp)
-                            .clip(androidx.compose.foundation.shape.CircleShape)
-                            .background(MaterialTheme.colorScheme.primaryContainer),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Icon(
-                            Icons.Rounded.Rule, null,
-                            tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                            modifier = Modifier.size(20.dp),
+            // ── Для разработчика: разрешить DirtyFrag на всех ядрах ──
+            DevSection(title = stringResource(R.string.settings_df_dev_subtitle)) {
+                com.rootmyvivo.ui.common.SettingsRow(
+                    title = stringResource(R.string.settings_df_all_kernels),
+                    description = stringResource(R.string.settings_df_all_kernels_desc),
+                    icon = Icons.Rounded.Rule,
+                    trailing = {
+                        androidx.compose.material3.Switch(
+                            checked = state.settings.allowDfAllKernels,
+                            onCheckedChange = { v ->
+                                vm.updateSettings { it.copy(allowDfAllKernels = v) }
+                            },
                         )
-                    }
-                    Column(Modifier.weight(1f)) {
-                        Text(
-                            stringResource(R.string.settings_df_all_kernels),
-                            style = MaterialTheme.typography.bodyLarge,
-                        )
-                        Text(
-                            stringResource(R.string.settings_df_dev_subtitle),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
-                    androidx.compose.material3.Switch(
-                        checked = state.settings.allowDfAllKernels,
-                        onCheckedChange = { v ->
-                            vm.updateSettings { it.copy(allowDfAllKernels = v) }
-                        },
-                    )
-                }
-                SectionCaption(stringResource(R.string.settings_df_all_kernels_desc))
+                    },
+                )
             }
 
             Spacer(Modifier.height(8.dp))
@@ -314,7 +293,13 @@ private fun DevSection(
             shape = MaterialTheme.shapes.extraLarge,
             color = MaterialTheme.colorScheme.surfaceContainerLow,
         ) {
-            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp), content = content)
+            Column(
+                Modifier
+                    .padding(16.dp)
+                    .animateContentSize(),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+                content = content,
+            )
         }
     }
 }

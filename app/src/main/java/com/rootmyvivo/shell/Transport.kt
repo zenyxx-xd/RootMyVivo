@@ -41,6 +41,18 @@ object Transport {
     private fun adbUsable(ctx: Context): Boolean =
         AdbWire.isConnected() || adbAlive(ctx)
 
+    /** Подождать живой ADB-канал (DF: бутстрап только что рестартил adbd).
+     *  true — порт 5555 отвечает. */
+    suspend fun adbWaitAlive(ctx: Context, timeoutMs: Long = 30_000L): Boolean =
+        withContext(Dispatchers.IO) {
+            val deadline = System.currentTimeMillis() + timeoutMs
+            while (System.currentTimeMillis() < deadline) {
+                if (adbAlive(ctx)) return@withContext true
+                delay(1000L)
+            }
+            adbAlive(ctx)
+        }
+
     private fun adbAlive(ctx: Context): Boolean = try {
         val (code, out) = AdbWire.shell(ctx, "echo RMV_OK", timeoutMs = 8000, allowDialog = false)
         code == 0 && out.contains("RMV_OK")

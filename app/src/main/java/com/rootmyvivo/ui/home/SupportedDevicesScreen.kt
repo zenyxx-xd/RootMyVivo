@@ -95,7 +95,8 @@ fun SupportedDevicesScreen(
                     LinearProgressIndicator(Modifier.fillMaxWidth())
                 }
                 else -> {
-                    // ── DirtyFrag: карточка «Все устройства vivo/iQOO» ──
+                    // ── DirtyFrag: таблица поддержки ядер ──
+                    SectionTitle(stringResource(R.string.supported_df_section))
                     DirtyFragTableCard()
 
                     // ── Метод GhostLock: каталог ──
