@@ -152,7 +152,7 @@ private fun DirtyFragTableCard() {
     data class Row(val kernel: String, val status: String, val active: Boolean)
     val rows = listOf(
         Row("5.10", stringResource(R.string.df_table_active, "5.10.254"), true),
-        Row("5.15", stringResource(R.string.df_table_active, "5.15.204"), true),
+        Row("5.15", stringResource(R.string.df_table_active, "5.15.196"), true),
         Row("6.1", stringResource(R.string.df_table_dead), false),
         Row("6.6", stringResource(R.string.df_table_active, "6.6.126"), true),
         Row("6.12", stringResource(R.string.df_table_active, "6.12.86"), true),

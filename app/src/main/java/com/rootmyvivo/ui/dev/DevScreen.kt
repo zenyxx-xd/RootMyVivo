@@ -161,7 +161,15 @@ fun DevScreen(vm: MainViewModel, state: UiState, onClose: () -> Unit, onRootStar
                 }
                 // Радиокнопки выбора метода — две строки после демо-кнопки;
                 // кликабельна вся строка, отступ между строками минимальный
-                androidx.compose.animation.AnimatedVisibility(visible = demoExpanded) {
+                // if + animateContentSize: AnimatedVisibility при выходе не
+                // участвует в layout (мгновенный коллапс — отсюда прыжок
+                // подписи при закрытии); здесь высота анимируется непрерывно
+                androidx.compose.foundation.layout.Column(
+                    Modifier.animateContentSize(
+                        animationSpec = androidx.compose.animation.core.tween(220),
+                    ),
+                ) {
+                    if (demoExpanded) {
                     Column(
                         Modifier.padding(top = 0.dp, start = 8.dp),
                         verticalArrangement = Arrangement.spacedBy(4.dp),
@@ -198,6 +206,7 @@ fun DevScreen(vm: MainViewModel, state: UiState, onClose: () -> Unit, onRootStar
                             Spacer(Modifier.width(8.dp))
                             Text(stringResource(R.string.other_demo_method_gl), style = MaterialTheme.typography.titleSmall)
                         }
+                    }
                     }
                 }
                 SectionCaption(stringResource(R.string.other_demo_desc))

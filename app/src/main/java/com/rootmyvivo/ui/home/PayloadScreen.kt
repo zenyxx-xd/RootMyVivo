@@ -86,6 +86,15 @@ fun PayloadScreen(
             )
         },
     ) { padding ->
+        // Тосты валидации файла (как на главной): без потребителя toastRes
+        // зависал и всплывал позже, при возврате на главный экран
+        val appCtx = androidx.compose.ui.platform.LocalContext.current
+        LaunchedEffect(state.toastRes) {
+            state.toastRes?.let {
+                android.widget.Toast.makeText(appCtx, it, android.widget.Toast.LENGTH_SHORT).show()
+                vm.consumeToast()
+            }
+        }
         Column(
             Modifier
                 .fillMaxSize()
@@ -279,7 +288,7 @@ private fun UserDeviceCard(state: UiState) {
     val min = parts.getOrNull(1) ?: 0
     val dfLimit = when {
         maj == 5 && min == 10 -> "5.10.254"
-        maj == 5 && min == 15 -> "5.15.204"
+        maj == 5 && min == 15 -> "5.15.196"
         maj == 6 && min == 6 -> "6.6.126"
         maj == 6 && min == 12 -> "6.12.86"
         maj == 6 && min == 18 -> "6.18.28"
