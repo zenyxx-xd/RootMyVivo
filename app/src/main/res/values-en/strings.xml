@@ -267,7 +267,8 @@
         <string name="other_demo_with_method">Demo (%1$s)</string>
         <string name="other_demo_method_gl">Method GhostLock</string>
     <string name="other_demo_method_df">Method DirtyFrag</string>
-        <string name="settings_df_all_kernels">Allow DirtyFrag on all kernels</string>
+            <string name="settings_df_dev_subtitle">For developers</string>
+    <string name="settings_df_all_kernels">Allow DirtyFrag on all kernels</string>
     <string name="settings_df_all_kernels_desc">Runs the exploit on patched kernels too — the kernel module for your KMI is still required (6.1 and non-GKI stay unavailable)</string>
     <string name="other_demo_gl">Demo GhostLock</string>
     <string name="other_demo_df">Demo DirtyFrag</string>

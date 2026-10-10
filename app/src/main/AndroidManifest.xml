@@ -63,24 +63,5 @@
                 android:value="root_process_runner" />
         </service>
 
-        <!-- Авто-восстановление рута после перезагрузки: перезапуск эксплойта -->
-        <service
-            android:name=".BootRootService"
-            android:exported="false"
-            android:foregroundServiceType="specialUse">
-            <property
-                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
-                android:value="root_boot_restorer" />
-        </service>
-
-        <receiver
-            android:name=".BootReceiver"
-            android:enabled="true"
-            android:exported="true">
-            <intent-filter>
-                <action android:name="android.intent.action.BOOT_COMPLETED" />
-                <action android:name="android.intent.action.LOCKED_BOOT_COMPLETED" />
-            </intent-filter>
-        </receiver>
     </application>
 </manifest>

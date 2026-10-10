@@ -444,10 +444,13 @@ private fun HeroCard(
             ) {
                 when (rootState) {
                     RootState.ROOTED -> {
-                        Icon(
-                            Icons.Rounded.CheckCircle, null,
-                            modifier = Modifier.size(64.dp),
-                            tint = MaterialTheme.colorScheme.primary,
+                        // Открытый замок — оригинальная иконка приложения
+                        androidx.compose.foundation.Image(
+                            painter = androidx.compose.ui.res.painterResource(
+                                R.drawable.ic_app_logo,
+                            ),
+                            contentDescription = null,
+                            modifier = Modifier.size(52.dp),
                         )
                         Spacer(Modifier.height(10.dp))
                         Text(
@@ -468,10 +471,13 @@ private fun HeroCard(
                         Text(stringResource(R.string.status_checking), style = MaterialTheme.typography.titleMedium)
                     }
                     else -> {
-                        Icon(
-                            Icons.Rounded.Bolt, null,
-                            modifier = Modifier.size(56.dp),
-                            tint = MaterialTheme.colorScheme.primary,
+                        // Замок из иконки приложения: закрытый без рута
+                        androidx.compose.foundation.Image(
+                            painter = androidx.compose.ui.res.painterResource(
+                                R.drawable.ic_lock_closed,
+                            ),
+                            contentDescription = null,
+                            modifier = Modifier.size(52.dp),
                         )
                         Spacer(Modifier.height(8.dp))
                         Text(
@@ -573,16 +579,7 @@ private fun RootButton(state: UiState, onRoot: () -> Unit) {
             disabledContentColor = contentColor,
         ),
     ) {
-        // Замок: закрыт — рута нет, открыт — рут есть (как в иконке приложения)
-        Icon(
-            if (state.rootState == com.rootmyvivo.vm.RootState.ROOTED) {
-                Icons.Rounded.LockOpen
-            } else {
-                Icons.Rounded.Lock
-            },
-            null,
-            modifier = Modifier.size(24.dp),
-        )
+        Icon(Icons.Rounded.Bolt, null, modifier = Modifier.size(24.dp))
         Spacer(Modifier.width(10.dp))
         AnimatedContent(
             targetState = label,

@@ -267,7 +267,8 @@
         <string name="other_demo_with_method">演示 (%1$s)</string>
         <string name="other_demo_method_gl">方法 GhostLock</string>
     <string name="other_demo_method_df">方法 DirtyFrag</string>
-        <string name="settings_df_all_kernels">在所有内核上允许 DirtyFrag</string>
+            <string name="settings_df_dev_subtitle">供开发者使用</string>
+    <string name="settings_df_all_kernels">在所有内核上允许 DirtyFrag</string>
     <string name="settings_df_all_kernels_desc">也会在已修补的内核上运行漏洞利用 — 仍需要 KMI 对应的内核模块（6.1 和 non-GKI 不可用）</string>
     <string name="other_demo_gl">演示 GhostLock</string>
     <string name="other_demo_df">演示 DirtyFrag</string>

@@ -79,7 +79,7 @@ private val SideTransition: NavTransition = navGraphicsTransition(
     motion = top.yukonga.miuix.kmp.nav.transition.NavMotion(
         // закрытие: жест «назад» доведён до конца / кнопка назад
         commit = top.yukonga.miuix.kmp.nav.transition.NavSettleSpec.Tween(
-            durationMillis = 200,
+            durationMillis = 300,
             easing = FastOutSlowInEasing,
         ),
         // жест «назад» отменён — окно резким щелчком возвращается
@@ -88,7 +88,7 @@ private val SideTransition: NavTransition = navGraphicsTransition(
         ),
         // программные открытие/закрытие (тап по пункту)
         programmatic = top.yukonga.miuix.kmp.nav.transition.NavSettleSpec.Tween(
-            durationMillis = 280,
+            durationMillis = 300,
             easing = FastOutSlowInEasing,
         ),
     ),
@@ -289,13 +289,13 @@ private fun MainScaffold(
             NavigationBar(tonalElevation = 3.dp) {
                 NavigationBarItem(
                     selected = pagerState.targetPage == 0,
-                    onClick = { scope.launch { pagerState.animateScrollToPage(0, animationSpec = tween(400)) } },
+                    onClick = { scope.launch { pagerState.animateScrollToPage(0, animationSpec = tween(300)) } },
                     icon = { Icon(Icons.Rounded.Home, null) },
                     label = { Text(stringResource(R.string.tab_home)) },
                 )
                 NavigationBarItem(
                     selected = pagerState.targetPage == 1,
-                    onClick = { scope.launch { pagerState.animateScrollToPage(1, animationSpec = tween(400)) } },
+                    onClick = { scope.launch { pagerState.animateScrollToPage(1, animationSpec = tween(300)) } },
                     icon = { Icon(Icons.Rounded.Settings, null) },
                     label = { Text(stringResource(R.string.tab_settings)) },
                 )

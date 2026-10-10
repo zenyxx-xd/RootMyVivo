@@ -245,6 +245,14 @@ private fun UserDeviceCard(state: UiState) {
     val parts = d.kernelShort.split(".").map { it.toIntOrNull() ?: 0 }
     val maj = parts.getOrNull(0) ?: 0
     val min = parts.getOrNull(1) ?: 0
+    val dfLimit = when {
+        maj == 5 && min == 10 -> "5.10.254"
+        maj == 5 && min == 15 -> "5.15.204"
+        maj == 6 && min == 6 -> "6.6.126"
+        maj == 6 && min == 12 -> "6.12.86"
+        maj == 6 && min == 18 -> "6.18.28"
+        else -> ""
+    }
     val dfCompat = d.dirtyfragCompatible()
     val is61 = maj == 6 && min == 1
     val glAvailable = kernels.any { it.build.ready } || state.payload != null
@@ -275,8 +283,7 @@ private fun UserDeviceCard(state: UiState) {
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
-            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
-            // Ядро — одна строка, дальше многоточие
+            // Ядро — одна строка, дальше многоточие (без разделителя от девайса)
             if (d.kernel.isNotEmpty()) {
                 Text(
                     d.kernel,
@@ -303,9 +310,14 @@ private fun UserDeviceCard(state: UiState) {
                     )
                 }
             } else {
-                // Используемый метод — крупнее, без скобок и дублей
+                // Как в бета1: «Используется метод …» — с границей для DF,
+                // GL — просто метод. Пейлоад-строкой ниже — каталогные чипы
                 Text(
-                    if (dfUsed) "DirtyFrag" else "GhostLock",
+                    if (dfUsed) {
+                        stringResource(R.string.payload_method_used_df, dfLimit)
+                    } else {
+                        stringResource(R.string.payload_method_used_gl)
+                    },
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.SemiBold,
                     color = MaterialTheme.colorScheme.primary,

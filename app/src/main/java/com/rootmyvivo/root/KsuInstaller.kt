@@ -414,37 +414,47 @@ class KsuInstaller(
                     } else {
                     onEvent(FlowEvent.Complete(true))
                     progress(R.string.log_manager_install)
-                    withContext(Dispatchers.Main) {
-                        try {
-                            val uri = FileProvider.getUriForFile(
-                                ctx, "${ctx.packageName}.fileprovider", apkFile,
-                            )
-                            ctx.startActivity(
-                                Intent(Intent.ACTION_VIEW).apply {
-                                    setDataAndType(uri, "application/vnd.android.package-archive")
-                                    addFlags(
-                                        Intent.FLAG_GRANT_READ_URI_PERMISSION or
-                                            Intent.FLAG_ACTIVITY_NEW_TASK,
-                                    )
-                                },
-                            )
-                        } catch (_: Exception) {
-                        }
-                    }
-                    // Ждём подтверждения в системном установщике
-                    progress(R.string.log_df_wait_manager)
-                    val deadline = System.currentTimeMillis() + 90_000L
-                    while (System.currentTimeMillis() < deadline &&
-                        !isPackageInstalled(actualPkg)
-                    ) {
-                        kotlinx.coroutines.delay(2000L)
-                    }
-                    if (isPackageInstalled(actualPkg)) {
+                    // PackageInstaller session API: детерминированная
+                    // установка со статусом сессии — ACTION_VIEW-диалог
+                    // из фона на vivo порой не открывался вовсе
+                    val viaSession = installApkViaSession(apkFile, actualPkg)
+                    if (viaSession && isPackageInstalled(actualPkg)) {
                         prefs.managerPackage = actualPkg
                         complete(true, R.string.log_manager_install_ok)
                         apkFile.delete()
                     } else {
-                        complete(false, R.string.log_df_manager_manual)
+                        // Фолбэк: системный установщик интентом
+                        withContext(Dispatchers.Main) {
+                            try {
+                                val uri = FileProvider.getUriForFile(
+                                    ctx, "${ctx.packageName}.fileprovider", apkFile,
+                                )
+                                ctx.startActivity(
+                                    Intent(Intent.ACTION_VIEW).apply {
+                                        setDataAndType(uri, "application/vnd.android.package-archive")
+                                        addFlags(
+                                            Intent.FLAG_GRANT_READ_URI_PERMISSION or
+                                                Intent.FLAG_ACTIVITY_NEW_TASK,
+                                        )
+                                    },
+                                )
+                            } catch (_: Exception) {
+                            }
+                        }
+                        progress(R.string.log_df_wait_manager)
+                        val deadline = System.currentTimeMillis() + 120_000L
+                        while (System.currentTimeMillis() < deadline &&
+                            !isPackageInstalled(actualPkg)
+                        ) {
+                            kotlinx.coroutines.delay(2000L)
+                        }
+                        if (isPackageInstalled(actualPkg)) {
+                            prefs.managerPackage = actualPkg
+                            complete(true, R.string.log_manager_install_ok)
+                            apkFile.delete()
+                        } else {
+                            complete(false, R.string.log_df_manager_manual)
+                        }
                     }
                     }
                 } else if (!installed) {
@@ -539,6 +549,48 @@ class KsuInstaller(
             Log.e(TAG, "installManager failed", e)
         }
     }
+
+/**
+     * Установка APK через PackageInstaller session API: создаём сессию,
+     * пишем поток, коммитим с PendingIntent-статусом и ждём факта
+     * установки. Надёжнее ACTION_VIEW-диалога из фона (vivo его порой
+     * не открывал). true — пакет реально установлен.
+     */
+    private suspend fun installApkViaSession(apk: File, expectPkg: String): Boolean =
+        withContext(Dispatchers.IO) {
+            try {
+                val pi = ctx.packageManager.packageInstaller
+                val params = android.content.pm.PackageInstaller.SessionParams(
+                    android.content.pm.PackageInstaller.SessionParams.MODE_FULL_INSTALL,
+                )
+                val sessionId = pi.createSession(params)
+                val session = pi.openSession(sessionId)
+                session.openWrite("mgr", 0, apk.length()).use { out ->
+                    apk.inputStream().use { it.copyTo(out) }
+                }
+                val statusIntent = android.content.Intent(
+                    "com.rootmyvivo.MANAGER_INSTALL_STATUS",
+                ).setPackage(ctx.packageName).putExtra("sessionId", sessionId)
+                val pending = android.app.PendingIntent.getBroadcast(
+                    ctx, sessionId, statusIntent,
+                    android.app.PendingIntent.FLAG_IMMUTABLE or
+                        android.app.PendingIntent.FLAG_UPDATE_CURRENT,
+                )
+                session.commit(pending.intentSender)
+                session.close()
+
+                // Ждём факта установки (статусы ходят секунды)
+                val deadline = System.currentTimeMillis() + 60_000L
+                while (System.currentTimeMillis() < deadline) {
+                    kotlinx.coroutines.delay(1500L)
+                    if (isPackageInstalled(expectPkg)) return@withContext true
+                }
+                isPackageInstalled(expectPkg)
+            } catch (e: Exception) {
+                Log.w(TAG, "installApkViaSession failed: " + e.message)
+                false
+            }
+        }
 
     private suspend fun isPackageInstalled(pkg: String): Boolean {
         val (_, pathOut) = LocalRunner.exec("pm path $pkg", timeoutSec = 30)

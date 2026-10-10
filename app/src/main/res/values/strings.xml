@@ -280,7 +280,8 @@
     <string name="other_demo_with_method">Демо (%1$s)</string>
         <string name="other_demo_method_gl">Метод GhostLock</string>
     <string name="other_demo_method_df">Метод DirtyFrag</string>
-        <string name="settings_df_all_kernels">Разрешить DirtyFrag на всех ядрах</string>
+            <string name="settings_df_dev_subtitle">Для разработчика</string>
+    <string name="settings_df_all_kernels">Разрешить DirtyFrag на всех ядрах</string>
     <string name="settings_df_all_kernels_desc">Запускает эксплойт и на ядрах с фиксом ветки — ko своего KMI всё равно обязателен (6.1 и non-GKI недоступны)</string>
     <string name="other_demo_gl">Демо GhostLock</string>
     <string name="other_demo_df">Демо DirtyFrag</string>

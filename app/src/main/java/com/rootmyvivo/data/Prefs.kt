@@ -38,7 +38,6 @@ data class Settings(
     val softRebootConfirmDismissed: Boolean = false,
     val restartConfirmDismissed: Boolean = false,
     val exploitStopConfirmDismissed: Boolean = false,
-    val bootRestore: Boolean = true,
     /** Автопоиск обновлений приложения после каждого запуска */
     val autoUpdateCheck: Boolean = true,
     /** Бета-канал: включён — апдейтер находит beta/pre-release версии */
@@ -68,7 +67,6 @@ class Prefs(context: Context) {
         softRebootConfirmDismissed = sp.getBoolean(KEY_SR_CONFIRM, false),
         restartConfirmDismissed = sp.getBoolean(KEY_RESTART_CONFIRM, false),
         exploitStopConfirmDismissed = sp.getBoolean(KEY_STOP_CONFIRM, false),
-        bootRestore = sp.getBoolean(KEY_BOOT_RESTORE, true),
         autoUpdateCheck = sp.getBoolean(KEY_AUTO_UPDATE, true),
         betaChannel = sp.getBoolean(KEY_BETA_CHANNEL, false),
         rootMethod = RootMethod.byId(sp.getString(KEY_ROOT_METHOD, null)),
@@ -86,7 +84,6 @@ class Prefs(context: Context) {
             .putBoolean(KEY_SR_CONFIRM, s.softRebootConfirmDismissed)
             .putBoolean(KEY_RESTART_CONFIRM, s.restartConfirmDismissed)
             .putBoolean(KEY_STOP_CONFIRM, s.exploitStopConfirmDismissed)
-            .putBoolean(KEY_BOOT_RESTORE, s.bootRestore)
             .putBoolean(KEY_AUTO_UPDATE, s.autoUpdateCheck)
             .putBoolean(KEY_BETA_CHANNEL, s.betaChannel)
             .putString(KEY_ROOT_METHOD, s.rootMethod.id)
@@ -145,12 +142,6 @@ class Prefs(context: Context) {
             sp.edit().putString(KEY_KSU, value).apply()
         }
 
-    /** Авто-восстановление рута после перезагрузки (перезапуск эксплойта). */
-    var bootRestoreEnabled: Boolean
-        get() = sp.getBoolean(KEY_BOOT_RESTORE, true)
-        set(value) {
-            sp.edit().putBoolean(KEY_BOOT_RESTORE, value).apply()
-        }
 
     /**
      * Фактический пакет установленного менеджера. У spoofed-сборок он
@@ -162,12 +153,6 @@ class Prefs(context: Context) {
             sp.edit().putString(KEY_MANAGER_PKG, value).apply()
         }
 
-    /** Последняя попытка boot-восстановления (wall clock, мс) — гард от бутлупа. */
-    var bootRestoreLastAttempt: Long
-        get() = sp.getLong(KEY_BOOT_RESTORE_AT, 0L)
-        set(value) {
-            sp.edit().putLong(KEY_BOOT_RESTORE_AT, value).apply()
-        }
 
     /** Модуль какого варианта загружен в ядре сейчас (id KsuVariant). */
     var loadedModuleVariant: String
@@ -204,10 +189,8 @@ class Prefs(context: Context) {
         const val KEY_SR_PENDING = "softRebootPending"
         const val KEY_ROOT_BOOT_ID = "rootBootId"
         const val KEY_KSU = "selectedKsu"
-        const val KEY_BOOT_RESTORE = "bootRestoreEnabled"
-        const val KEY_MANAGER_PKG = "managerPackage"
-        const val KEY_BOOT_RESTORE_AT = "bootRestoreLastAttempt"
-        const val KEY_LOADED_VARIANT = "loadedModuleVariant"
+            const val KEY_MANAGER_PKG = "managerPackage"
+            const val KEY_LOADED_VARIANT = "loadedModuleVariant"
         const val KEY_DEV_UNLOCKED = "devUnlocked"
         const val KEY_TG_PROMO = "tgPromoDismissed"
         const val KEY_AUTO_UPDATE = "autoUpdateCheck"
