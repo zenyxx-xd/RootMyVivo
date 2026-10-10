@@ -176,14 +176,26 @@ fun PayloadScreen(
                         Spacer(Modifier.height(10.dp))
                     }
                     }
-                    OutlinedButton(
-                        onClick = { pickPayload.launch(arrayOf("*/*")) },
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = MaterialTheme.shapes.large,
+                    // Кнопка выбора — только когда кастомного файла нет;
+                    // при отмене плавно возвращается
+                    androidx.compose.animation.AnimatedVisibility(
+                        visible = state.customPayload == null,
+                        enter = androidx.compose.animation.expandVertically(
+                            androidx.compose.animation.core.tween(260),
+                        ) + androidx.compose.animation.fadeIn(androidx.compose.animation.core.tween(260)),
+                        exit = androidx.compose.animation.shrinkVertically(
+                            androidx.compose.animation.core.tween(220),
+                        ) + androidx.compose.animation.fadeOut(androidx.compose.animation.core.tween(200)),
                     ) {
-                        Icon(Icons.Rounded.FolderOpen, null, modifier = Modifier.size(16.dp))
-                        Spacer(Modifier.width(6.dp))
-                        Text(stringResource(R.string.home_pick_payload), maxLines = 1)
+                        OutlinedButton(
+                            onClick = { pickPayload.launch(arrayOf("*/*")) },
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = MaterialTheme.shapes.large,
+                        ) {
+                            Icon(Icons.Rounded.FolderOpen, null, modifier = Modifier.size(16.dp))
+                            Spacer(Modifier.width(6.dp))
+                            Text(stringResource(R.string.home_pick_payload), maxLines = 1)
+                        }
                     }
                 }
             }

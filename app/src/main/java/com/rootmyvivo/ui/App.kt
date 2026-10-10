@@ -77,19 +77,19 @@ private sealed interface RmvRoute : top.yukonga.miuix.kmp.nav.core.NavKey {
 private val SideTransition: NavTransition = navGraphicsTransition(
     opaqueDepth = 1f,
     motion = top.yukonga.miuix.kmp.nav.transition.NavMotion(
-        // закрытие: жест «назад» доведён до конца / кнопка назад
-        commit = top.yukonga.miuix.kmp.nav.transition.NavSettleSpec.Tween(
-            durationMillis = 300,
-            easing = FastOutSlowInEasing,
+        // закрытие: жест «назад» доведён до конца / кнопка назад.
+        // Spring, не Tween: пружина наследует скорость жеста — резкий
+        // флинг доигрывается без «остановки» (Tween выкидывал velocity)
+        commit = top.yukonga.miuix.kmp.nav.transition.NavSettleSpec.Spring(
+            stiffness = 380f,
         ),
         // жест «назад» отменён — окно резким щелчком возвращается
         cancel = top.yukonga.miuix.kmp.nav.transition.NavSettleSpec.Spring(
             stiffness = 1500f,
         ),
-        // программные открытие/закрытие (тап по пункту)
-        programmatic = top.yukonga.miuix.kmp.nav.transition.NavSettleSpec.Tween(
-            durationMillis = 300,
-            easing = FastOutSlowInEasing,
+        // программные открытие/закрытие (тап по пункту) — та же пружина
+        programmatic = top.yukonga.miuix.kmp.nav.transition.NavSettleSpec.Spring(
+            stiffness = 380f,
         ),
     ),
 ) { scope ->

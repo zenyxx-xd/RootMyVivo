@@ -116,23 +116,11 @@ fun SupportedDevicesScreen(
                     )
                     // Сортировка строго по алфавиту названия модели
                     val ordered = shown.sortedBy { it.marketName.lowercase() }
-                    ordered.forEachIndexed { i, device ->
-                        var visible by remember { mutableStateOf(false) }
-                        LaunchedEffect(Unit) {
-                            kotlinx.coroutines.delay((i * 40L).coerceAtMost(400L))
-                            visible = true
-                        }
-                        AnimatedVisibility(
-                            visible = visible,
-                            enter = expandVertically(
-                                animationSpec = tween(300, easing = FastOutSlowInEasing),
-                            ) + fadeIn(tween(300, easing = FastOutSlowInEasing)),
-                        ) {
-                            DeviceRow(
-                                device = device,
-                                kernels = cat.kernelsOf(device),
-                            )
-                        }
+                    ordered.forEach { device ->
+                        DeviceRow(
+                            device = device,
+                            kernels = cat.kernelsOf(device),
+                        )
                     }
                 }
             }

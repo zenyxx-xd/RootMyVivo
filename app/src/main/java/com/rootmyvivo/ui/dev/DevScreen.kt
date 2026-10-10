@@ -163,9 +163,7 @@ fun DevScreen(vm: MainViewModel, state: UiState, onClose: () -> Unit, onRootStar
                 // кликабельна вся строка, отступ между строками минимальный
                 androidx.compose.animation.AnimatedVisibility(visible = demoExpanded) {
                     Column(
-                        Modifier
-                            .padding(top = 2.dp, start = 8.dp)
-                            .animateContentSize(),
+                        Modifier.padding(top = 0.dp, start = 8.dp),
                         verticalArrangement = Arrangement.spacedBy(4.dp),
                     ) {
                         Row(
@@ -220,8 +218,9 @@ fun DevScreen(vm: MainViewModel, state: UiState, onClose: () -> Unit, onRootStar
                 SectionCaption(stringResource(R.string.settings_clean_traces_desc))
             }
 
-            // ── Для разработчика: разрешить DirtyFrag на всех ядрах ──
-            DevSection(title = stringResource(R.string.settings_df_dev_subtitle)) {
+            // ── Для разработчика: разрешить DirtyFrag на всех ядрах —
+            // ровно тот же вид, что у тумблеров в «О приложении»
+            com.rootmyvivo.ui.common.SettingsGroup(title = stringResource(R.string.settings_df_dev_subtitle)) {
                 com.rootmyvivo.ui.common.SettingsRow(
                     title = stringResource(R.string.settings_df_all_kernels),
                     description = stringResource(R.string.settings_df_all_kernels_desc),
@@ -294,10 +293,8 @@ private fun DevSection(
             color = MaterialTheme.colorScheme.surfaceContainerLow,
         ) {
             Column(
-                Modifier
-                    .padding(16.dp)
-                    .animateContentSize(),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
+                Modifier.padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
                 content = content,
             )
         }
@@ -309,9 +306,7 @@ private fun DevSection(
 private fun SectionCaption(text: String) {
     Row(
         horizontalArrangement = Arrangement.spacedBy(8.dp),
-        modifier = Modifier
-            .offset(y = (-6).dp)
-            .padding(start = 8.dp),
+        modifier = Modifier.padding(start = 8.dp),
     ) {
         Text(
             text,
