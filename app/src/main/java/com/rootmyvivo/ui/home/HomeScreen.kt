@@ -560,9 +560,11 @@ private fun HeroCard(
 @Composable
 private fun RootButton(state: UiState, onRoot: () -> Unit) {
     // DirtyFrag — первый приоритет: применим по ядру → кнопка активна без
-    // каталога (универсальный метод встроен в APK)
+    // каталога. Для GL-only тел кнопка тоже активна сразу: пейлоад докачается
+    // при старте за секунды — статус каталога кнопку больше не блокирует
     val dfOk = state.device?.dfAllowed(state.settings.allowDfAllKernels) == true
-    val ready = state.payload != null || state.customPayload != null || dfOk
+    val deviceInCat = state.deviceInCatalog || state.catalogData != null
+    val ready = state.payload != null || state.customPayload != null || dfOk || deviceInCat
     val enabled = ready && !state.flowRunning
     val kernelShort = state.device?.kernelShort.orEmpty()
     // git-id из uname (5 символов после androidNN-N-) — как чипы в
@@ -575,14 +577,15 @@ private fun RootButton(state: UiState, onRoot: () -> Unit) {
     // применим — обе причины не показываем
     val label = when {
         state.customPayload != null -> stringResource(R.string.action_root)
+        dfOk -> stringResource(R.string.action_root)
+        ready -> stringResource(R.string.action_root)
         state.catalogState == CatalogState.LOADING -> stringResource(R.string.catalog_loading)
         state.catalogState == CatalogState.ERROR -> stringResource(R.string.catalog_retry)
-        !ready && state.catalogState == CatalogState.READY && !state.deviceInCatalog ->
+        !state.deviceInCatalog ->
             stringResource(R.string.home_btn_unsupported_device)
-        !ready && kernelLabel.isNotEmpty() ->
+        kernelLabel.isNotEmpty() ->
             stringResource(R.string.home_btn_unsupported_kernel, kernelLabel)
-        !ready -> stringResource(R.string.status_unsupported)
-        else -> stringResource(R.string.action_root)
+        else -> stringResource(R.string.status_unsupported)
     }
     // Смена состояний («Получить рут» ↔ «Не поддерживается» ↔ загрузка
     // каталога) всегда анимирована в обе стороны: текст едет с фейдом,
@@ -864,8 +867,8 @@ private fun InfoGroup(
                 // Авто: DF — первый приоритет, как в реальном запуске
                 dfOk -> stringResource(R.string.home_method_df)
                 glDesc != null -> glDesc
-                state.catalogState == CatalogState.LOADING ->
-                    stringResource(R.string.payload_short_searching)
+                state.deviceInCatalog ->
+                    stringResource(R.string.payload_gl_download_on_start)
                 // Ни DF, ни GL: точная причина с git-id сборки ядра
                 state.catalogState == CatalogState.READY && !state.deviceInCatalog ->
                     stringResource(R.string.home_btn_unsupported_device)
@@ -925,12 +928,11 @@ private fun DeviceGroup(state: UiState) {
                 LinearProgressIndicator(Modifier.fillMaxWidth())
             }
         } else {
-            val modelValue = (state.catalogMarketName ?: d.marketName) +
-                " (${state.catalogDeviceCode ?: d.model})"
+            val modelValue = state.catalogMarketName ?: d.marketName
             SettingsRow(
                 title = stringResource(R.string.device_model),
-                // Маркет-нейм из каталога + PD-код: «vivo X200 Pro (PD2405)».
-                // Без записи в каталоге — как есть: Build.MODEL (Build.DEVICE)
+                // Маркет-нейм (как в ghostlock-app: вендорские свойства, фолбэк
+                // Manufacturer + Model). PD-коды в имени не показываем.
                 onClick = { copyValue(modelValue) },
                 trailing = {
                     TrailingValue(modelValue, maxLines = 3)

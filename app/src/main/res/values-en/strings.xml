@@ -98,7 +98,8 @@
     <string name="logs_failed">Failed</string>
     <string name="logs_duration">%1$d s</string>
     <string name="logs_lines">%1$d lines</string>
-    <string name="payload_short_searching">Searching…</string>
+    <string name="payload_short_searching">Searching… GhostLock — the payload for your kernel downloads at start</string>
+    <string name="payload_gl_download_on_start">GhostLock — the payload for your kernel downloads at start</string>
 <string name="transport_via_adb">via ADB tcp</string>    <!-- Log -->
     <string name="log_started">Starting the root process</string>
     <string name="log_started_df">Starting the root process (DirtyFrag method)</string>

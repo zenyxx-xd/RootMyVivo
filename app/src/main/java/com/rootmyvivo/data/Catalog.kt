@@ -157,10 +157,13 @@ class Catalog(var url: String = DEFAULT_URL) {
     }
 
     suspend fun fetch(): Result<PayloadCatalog> = withContext(Dispatchers.IO) {
+        // Кэш-первым: свежий кэш (<24ч) отдаём сразу, без сети — запуск эксплойта
+        // и вход на главный не должны упираться в GitHub (файл меняется редко)
+        cached()?.let { return@withContext Result.success(it) }
         try {
             val body = httpGet(url, timeout = 15_000)
             if (body == null) {
-                cached()?.let { Result.success(it) } ?: Result.failure(IOException("network error"))
+                cached(ignoreAge = true)?.let { Result.success(it) } ?: Result.failure(IOException("network error"))
             } else {
                 cacheFile()?.writeText(body)
                 Result.success(parse(body))

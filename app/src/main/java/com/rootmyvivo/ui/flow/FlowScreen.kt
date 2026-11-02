@@ -123,7 +123,7 @@ fun FlowScreen(
     val copyHeader = with(state) {
         val d = device
         if (d == null) "" else {
-            val model = (catalogMarketName ?: d.marketName) + " (${catalogDeviceCode ?: d.model})"
+            val model = catalogMarketName ?: d.marketName
             "${stringResource(R.string.device_model)}: $model\n" +
                 "${stringResource(R.string.device_kernel)}: ${d.kernel}\n" +
                 "${stringResource(R.string.device_patch)}: ${d.securityPatch}"

@@ -99,6 +99,7 @@
     <string name="logs_duration">%1$d 秒</string>
     <string name="logs_lines">%1$d 行</string>
     <string name="payload_short_searching">搜索中…</string>
+    <string name="payload_gl_download_on_start">GhostLock — 内核载荷将在启动时下载</string>
 <string name="transport_via_adb">通过 ADB tcp</string>    <!-- 日志 -->
     <string name="log_started">开始获取 root</string>
     <string name="log_started_df">开始获取 root（DirtyFrag 方法）</string>

@@ -8,10 +8,10 @@
     <!-- Дужка: П-форма, короткая ножка обрывается посередине -->
     <path
         android:strokeColor="@color/iconForeground"
-        android:strokeWidth="4.5"
+        android:strokeWidth="5.5"
         android:strokeLineCap="round"
         android:fillColor="#00000000"
-        android:pathData="M60,50 L60,39 C60,34 56.5,31 52,31 C47.5,31 44,34 44,39 L44,42" />
+        android:pathData="M60,50 L60,39 C60,33.5 56.5,30.5 52,30.5 C47.5,30.5 44,33.5 44,39 L44,42" />
 
     <!-- Корпус (скругления 8 — заметно мягче) -->
     <path

@@ -307,8 +307,7 @@ private fun UserDeviceCard(state: UiState) {
     val heroName = state.payload?.device?.marketName?.takeIf { it.isNotEmpty() }
         ?: myDev?.marketName?.takeIf { it.isNotEmpty() }
         ?: d.marketName
-    val heroCode = myDev?.code?.takeIf { it.isNotEmpty() } ?: d.model
-    val heroTitle = "$heroName ($heroCode)"
+    val heroTitle = heroName
 
     Surface(
         modifier = Modifier.fillMaxWidth(),

@@ -112,6 +112,7 @@
     <string name="logs_duration">%1$d с</string>
     <string name="logs_lines">%1$d строк</string>
     <string name="payload_short_searching">Поиск…</string>
+    <string name="payload_gl_download_on_start">GhostLock — пейлоад под ваше ядро скачается при запуске</string>
 <string name="transport_via_adb">через ADB tcp</string>    <!-- Лог -->
     <string name="log_started">Запуск процесса получения root</string>
     <string name="log_started_df">Запуск процесса получения root (метод DirtyFrag)</string>

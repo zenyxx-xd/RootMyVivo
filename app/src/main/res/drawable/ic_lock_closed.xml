@@ -10,7 +10,7 @@
     <!-- Дужка: П-форма, обе ножки доходят до корпуса -->
     <path
         android:strokeColor="@color/iconForeground"
-        android:strokeWidth="4.5"
+        android:strokeWidth="5.5"
         android:strokeLineCap="round"
         android:fillColor="#00000000"
         android:pathData="M28,23 L28,12 C28,7 24.5,4 20,4 C15.5,4 12,7 12,12 L12,23" />

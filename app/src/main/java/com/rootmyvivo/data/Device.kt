@@ -69,6 +69,38 @@ data class DeviceInfo(
     }
 
     companion object {
+        /**
+         * Маркет-нейм как в ghostlock-app: вендорские системные свойства по
+         * производителю, фолбэк — Manufacturer + Model. Никаких Build.DEVICE
+         * (PD-кодов) в отображаемом имени.
+         */
+        fun resolveMarketName(): String {
+            val manufacturer = Build.MANUFACTURER.orEmpty()
+            fun prop(key: String): String = try {
+                Class.forName("android.os.SystemProperties")
+                    .getMethod("get", String::class.java).invoke(null, key) as? String ?: ""
+            } catch (_: Throwable) {
+                ""
+            }
+            fun valid(v: String?): String? =
+                v?.trim()?.takeIf { it.isNotEmpty() && !it.contains("unknown", true) && !it.contains("null", true) }
+
+            val marketName = when (manufacturer.lowercase()) {
+                "xiaomi" -> valid(prop("ro.product.marketname"))
+                "oppo", "oneplus", "realme", "oplus" -> valid(prop("ro.vendor.oplus.market.enname"))
+                    ?: valid(prop("ro.vendor.oplus.market.name"))
+                "vivo", "iqoo" -> valid(prop("ro.vivo.market.name"))
+                "honor", "huawei" -> valid(prop("ro.config.marketing_name"))
+                "zte", "nubia" -> valid(prop("ro.vendor.product.ztename"))
+                else -> null
+            }
+            return marketName ?: listOfNotNull(
+                manufacturer,
+                Build.BRAND.orEmpty().takeIf { !it.equals(manufacturer, true) },
+                Build.MODEL.orEmpty(),
+            ).filter { it.isNotBlank() }.joinToString(" ")
+        }
+
         fun detect(): DeviceInfo {
             val kernel = try {
                 android.system.Os.uname().release.trim()
@@ -88,7 +120,7 @@ data class DeviceInfo(
 
             return DeviceInfo(
                 model = Build.DEVICE,
-                marketName = Build.MODEL,
+                marketName = resolveMarketName(),
                 brand = Build.BRAND.lowercase(),
                 rom = Build.DISPLAY,
                 kernel = kernel,
