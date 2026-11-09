@@ -22,12 +22,14 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.IntrinsicSize
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -464,12 +466,13 @@ private fun HeroCard(
                                 enabled = !state.flowRunning,
                                 modifier = Modifier
                                     .weight(1f)
-                                    .height(62.dp),
+                                    .heightIn(min = 62.dp),
                                 shape = MaterialTheme.shapes.extraLarge,
+                                contentPadding = PaddingValues(horizontal = 10.dp),
                             ) {
                                 Icon(Icons.Rounded.Refresh, null, modifier = Modifier.size(18.dp))
                                 Spacer(Modifier.width(6.dp))
-                                Text(stringResource(R.string.home_softreboot), maxLines = 1)
+                                Text(stringResource(R.string.home_softreboot), maxLines = 2, softWrap = true)
                             }
                             val ctx = androidx.compose.ui.platform.LocalContext.current
                             OutlinedButton(
@@ -491,12 +494,13 @@ private fun HeroCard(
                                 },
                                 modifier = Modifier
                                     .weight(1f)
-                                    .height(62.dp),
+                                    .heightIn(min = 62.dp),
                                 shape = MaterialTheme.shapes.extraLarge,
+                                contentPadding = PaddingValues(horizontal = 10.dp),
                             ) {
                                 Icon(Icons.Rounded.LockOpen, null, modifier = Modifier.size(18.dp))
                                 Spacer(Modifier.width(6.dp))
-                                Text(stringResource(R.string.home_open_manager), maxLines = 1)
+                                Text(stringResource(R.string.home_open_manager), maxLines = 2, softWrap = true)
                             }
                         }
                     }
@@ -563,8 +567,11 @@ private fun RootButton(state: UiState, onRoot: () -> Unit) {
     // каталога. Для GL-only тел кнопка тоже активна сразу: пейлоад докачается
     // при старте за секунды — статус каталога кнопку больше не блокирует
     val dfOk = state.device?.dfAllowed(state.settings.allowDfAllKernels) == true
-    val deviceInCat = state.deviceInCatalog || state.catalogData != null
-    val ready = state.payload != null || state.customPayload != null || dfOk || deviceInCat
+    // Кнопка активна только при гарантированной цепочке: DirtyFrag по ядру,
+    // выбранный вручную пейлоад или живая сборка из каталога. Тело в каталоге
+    // без сборки под ядро (state.payload == null) — не основание: движок
+    // честно откажет «пейлоад не найден», и кнопка вводит в заблуждение.
+    val ready = state.payload != null || state.customPayload != null || dfOk
     val enabled = ready && !state.flowRunning
     val kernelShort = state.device?.kernelShort.orEmpty()
     // git-id из uname (5 символов после androidNN-N-) — как чипы в
@@ -581,8 +588,8 @@ private fun RootButton(state: UiState, onRoot: () -> Unit) {
         ready -> stringResource(R.string.action_root)
         state.catalogState == CatalogState.LOADING -> stringResource(R.string.catalog_loading)
         state.catalogState == CatalogState.ERROR -> stringResource(R.string.catalog_retry)
-        !state.deviceInCatalog ->
-            stringResource(R.string.home_btn_unsupported_device)
+        // Тела в каталоге нет вообще → устройство; тело есть, но живой
+        // сборки под это ядро нет → ядро (в обоих случаях просим unsupported)
         kernelLabel.isNotEmpty() ->
             stringResource(R.string.home_btn_unsupported_kernel, kernelLabel)
         else -> stringResource(R.string.status_unsupported)

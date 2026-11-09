@@ -1031,11 +1031,26 @@ class KsuInstaller(
             }
 
             val sb = StringBuilder()
-            // userspace-настройка (sepolicy, перезапуск менеджера); провал
-            // не критичен — модуль уже в ядре
+            // userspace-настройка (sepolicy, su, перезапуск менеджера); провал
+            // не критичен — модуль уже в ядре. ksud late-load поднимает ядро-
+            // интерфейс, но БЕЗ userspace (`/data/adb/ksu/bin/su`, uid-правила
+            // менеджера) менеджер показывает «не установлен». Как DirtyFrag
+            // (ic-ksu.sh): после late-load прогоняем `ksud install` (создаёт
+            // userspace-структуру и su) и стартуем менеджер — его первая
+            // активность завершает авторизацию приложений.
             suspend fun userspaceSetup(ksud: String) {
-                val (_, o) = Transport.su(ctx, "$ksud late-load --allow-shell --package-name $managerPkg")
+                val (_, o) = Transport.su(
+                    ctx,
+                    "$ksud late-load --allow-shell --package-name $managerPkg; " +
+                        "$ksud install 2>/dev/null; " +
+                        "am force-stop $managerPkg 2>/dev/null; " +
+                        "monkey -p $managerPkg -c android.intent.category.LAUNCHER 1 >/dev/null 2>&1; " +
+                        "true",
+                )
                 if (o.isNotBlank()) sb.append("late-load: ").append(o.trim()).append('\n')
+                // даём менеджеру дописать su-правила: его.onCreate дергает
+                // ksucalls на ядро
+                kotlinx.coroutines.delay(3000)
             }
 
             // 0. ОФИЦИАЛЬНЫЙ флоу ReSukiSU (для resukisu):
@@ -1054,7 +1069,10 @@ class KsuInstaller(
                     )
                     sb.append("ksud late-load [${ksud.substringAfterLast('/')}]: ")
                         .append(o0.trim().ifEmpty { "(нет вывода)" }).append('\n')
-                    if (loaded()) return true to sb.toString()
+                    if (loaded()) {
+                        for (k in ksudPaths) userspaceSetup(k)
+                        return true to sb.toString()
+                    }
                 }
             }
 
@@ -1066,7 +1084,11 @@ class KsuInstaller(
                 sb.append("ksud insmod [${ksud.substringAfterLast('/')}]: ")
                     .append(o1.trim().ifEmpty { "(нет вывода)" }).append('\n')
                 if (loaded()) {
-                    userspaceSetup(ksud)
+                    // Userspace-настройку прогоняем через ВСЕ доступные ksud:
+                    // менеджерский создаёт /data/adb/ksu/bin/su под СВОЙ
+                    // вариант (у разных форков CLI различаются), а скачанный
+                    // insurance на случай, если менеджерский silent-failed.
+                    for (k in ksudPaths) userspaceSetup(k)
                     return true to sb.toString()
                 }
             }
@@ -1077,7 +1099,10 @@ class KsuInstaller(
                 )
                 sb.append("ksud late-load [${ksud.substringAfterLast('/')}]: ")
                     .append(o3.trim().ifEmpty { "(нет вывода)" }).append('\n')
-                if (loaded()) return true to sb.toString()
+                if (loaded()) {
+                    for (k in ksudPaths) userspaceSetup(k)
+                    return true to sb.toString()
+                }
             }
             // 2. Системный insmod — требует vermagic совпадающим с ядром,
             //    грузим ПАТЧЕННУЮ копию. ETXTBSY («Text file busy»): у
@@ -1091,7 +1116,7 @@ class KsuInstaller(
             )
             sb.append("insmod: ").append(o4.trim().ifEmpty { "(нет вывода)" }).append('\n')
             if (loaded()) {
-                ksudPaths.lastOrNull()?.let { userspaceSetup(it) }
+                for (k in ksudPaths) userspaceSetup(k)
                 return true to sb.toString()
             }
             return false to sb.toString()

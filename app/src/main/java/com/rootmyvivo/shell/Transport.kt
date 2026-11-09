@@ -77,15 +77,35 @@ object Transport {
         val suBin = File(ctx.filesDir, "rmv/su")
         val bin = if (suBin.isFile && suBin.canExecute()) suBin.absolutePath else SU
         val proc = Runtime.getRuntime().exec(arrayOf(bin, "-c", command))
-        val out = buildString {
-            proc.inputStream.bufferedReader().useLines { lines -> lines.forEach { append(it).append('\n') } }
-            proc.errorStream.bufferedReader().useLines { lines -> lines.forEach { append(it).append('\n') } }
-        }
-        val code = if (proc.waitFor(timeoutSec.toLong(), TimeUnit.SECONDS)) proc.exitValue() else {
+        // Чтение stdout/stderr в отдельных потоках: blocking-read до EOF в
+        // useLines зависал навсегда, если KSU-су ждёт авторизации менеджера
+        // (что и есть «лог застревает на проверке su») — до waitFor с таймаутом
+        // дело не доходило даже при timeoutSec=5.
+        var outBuf = ""
+        var errBuf = ""
+        val outT = Thread {
+            runCatching {
+                outBuf = proc.inputStream.bufferedReader().readText()
+            }
+        }.apply { isDaemon = true; start() }
+        val errT = Thread {
+            runCatching {
+                errBuf = proc.errorStream.bufferedReader().readText()
+            }
+        }.apply { isDaemon = true; start() }
+        val finished = proc.waitFor(timeoutSec.toLong(), TimeUnit.SECONDS)
+        if (!finished) {
             proc.destroy()
-            -1
+            // даём reader'ам шанс дочитать буфер после destroy
+            outT.join(500); errT.join(500)
+            return -1 to (outBuf + errBuf).trim()
         }
-        code to out
+        outT.join(1000); errT.join(1000)
+        val out = buildString {
+            append(outBuf)
+            if (errBuf.isNotBlank()) append(errBuf)
+        }
+        proc.exitValue() to out
     } catch (e: Exception) {
         -1 to (e.message ?: "local su error")
     }
