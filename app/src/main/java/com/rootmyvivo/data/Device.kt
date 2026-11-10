@@ -15,6 +15,17 @@ data class DeviceInfo(
     val soc: String,
 ) {
     /**
+     * Модель как на коробке (Build.MODEL: «V2520A»), рядом с маркет-неймом
+     * («iQOO Neo11 (V2520A)»). Если маркет-нейм уже содержит модель —
+     * скобки не добавляем.
+     */
+    val modelDisplay: String
+        get() = when {
+            marketName.isBlank() -> model
+            marketName.contains(model, ignoreCase = true) -> marketName
+            else -> "$marketName ($model)"
+        }
+    /**
      * DirtyFrag (CVE-2026-43284):
      * OK — применим; PATCHED — фикс порога ветки уже в ядре (можно
      * разрешить вручную, ko под KMI есть); UNSUPPORTED — DF невозможен
@@ -30,8 +41,8 @@ data class DeviceInfo(
     /**
      * Решение по ядру (таблица порогов фикса от 2026-05-08, SKBFL_SHARED_FRAG):
      *  - весь 6.1.x — мёртв: accidental mitigation, ko в приложении нет;
-     *  - ядро ≥ порога своей ветки — пропатчено: 5.10→5.10.255,
-     *    5.15→5.15.197 (по полевым логам vivo), 6.6→6.6.127 (по полевым логам vivo), 6.12→6.12.87, 6.18→6.18.29;
+     *  - ядро ≥ порога своей ветки — пропатчено: 5.10→5.10.245,
+     *    5.15→5.15.197 (по полевым логам vivo), 6.6→6.6.127 (по полевым логам vivo), 6.12→6.12.57, 6.18→6.18.29;
      *  - non-GKI (нет androidNN в uname) — не поддерживается;
      *  - иначе — применим (экспериментально: ko собираем сами, vivo не
      *    тестировано).
@@ -44,11 +55,11 @@ data class DeviceInfo(
         if (maj == 6 && min == 1) return DfCompat.UNSUPPORTED
         if (!dfHasKo(maj, min)) return DfCompat.UNSUPPORTED
         val patchedFrom = when {
-            maj == 5 && min == 10 -> 255
+            maj == 5 && min == 10 -> 245
             // 5.15.197+ — по полевым логам фикс уже в виво-сборках
             maj == 5 && min == 15 -> 197
             maj == 6 && min == 6 -> 127
-            maj == 6 && min == 12 -> 87
+            maj == 6 && min == 12 -> 57
             maj == 6 && min == 18 -> 29
             else -> 0
         }

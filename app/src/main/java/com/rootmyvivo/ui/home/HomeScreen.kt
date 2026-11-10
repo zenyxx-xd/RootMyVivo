@@ -935,7 +935,7 @@ private fun DeviceGroup(state: UiState) {
                 LinearProgressIndicator(Modifier.fillMaxWidth())
             }
         } else {
-            val modelValue = state.catalogMarketName ?: d.marketName
+            val modelValue = d.modelDisplay
             SettingsRow(
                 title = stringResource(R.string.device_model),
                 // Маркет-нейм (как в ghostlock-app: вендорские свойства, фолбэк
