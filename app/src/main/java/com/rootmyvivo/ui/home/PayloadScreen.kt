@@ -349,7 +349,11 @@ private fun UserDeviceCard(state: UiState) {
                         modifier = Modifier.size(20.dp),
                     )
                     Text(
-                        stringResource(R.string.home_btn_unsupported_device),
+                        if (d.temporarilyUnavailable) {
+                            stringResource(R.string.home_method_temporarily_unavailable)
+                        } else {
+                            stringResource(R.string.home_btn_unsupported_device)
+                        },
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.SemiBold,
                         color = MaterialTheme.colorScheme.error,

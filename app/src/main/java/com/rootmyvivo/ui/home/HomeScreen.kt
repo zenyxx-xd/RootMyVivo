@@ -475,9 +475,15 @@ private fun HeroCard(
                                 shape = MaterialTheme.shapes.extraLarge,
                                 contentPadding = PaddingValues(horizontal = 10.dp),
                             ) {
-                                Icon(Icons.Rounded.Refresh, null, modifier = Modifier.size(18.dp))
-                                Spacer(Modifier.width(6.dp))
-                                Text(stringResource(R.string.home_softreboot), maxLines = 2, softWrap = true)
+                                Row(
+                                    horizontalArrangement = Arrangement.Center,
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    modifier = Modifier.fillMaxWidth(),
+                                ) {
+                                    Icon(Icons.Rounded.Refresh, null, modifier = Modifier.size(18.dp))
+                                    Spacer(Modifier.width(6.dp))
+                                    Text(stringResource(R.string.home_softreboot), maxLines = 2, softWrap = true)
+                                }
                             }
                             val ctx = androidx.compose.ui.platform.LocalContext.current
                             OutlinedButton(
@@ -503,9 +509,15 @@ private fun HeroCard(
                                 shape = MaterialTheme.shapes.extraLarge,
                                 contentPadding = PaddingValues(horizontal = 10.dp),
                             ) {
-                                Icon(Icons.Rounded.LockOpen, null, modifier = Modifier.size(18.dp))
-                                Spacer(Modifier.width(6.dp))
-                                Text(stringResource(R.string.home_open_manager), maxLines = 2, softWrap = true)
+                                Row(
+                                    horizontalArrangement = Arrangement.Center,
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    modifier = Modifier.fillMaxWidth(),
+                                ) {
+                                    Icon(Icons.Rounded.LockOpen, null, modifier = Modifier.size(18.dp))
+                                    Spacer(Modifier.width(6.dp))
+                                    Text(stringResource(R.string.home_open_manager), maxLines = 2, softWrap = true)
+                                }
                             }
                         }
                     }
@@ -890,7 +902,11 @@ private fun InfoGroup(
                     stringResource(R.string.payload_gl_download_on_start)
                 // Ни DF, ни GL: точная причина с git-id сборки ядра
                 state.catalogState == CatalogState.READY && !state.deviceInCatalog ->
-                    stringResource(R.string.home_btn_unsupported_device)
+                    if (state.device?.temporarilyUnavailable == true) {
+                        stringResource(R.string.home_method_temporarily_unavailable)
+                    } else {
+                        stringResource(R.string.home_btn_unsupported_device)
+                    }
                 state.catalogState == CatalogState.READY ->
                     stringResource(R.string.home_btn_unsupported_kernel, homeKernelLabel)
                 else -> stringResource(R.string.catalog_error)

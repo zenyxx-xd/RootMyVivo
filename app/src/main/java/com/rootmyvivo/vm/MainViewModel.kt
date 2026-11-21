@@ -479,15 +479,29 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         val ctx = getApplication<Application>()
         viewModelScope.launch {
             addLog(ctx.getString(R.string.log_softreboot_perform))
-            // SIGKILL, как в оригинальном эксплойте: мгновенная смерть system_server —
-            // зигота сразу перезапускает интерфейс. SIGTERM виснет на минуты
+            // SIGKILL, как в менеджерах: мгновенная смерть system_server —
+            // зигота сразу перезапускает интерфейс. interactive=true:
+            // если adb-канал мёртв, канал остаётся через биндинг KSU —
+            // менеджер покажет root-запрос, после подтверждения команда
+            // выполнится (так же, как её выполняют сами менеджеры)
             var (code, out) = withContext(Dispatchers.IO) {
-                Transport.su(ctx, "kill -9 \$(pidof system_server)")
+                Transport.su(
+                    ctx,
+                    "kill -9 \$(pidof system_server)",
+                    timeoutSec = 60,
+                    interactive = true,
+                )
             }
             if (code != 0) {
                 Log.w(TAG, "soft reboot via kill failed: ${out.take(100)}")
-                code = withContext(Dispatchers.IO) { Transport.su(ctx, "stop").first }
-                if (code == 0) code = withContext(Dispatchers.IO) { Transport.su(ctx, "start").first }
+                code = withContext(Dispatchers.IO) {
+                    Transport.su(ctx, "stop", timeoutSec = 60, interactive = true).first
+                }
+                if (code == 0) {
+                    code = withContext(Dispatchers.IO) {
+                        Transport.su(ctx, "start", timeoutSec = 60, interactive = true).first
+                    }
+                }
             }
             if (code != 0) {
                 addLog(ctx.getString(R.string.log_softreboot_fail))

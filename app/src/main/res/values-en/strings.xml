@@ -13,6 +13,7 @@
     <string name="status_unsupported">Not supported</string>
 
     <string name="action_root">GET ROOT</string>
+    <string name="home_method_temporarily_unavailable">Method temporarily unavailable</string>
     <string name="home_btn_unsupported_device">Device not supported</string>
     <string name="home_btn_unsupported_kernel">Kernel %1$s not supported</string>    <string name="action_back">Back</string>
     <string name="action_save">Save</string>    <string name="transport_none">No transport</string>

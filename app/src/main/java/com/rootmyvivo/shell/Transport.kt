@@ -73,9 +73,19 @@ object Transport {
      * Клиент сам ходит в демон на unix-сокете, так что работает всегда,
      * пока жив демон.
      */
-    fun suLocal(ctx: Context, command: String, timeoutSec: Int = 60): Pair<Int, String> = try {
+    fun suLocal(ctx: Context, command: String, timeoutSec: Int = 60): Pair<Int, String> {
         val suBin = File(ctx.filesDir, "rmv/su")
         val bin = if (suBin.isFile && suBin.canExecute()) suBin.absolutePath else SU
+        return suVia(bin, command, timeoutSec)
+    }
+
+    /**
+     * su через конкретный бинарь: /system/bin/su (биндинг KSU) из приложения
+     * вызывает ЗАПРОС В МЕНЕДЖЕРЕ — пользователь подтверждает один раз,
+     * дальше ядро пускает наш uid. Канал работает без adb вообще; ждёт
+     * подтверждения (таймаут), чтение в отдельных потоках — не вешается.
+     */
+    fun suVia(bin: String, command: String, timeoutSec: Int): Pair<Int, String> = try {
         val proc = Runtime.getRuntime().exec(arrayOf(bin, "-c", command))
         // Чтение stdout/stderr в отдельных потоках: blocking-read до EOF в
         // useLines зависал навсегда, если KSU-су ждёт авторизации менеджера
@@ -131,7 +141,7 @@ object Transport {
      *     (adbd после рестарта выглядит «connected»), здесь — 3 попытки
      *     с паузой на случай, пока adbd поднимается.
      */
-    suspend fun su(ctx: Context, command: String, timeoutSec: Int = 300): Pair<Int, String> {
+    suspend fun su(ctx: Context, command: String, timeoutSec: Int = 300, interactive: Boolean = false): Pair<Int, String> {
         // 1) локальный клиент — быстрый путь без транспорта
         if (!ksuSuPresent()) {
             val local = suLocal(ctx, command, timeoutSec = minOf(timeoutSec, 60))
@@ -158,6 +168,14 @@ object Transport {
             // код -1 = транспортная авария; adbd мог ещё не подняться
             delay(1500L)
             attempt++
+        }
+        // Последний канал (только по явному запросу, не в фоновых циклах):
+        // биндинг KSU /system/bin/su из приложения — менеджер показывает
+        // запрос, пользователь подтверждает, команда выполняется от root.
+        // Так делают сами менеджеры; работает и без adb
+        if (interactive && File("/system/bin/su").canExecute()) {
+            val viaBind = suVia("/system/bin/su", command, timeoutSec = minOf(timeoutSec, 60))
+            if (viaBind.first == 0) return viaBind
         }
         return last
     }
