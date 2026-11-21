@@ -485,7 +485,14 @@ class KsuInstaller(
             // вписал ключ и рестартил его — мгновенный опрос попадал в
             // мёртвый сокет и «проверка su» проваливалась на ровном месте
             com.rootmyvivo.shell.Transport.adbWaitAlive(ctx, timeoutMs = 20_000L)
+            // Железобетонная семантика (как в DirtyFrag): KSU после
+            // late-load сам БАЙНДИТ su в /system/bin/su — его наличие =
+            // рут жив. ADB-опрос — второе доказательство, не единственное
+            fun suBound(): Boolean =
+                java.io.File("/system/bin/su").canExecute() ||
+                    java.io.File("/data/adb/ksu/bin/su").canExecute()
             suspend fun suWorks(): Boolean {
+                if (suBound()) return true
                 val (c, out) = Transport.su(ctx, "id", timeoutSec = 10)
                 return c == 0 && out.contains("uid=0")
             }

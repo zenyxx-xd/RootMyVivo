@@ -969,7 +969,6 @@ private fun LogStream(
     val listState = rememberLazyListState()
     val bg = MaterialTheme.colorScheme.background
     val density = androidx.compose.ui.platform.LocalDensity.current
-    val clearPx = with(density) { CLEAR_ZONE.toPx() }
     val scope = androidx.compose.runtime.rememberCoroutineScope()
 
     // Все id, уже бывшие в списке: анимация появления — только для новых строк.
@@ -1015,8 +1014,9 @@ private fun LogStream(
 
     // Высота бокса — для градиента тумана
     var viewportH by remember { mutableStateOf(0) }
-    // Доля высоты, ниже которой тумана нет (граница чистой зоны)
-    val clearFrac = if (viewportH > 0) ((viewportH - clearPx) / viewportH).coerceIn(0.3f, 0.95f) else 0.85f
+    // Внутренний туман лога удалён: без размытия градиент выглядел как
+    // тёмные пятна поверх строк (артефакты у живого лога). Затемнение
+    // верхних старых строк — внешний оверлей во FlowScreen.
 
     // AGSL runtime-шейдер на весь список (полноэкранное размытие каждый
     // кадр) убран: на несмартфонных GPU лог лагал в разы. «Туман» снизу
@@ -1193,23 +1193,10 @@ private fun LogStream(
             }
         }
 
-        // Туман-непрозрачность: градиент поверх бокса (как в 0.4.24),
-        // плотность растёт по квадратичной кривой к верху
-        if (fog) {
-            val fogStops = buildList {
-                for (i in 0..10) {
-                    val f = clearFrac * i / 10f
-                    val e = (1f - f / clearFrac).let { it * it }
-                    add(f to bg.copy(alpha = e))
-                }
-                add(1f to androidx.compose.ui.graphics.Color.Transparent)
-            }
-            Box(
-                Modifier
-                    .matchParentSize()
-                    .background(androidx.compose.ui.graphics.Brush.verticalGradient(*fogStops.toTypedArray())),
-            )
-        }
+        // Внутренний градиентный «туман» удалён: без размытия он выглядел
+        // как тёмные пятна поверх строк (заметнее всего на живом логе —
+        // чем выше к краю экрана, тем непрозрачнее). Затемнение верха
+        // старых строк делает внешний оверлей во FlowScreen.
     }
 }
 
