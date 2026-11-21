@@ -371,7 +371,6 @@ fun HomeScreen(
                     label = m.appName,
                     description = m.pkg,
                     selected = selected,
-                    enabled = !state.managerInstallBusy,
                     badge = if (m.installed) stringResource(R.string.ksu_installed_badge) else null,
                 )
             },

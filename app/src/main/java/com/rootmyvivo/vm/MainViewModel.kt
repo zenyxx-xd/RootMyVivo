@@ -76,66 +76,26 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
 
     /**
      * Выбор менеджера из скана/списка: установленного — сразу (в т.ч.
-     * сторонний пакет с libksud, «custom»), известного неустановленного —
-     * автоустановка через системный установщик, как обновление приложения.
+     * сторонний пакет с libksud, «custom»), неустановленного известного —
+     * просто выбираем: загрузка и установка идут при запуске рута, в логе
+     * (ensureManagerInstalledDf), одним шагом без раздвоения.
      */
     fun selectKsuManager(choice: com.rootmyvivo.root.KsuManagers.Choice) {
         if (choice.installed) {
             prefs.managerPackage = choice.pkg
             prefs.managerVariant = choice.variant?.id ?: "custom"
-            choice.variant?.let { prefs.selectedKsu = it.id }
-            _state.value = _state.value.copy(
-                selectedKsu = choice.variant ?: _state.value.selectedKsu,
-            )
-            refreshKsuManagers()
-            return
+        } else {
+            // Сброс прошлой привязки: выбранный вариант ставится с нуля
+            prefs.managerPackage = ""
+            prefs.managerVariant = ""
         }
-        choice.variant?.let { installKsuManager(it) }
-    }
-
-    /** Автоустановка менеджера: скачать → системный установщик → выбор. */
-    fun installKsuManager(variant: KsuVariant) {
-        if (_state.value.managerInstallBusy) return
-        _state.value = _state.value.copy(managerInstallBusy = true)
-        viewModelScope.launch {
-            val app = getApplication<Application>()
-            val res = withContext(Dispatchers.IO) {
-                val apk = File(app.filesDir, "manager_install")
-                val pkg = com.rootmyvivo.root.ManagerApks.fetch(app, variant, apk)
-                if (pkg == null) {
-                    R.string.ksu_install_fail
-                } else if (!com.rootmyvivo.data.AppUpdater.install(apk, app)) {
-                    R.string.ksu_install_fail
-                } else {
-                    R.string.ksu_install_confirm
-                }
-            }
-            _state.value = _state.value.copy(toastRes = res)
-            if (res == R.string.ksu_install_confirm) {
-                // Ждём подтверждения в системном установщике (до 3 минут)
-                val installed = withContext(Dispatchers.IO) {
-                    val deadline = System.currentTimeMillis() + 180_000L
-                    while (System.currentTimeMillis() < deadline) {
-                        if (com.rootmyvivo.root.KsuManagers.hasKsud(app, variant.packageName)) {
-                            return@withContext true
-                        }
-                        kotlinx.coroutines.delay(2000L)
-                    }
-                    com.rootmyvivo.root.KsuManagers.hasKsud(app, variant.packageName)
-                }
-                if (installed) {
-                    prefs.managerPackage = variant.packageName
-                    prefs.managerVariant = variant.id
-                    prefs.selectedKsu = variant.id
-                    _state.value = _state.value.copy(
-                        selectedKsu = variant,
-                        toastRes = R.string.ksu_installed_ok,
-                    )
-                }
-            }
-            _state.value = _state.value.copy(managerInstallBusy = false)
-            refreshKsuManagers()
-        }
+        choice.variant?.let { prefs.selectedKsu = it.id }
+        _state.value = _state.value.copy(
+            selectedKsu = choice.variant ?: _state.value.selectedKsu,
+            managerPackage = if (choice.installed) choice.pkg else "",
+            toastRes = if (choice.installed) null else R.string.ksu_install_deferred,
+        )
+        refreshKsuManagers()
     }
 
     // ─────────── Устройство и каталог ───────────

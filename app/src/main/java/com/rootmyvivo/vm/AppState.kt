@@ -104,8 +104,6 @@ data class UiState(
     val managerPackage: String = "",
     /** Менеджеры для диалога выбора: скан libksud + известные варианты. */
     val ksuManagers: List<com.rootmyvivo.root.KsuManagers.Choice> = emptyList(),
-    /** Автоустановка менеджера идёт (кнопки выбора отключены). */
-    val managerInstallBusy: Boolean = false,
     // процесс рута
     val flowRunning: Boolean = false,
     val flowPhase: Phase? = null,

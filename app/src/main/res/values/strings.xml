@@ -38,9 +38,9 @@
     <string name="settings_boot_restore_desc">Автоматически перезапускает эксплойт и загружает модуль KernelSU</string>
     <string name="dev_catalog_error">Каталог недоступен</string>
     <string name="ksu_installed_badge">Установлен</string>
-    <string name="ksu_install_fail">Не удалось скачать менеджер</string>
-    <string name="ksu_install_confirm">Подтверди установку менеджера в системном диалоге</string>
-    <string name="ksu_installed_ok">Менеджер установлен</string>
+    <string name="ksu_install_deferred">Менеджер установится при запуске рута</string>
+    
+    
 
     <!-- Процесс рута -->
     <string name="flow_title">Процесс рута</string>

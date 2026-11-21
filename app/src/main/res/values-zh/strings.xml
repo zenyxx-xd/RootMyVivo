@@ -33,9 +33,9 @@
     <string name="settings_boot_restore_desc">自动重新运行漏洞利用并加载 KernelSU 模块</string>
     <string name="dev_catalog_error">目录不可用</string>
     <string name="ksu_installed_badge">已安装</string>
-    <string name="ksu_install_fail">下载管理器失败</string>
-    <string name="ksu_install_confirm">在系统对话框中确认安装管理器</string>
-    <string name="ksu_installed_ok">管理器已安装</string>
+    <string name="ksu_install_deferred">管理器将在开始获取 Root 时安装</string>
+    
+    
 
     <string name="flow_title">越狱</string>
     <string name="flow_running">运行中…</string>

@@ -399,8 +399,11 @@ class KsuInstaller(
             val prefs = com.rootmyvivo.data.Prefs(ctx)
             progress(R.string.log_manager_install)
 
-            // Свежий APK из релизов репозитория варианта
-            val apk = File(workDir, "manager.apk")
+            // Свежий APK из релизов репозитория варианта. Каталог —
+            // externalCacheDir: FileProvider покрывает только cache-папки,
+            // из filesDir ACTION_VIEW-установка падала на getUriForFile
+            // (это и был «не устанавливается менеджер»)
+            val apk = File(ctx.externalCacheDir ?: ctx.cacheDir, "manager_install.apk")
             val actualPkg = ManagerApks.fetch(ctx, variant, apk)
             if (actualPkg == null) {
                 onEvent(FlowEvent.Complete(false, ctx.getString(R.string.log_manager_download_fail)))
@@ -449,7 +452,7 @@ class KsuInstaller(
                 log(R.string.log_manager_already, LogLevel.OK, variant.displayName)
             } else {
                 progress(R.string.log_manager_download, variant.displayName)
-                val apk = File(workDir, "manager.apk")
+                val apk = File(ctx.externalCacheDir ?: ctx.cacheDir, "manager_install.apk")
                 val actualPkg = ManagerApks.fetch(ctx, variant, apk)
                 if (actualPkg == null) {
                     complete(false, R.string.log_manager_download_fail)
@@ -477,7 +480,11 @@ class KsuInstaller(
                 }
             }
 
-            // Верификация su с ретраями: менеджеру нужно время подняться
+            // Верификация su с ретраями: менеджеру нужно время подняться.
+            // Сначала ждём adbd: бутстрап только что поставил persist-порт,
+            // вписал ключ и рестартил его — мгновенный опрос попадал в
+            // мёртвый сокет и «проверка su» проваливалась на ровном месте
+            com.rootmyvivo.shell.Transport.adbWaitAlive(ctx, timeoutMs = 20_000L)
             suspend fun suWorks(): Boolean {
                 val (c, out) = Transport.su(ctx, "id", timeoutSec = 10)
                 return c == 0 && out.contains("uid=0")
@@ -495,6 +502,21 @@ class KsuInstaller(
                 complete(true, R.string.log_ksu_active, variant.displayName)
                 KsuResult.ACTIVE
             } else {
+                // Диагностика в лог: su не ответил — показываем, на каком
+                // звене цепочка порвалась, вместо пустого «не работает»
+                runCatching {
+                    val port = com.rootmyvivo.shell.Transport.exec(
+                        ctx, "getprop persist.adb.tcp.port", timeoutSec = 5,
+                    ).second.trim()
+                    val suBound = java.io.File("/system/bin/su").exists()
+                    onEvent(
+                        FlowEvent.Log(
+                            "diag: adb.port=$port su=$suBound " +
+                                "transport=${com.rootmyvivo.shell.Transport.detectBlocking(ctx)}",
+                            LogLevel.WARN,
+                        ),
+                    )
+                }
                 complete(true, R.string.log_ksu_soft_reboot)
                 KsuResult.NEEDS_REBOOT
             }

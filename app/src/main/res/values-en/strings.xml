@@ -33,9 +33,9 @@
     <string name="settings_boot_restore_desc">Automatically re-runs the exploit and loads the KernelSU module</string>
     <string name="dev_catalog_error">Catalog unavailable</string>
     <string name="ksu_installed_badge">Installed</string>
-    <string name="ksu_install_fail">Failed to download the manager</string>
-    <string name="ksu_install_confirm">Confirm the manager install in the system dialog</string>
-    <string name="ksu_installed_ok">Manager installed</string>
+    <string name="ksu_install_deferred">The manager will be installed when root starts</string>
+    
+    
 
     <string name="flow_title">Jailbreak</string>
     <string name="flow_running">Running…</string>
