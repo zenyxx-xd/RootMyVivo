@@ -60,6 +60,15 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         detectDevice()
         refreshTransport()
         refreshKsuManagers()
+        // Пользователь мог удалить/установить менеджеры, пока приложение
+        // было в фоне — скан обновляется на каждом возврате (ON_RESUME)
+        androidx.lifecycle.ProcessLifecycleOwner.get().lifecycle.addObserver(
+            object : androidx.lifecycle.DefaultLifecycleObserver {
+                override fun onResume(owner: androidx.lifecycle.LifecycleOwner) {
+                    refreshKsuManagers()
+                }
+            },
+        )
         // Автопоиск обновлений при каждом запуске приложения
         if (_state.value.settings.autoUpdateCheck) checkForUpdate()
     }

@@ -152,6 +152,9 @@ object Transport {
         while (attempt < 3) {
             last = exec(ctx, chain, timeoutSec)
             if (last.first == 0) return last
+            // Нет транспорта (порт не закреплён) — ретраи бессмысленны:
+            // три попытки с паузами держали проверку состояния по 5 секунд
+            if (!adbUsable(ctx)) break
             // код -1 = транспортная авария; adbd мог ещё не подняться
             delay(1500L)
             attempt++
@@ -165,12 +168,13 @@ object Transport {
     }
 
     /**
-     * Быстрая локальная проверка «root есть» без транспорта. Пока KSU не
-     * перехватил su — спрашиваем демон (suLocal, с таймаутом). После KSU
-     * локальный su-клиент форвардится в PATH-su и мог бы висеть на
-     * подтверждении менеджера — там доказательством служит модуль в ядре.
+     * Быстрая локальная проверка «root есть» без транспорта. KSU после
+     * late-load биндит su в /system/bin/su (как в DirtyFrag) — это первый
+     * и самый надёжный сигнал: работает даже когда форк прячет модуль из
+     * /proc/modules (susfs) и когда adb-канал мёртв.
      */
     fun rootActiveQuick(ctx: Context): Boolean {
+        if (File("/system/bin/su").canExecute()) return true
         if (!File("/system/bin/su").exists()) {
             val (code, out) = try {
                 suLocal(ctx, "id", timeoutSec = 5)

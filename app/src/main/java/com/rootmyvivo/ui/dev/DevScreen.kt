@@ -87,7 +87,7 @@ fun DevScreen(vm: MainViewModel, state: UiState, onClose: () -> Unit, onRootStar
         demoMethodDf = df
         demoPrefs.edit().putBoolean("demoMethodDf", df).apply()
     }
-    val demoEnabled = state.payload != null && !state.flowRunning
+    val demoEnabled = !state.flowRunning
     val rooted = state.rootState == RootState.ROOTED
     val closeDemo = {
         demoState = null

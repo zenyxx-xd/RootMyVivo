@@ -100,7 +100,7 @@
     <string name="log_df_wait_manager">Ожидание подтверждения установки менеджера…</string>
         <string name="log_df_manager_manual">Менеджер не установлен — подтвердите диалог установки или поставьте вручную</string>
     <string name="log_df_manager_stage_fail">Менеджер не докачан — установка пройдёт через системный установщик</string>
-    <string name="home_method_df">DirtyFrag • универсальный</string>
+    <string name="home_method_df">Используется метод DirtyFrag</string>
     <string name="status_payload">Эксплоит</string>
     <string name="confirm_softreboot_text">Перезагрузка userspace перезапустит системный интерфейс: приложения закроются, данные не потеряются.</string>
     <string name="confirm_softreboot_title">Перезапустить интерфейс?</string>

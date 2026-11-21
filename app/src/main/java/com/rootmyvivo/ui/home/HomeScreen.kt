@@ -840,7 +840,14 @@ private fun InfoGroup(
         // Рут-менеджер
         SettingsRow(
             title = stringResource(R.string.ksu_title),
-            description = state.managerPackage.ifEmpty { state.selectedKsu.displayName },
+            description = if (state.managerPackage.isNotEmpty() &&
+                state.managerPackage != state.selectedKsu.packageName
+            ) {
+                // кастомный/spoofed-пакет — показываем как есть
+                state.managerPackage
+            } else {
+                state.selectedKsu.displayName
+            },
             icon = Icons.Rounded.Security,
             onClick = onKsuClick,
             trailing = {
