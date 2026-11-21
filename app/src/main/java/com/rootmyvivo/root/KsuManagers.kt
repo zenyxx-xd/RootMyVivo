@@ -4,6 +4,7 @@ import android.content.Context
 import java.io.File
 import java.net.HttpURLConnection
 import java.net.URL
+import java.util.concurrent.TimeUnit
 
 /**
  * Менеджеры рута — не хардкод, как в DirtyFrag: сканируем установленные
@@ -23,12 +24,43 @@ object KsuManagers {
         val installed: Boolean,
     )
 
-    /** У приложения есть libksud.so? (DirtyFrag: единственный критерий) */
-    fun hasKsud(ctx: Context, pkg: String): Boolean = try {
-        val info = ctx.packageManager.getApplicationInfo(pkg, 0)
-        info.nativeLibraryDir != null && File(info.nativeLibraryDir, "libksud.so").isFile
-    } catch (_: Exception) {
-        false
+    /**
+     * У приложения есть ksud? (DirtyFrag-критерий). SukiSU Nova и другие
+     * форки РАНДОМИЗИРУЮТ имя файла (libksud.so больше нет) — тогда ищем
+     * среди крупных .so исполняемый ksud: он отвечает на `--version`
+     * строкой с uapi/KernelSU (как find_fresh_ksud в ic-ksu.sh).
+     */
+    fun hasKsud(ctx: Context, pkg: String): Boolean {
+        val info = try {
+            ctx.packageManager.getApplicationInfo(pkg, 0)
+        } catch (_: Exception) {
+            return false
+        }
+        val libDir = info.nativeLibraryDir ?: return false
+        if (File(libDir, "libksud.so").isFile) return true
+        val cands = File(libDir).listFiles { f ->
+            f.isFile && f.name.endsWith(".so") && f.length() > 1_000_000
+        } ?: return false
+        for (f in cands) {
+            try {
+                val p = ProcessBuilder(f.absolutePath, "--version")
+                    .redirectErrorStream(true)
+                    .start()
+                var out = ""
+                val t = Thread { runCatching { out = p.inputStream.bufferedReader().readText() } }
+                    .apply { isDaemon = true; start() }
+                if (!p.waitFor(5, TimeUnit.SECONDS)) {
+                    p.destroy(); t.join(300)
+                    continue
+                }
+                t.join(500)
+                if (out.contains("uapi", true) || out.contains("KernelSU", true) ||
+                    out.contains("late-load")
+                ) return true
+            } catch (_: Exception) {
+            }
+        }
+        return false
     }
 
     /**
@@ -41,7 +73,8 @@ object KsuManagers {
             val pm = ctx.packageManager
             for (info in pm.getInstalledApplications(0)) {
                 val libDir = info.nativeLibraryDir ?: continue
-                if (!File(libDir, "libksud.so").isFile) continue
+                // libksud.so ИЛИ рандомизированный ksud (SukiSU Nova)
+                if (!File(libDir, "libksud.so").isFile && !hasKsud(ctx, info.packageName)) continue
                 val pkg = info.packageName
                 val variant = KsuVariant.byPackage(pkg)
                 val label = runCatching { pm.getApplicationLabel(info).toString() }
@@ -72,12 +105,11 @@ object ManagerApks {
     fun candidates(variant: KsuVariant): List<Pair<String, String>> {
         val repo = if (variant.id == "resukisu") CI_REPO else variant.repo
         val all = listApkAssets(repo).filter { (name, _) -> goodManagerApk(name) }
-        val ordered = if (variant.id == "ksunext") {
-            all.sortedBy { (name, _) -> if (name.contains("spoof", true)) 0 else 1 }
-        } else {
-            all.sortedBy { (name, _) -> if (name.contains("spoof", true)) 1 else 0 }
-        }
-        return ordered.take(3)
+        // Spoofed-сборки (рандомный пакет) — В КОНЦЕ: обычная сборка
+        // опознаётся сканом и по каноническому пакету, spoofed только по
+        // факту прошлой установки. Обычная первой — «приложение видит»
+        // менеджер сразу после установки.
+        return all.sortedBy { (name, _) -> if (name.contains("spoof", true)) 1 else 0 }.take(3)
     }
 
     private fun goodManagerApk(name: String) =

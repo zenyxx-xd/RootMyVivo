@@ -115,25 +115,48 @@ object Transport {
      *  менеджера) — в этом режиме только через транспорт (shell-домен, allow_shell). */
     private fun ksuSuPresent(): Boolean = File("/system/bin/su").exists()
 
-    /**
-     * su-команда в одинарных кавычках с корректным экранированием вложенных
-     * `'` (закрытие → escaped-кавычка → открытие). Простая обёртка `'...'`
-     * ломалась на командах с внутренними кавычками (unzip '...').
-     */
-    private fun suWrapped(bin: String, command: String): String =
-        "$bin -c '" + command.replace("'", "'\\''") + "'"
+    /** Команда в одинарных кавычках с корректным экранированием. */
+    private fun shQuote(cmd: String): String = "'" + cmd.replace("'", "'\\''") + "'"
 
-    /** Выполнить команду через su: напрямую из приложения, затем через транспорт. */
+    /**
+     * Выполнить команду через su — железобетонная версия.
+     *
+     *  1. Локальный su-клиент демона эксплойта (GL-модель, filesDir/rmv/su)
+     *     — без транспорта, пока KSU не перехватил su.
+     *  2. ADB-канал: ОДНА shell-команда со ВСЕМИ известными su-путями
+     *     (su, /system/bin/su, /data/adb/ksu/bin/su, su 0 …) — первый
+     *     живой su и отвечает; каждый путь глушится по stderr, exit 0 —
+     *     только если команда реально выполнилась.
+     *  3. Транспорт лечится сам: AdbWire пересоздаёт протухший сокет
+     *     (adbd после рестарта выглядит «connected»), здесь — 3 попытки
+     *     с паузой на случай, пока adbd поднимается.
+     */
     suspend fun su(ctx: Context, command: String, timeoutSec: Int = 300): Pair<Int, String> {
-        // 1. Напрямую через демон эксплойта — пока KSU не перехватил su
+        // 1) локальный клиент — быстрый путь без транспорта
         if (!ksuSuPresent()) {
             val local = suLocal(ctx, command, timeoutSec = minOf(timeoutSec, 60))
             if (local.first == 0) return local
         }
-        // 2. Через транспорт (shell-домен): наш su, а после KSU — PATH-su (allow_shell)
-        val r1 = exec(ctx, suWrapped(SU, command), timeoutSec)
-        if (r1.first == 0) return r1
-        return exec(ctx, suWrapped("su", command), timeoutSec)
+
+        // 2) ADB-цепочка по всем su-путям
+        val q = shQuote(command)
+        val chain = buildString {
+            append("su -c ").append(q).append(" 2>/dev/null && exit 0; ")
+            append("/system/bin/su -c ").append(q).append(" 2>/dev/null && exit 0; ")
+            append("/data/adb/ksu/bin/su -c ").append(q).append(" 2>/dev/null && exit 0; ")
+            append("su 0 sh -c ").append(q).append(" 2>/dev/null && exit 0; ")
+            append("exit 1")
+        }
+        var last = -1 to "no transport"
+        var attempt = 0
+        while (attempt < 3) {
+            last = exec(ctx, chain, timeoutSec)
+            if (last.first == 0) return last
+            // код -1 = транспортная авария; adbd мог ещё не подняться
+            delay(1500L)
+            attempt++
+        }
+        return last
     }
 
     fun detectBlocking(ctx: Context): TransportState {

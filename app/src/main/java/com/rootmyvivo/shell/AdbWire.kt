@@ -168,13 +168,33 @@ object AdbWire {
 
     fun isConnected(): Boolean = socket?.let { it.isConnected && !it.isClosed } == true
 
-    /** Выполнить команду в shell-домене: (exitCode, stdout+stderr). */
-    @Synchronized
+    /** Выполнить команду в shell-домене: (exitCode, stdout+stderr).
+     *  Протухший сокет (adbd перезапущен бутстрапом — Java-сокет при этом
+     *  «connected») лечится пересозданием соединения и одним повтором. */
     fun shell(
         ctx: Context,
         command: String,
         timeoutMs: Long = 300_000,
         allowDialog: Boolean = false,
+    ): Pair<Int, String> = try {
+        shellOnce(ctx, command, timeoutMs, allowDialog)
+    } catch (e: Exception) {
+        Log.w(TAG, "shell failed on cached socket, reconnecting: ${e.message}")
+        close()
+        try {
+            shellOnce(ctx, command, timeoutMs, allowDialog)
+        } catch (e2: Exception) {
+            close()
+            -1 to (e2.message ?: "adb error")
+        }
+    }
+
+    @Synchronized
+    private fun shellOnce(
+        ctx: Context,
+        command: String,
+        timeoutMs: Long,
+        allowDialog: Boolean,
     ): Pair<Int, String> {
         connect(ctx, allowDialog = allowDialog)
 
@@ -221,7 +241,22 @@ object AdbWire {
      * (обрыв потока, закрытие сессии, несовпадение размера).
      */
     @Synchronized
-    fun deploy(ctx: Context, localPath: String, remotePath: String): String? {
+    fun deploy(ctx: Context, localPath: String, remotePath: String): String? =
+        try {
+            deployOnce(ctx, localPath, remotePath)
+        } catch (e: Exception) {
+            Log.w(TAG, "deploy failed on cached socket, reconnecting: ${e.message}")
+            close()
+            try {
+                deployOnce(ctx, localPath, remotePath)
+            } catch (e2: Exception) {
+                close()
+                e2.message ?: "adb deploy error"
+            }
+        }
+
+    @Synchronized
+    private fun deployOnce(ctx: Context, localPath: String, remotePath: String): String? {
         return try {
             connect(ctx)
             val data = File(localPath).readBytes()
