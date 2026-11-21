@@ -395,6 +395,18 @@ class KsuInstaller(
      */
     suspend fun ensureManagerInstalledDf(variant: KsuVariant): Boolean =
         withContext(Dispatchers.IO) {
+            // DirtyFrag-семантика: если НИЧЕГО не выбрано явно — уже
+            // установленный менеджер с libksud используется как есть,
+            // без скачивания (лишняя «Установка менеджера…» исчезает)
+            if (prefs.managerPackage.isEmpty() && prefs.managerVariant.isEmpty()) {
+                val installed = com.rootmyvivo.root.KsuManagers.choices(ctx)
+                    .firstOrNull { it.installed }
+                if (installed != null) {
+                    prefs.managerPackage = installed.pkg
+                    prefs.managerVariant = installed.variant?.id ?: "custom"
+                    return@withContext true
+                }
+            }
             if (managerInstalled(variant)) return@withContext true
             val prefs = com.rootmyvivo.data.Prefs(ctx)
             progress(R.string.log_manager_install)
@@ -439,6 +451,24 @@ class KsuInstaller(
         if (custom.isNotEmpty() && KsuManagers.hasKsud(ctx, custom)) return custom
         val saved = if (prefs.managerVariant == variant.id) prefs.managerPackage else ""
         return saved.ifEmpty { variant.packageName }
+    }
+
+    /**
+     * Тихая userspace-настройка DF после рута: ksud install создаёт
+     * su-клиент и правила менеджера, перезапуск менеджера — авторизацию.
+     * Без лога и без этапа: результат виден позже (su начинает отвечать).
+     */
+    suspend fun userspaceSetupSilent(variant: KsuVariant) = withContext(Dispatchers.IO) {
+        val pkg = effectiveManagerPkg(variant)
+        val ksud = "/data/user_de/0/com.rootmyvivo/ksud"
+        Transport.su(
+            ctx,
+            "$ksud install 2>/dev/null; " +
+                "am force-stop $pkg 2>/dev/null; " +
+                "monkey -p $pkg -c android.intent.category.LAUNCHER 1 >/dev/null 2>&1; " +
+                "true",
+            timeoutSec = 90,
+        )
     }
 
     suspend fun installManagerOnly(variant: KsuVariant): KsuResult =

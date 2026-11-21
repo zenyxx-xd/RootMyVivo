@@ -205,10 +205,26 @@ int main(void)
         late_load = (char *[]){ KSUD, "late-load", "--package-name", su_manager, "--soft-reboot", NULL };
     else
         late_load = (char *[]){ KSUD, "late-load", "--package-name", su_manager, NULL };
-    if (run(late_load) == 0)
+    if (run(late_load) == 0) {
         touch("/dev/dfm5");
-    else
+
+        /* Userspace сразу из root-контекста (не ждём приложение): ksud
+         * install создаёт su-клиент и правила менеджера, запуск менеджера
+         * дорезает авторизацию. Иначе «рут получен», а su недоступен. */
+        char *inst[] = { KSUD, "install", NULL };
+        run(inst);
+        if (su_manager[0]) {
+            char mcmd[512];
+            snprintf(mcmd, sizeof(mcmd),
+                     "am force-stop %s 2>/dev/null; "
+                     "monkey -p %s -c android.intent.category.LAUNCHER 1 >/dev/null 2>&1",
+                     su_manager, su_manager);
+            char *mgr[] = { "/system/bin/sh", "-c", mcmd, NULL };
+            run(mgr);
+        }
+    } else {
         touch("/dev/dfme1");
+    }
 
     /* ADB-закрепление из root-контекста (DFRoot-модель: единственный
      * root-исполнитель — этот бутстрап). ksud late-load --allow-shell

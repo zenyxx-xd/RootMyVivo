@@ -168,12 +168,15 @@ object Transport {
     }
 
     /**
-     * Быстрая локальная проверка «root есть» без транспорта. KSU после
-     * late-load биндит su в /system/bin/su (как в DirtyFrag) — это первый
-     * и самый надёжный сигнал: работает даже когда форк прячет модуль из
-     * /proc/modules (susfs) и когда adb-канал мёртв.
+     * Быстрая локальная проверка «root есть» без транспорта. Приоритет:
+     *  1. /dev/dfm5 — маркер бутстрапа DirtyFrag «late-load прошёл»;
+     *     живёт в devtmpfs до перезагрузки — рут текущей загрузки.
+     *  2. /system/bin/su — биндинг KSU (семантика DirtyFrag).
+     *  3. suLocal — демон GL-модели; 4. модуль в /proc/modules (форки
+     *     с susfs его прячут — поэтому он последний).
      */
     fun rootActiveQuick(ctx: Context): Boolean {
+        if (java.io.File("/dev/dfm5").exists()) return true
         if (File("/system/bin/su").canExecute()) return true
         if (!File("/system/bin/su").exists()) {
             val (code, out) = try {

@@ -180,33 +180,14 @@ fun FlowScreen(
         val logGeometry = remember { mutableStateOf(0f to 0) }
         val bgColor = MaterialTheme.colorScheme.background
 
-        // Продолжение тумана на весь экран: рисуется ЗА карточками, поэтому
-        // сверху (над началом затухания) — просто цвет фона, ниже — та же
-        // кривая, что у оверлея в логе. Края фильтра больше не видны
+        // Градиентный «туман» над логом полностью удалён: на слабых GPU
+        // полупрозрачные оверлеи поверх текста давали чёрные пятна
+        // (заметнее всего у живого лога). Лог заканчивается верхней
+        // границей — чисто и быстро.
         Box(
             Modifier
                 .fillMaxSize()
-                .padding(padding)
-                .drawBehind {
-                    val (topInRoot, h) = logGeometry.value
-                    if (h <= 0 || size.height <= 0f || topInRoot <= 0f) {
-                        return@drawBehind
-                    }
-                    val clearPx = CLEAR_ZONE.toPx()
-                    val clearFrac = ((h - clearPx) / h).coerceIn(0.3f, 0.95f)
-                    val topLocal = topInRoot.coerceIn(0f, size.height)
-                    val total = size.height
-                    val stops = buildList {
-                        add(0f to bgColor)
-                        add(topLocal / total to bgColor)
-                        for (i in 1..10) {
-                            val e = (1f - i / 10f).let { it * it }
-                            add((topLocal + clearFrac * h * i / 10f) / total to bgColor.copy(alpha = e))
-                        }
-                        add(1f to androidx.compose.ui.graphics.Color.Transparent)
-                    }
-                    drawRect(androidx.compose.ui.graphics.Brush.verticalGradient(*stops.toTypedArray()))
-                },
+                .padding(padding),
         ) {
             Column(
                 Modifier
@@ -1280,7 +1261,6 @@ private fun LiveLine(line: com.rootmyvivo.vm.LiveLogLine) {
             .padding(start = 34.dp, top = 1.dp, bottom = 1.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        var overflow by remember(line.id) { mutableStateOf(false) }
         Text(
             text,
             style = MaterialTheme.typography.bodySmall,
@@ -1289,10 +1269,7 @@ private fun LiveLine(line: com.rootmyvivo.vm.LiveLogLine) {
             maxLines = 1,
             softWrap = false,
             overflow = androidx.compose.ui.text.style.TextOverflow.Clip,
-            onTextLayout = { overflow = it.hasVisualOverflow },
-            modifier = Modifier
-                .weight(1f)
-                .then(if (overflow) Modifier.fadeRightEdge() else Modifier),
+            modifier = Modifier.weight(1f),
         )
         if (counter != null) {
             Spacer(Modifier.width(8.dp))
@@ -1317,22 +1294,4 @@ private fun cleanLiveLine(raw: String): Pair<String, String?> {
     s = s.replace(Regex("\\s{2,}"), " ").trim(' ', ';', ':', ',')
     return s.ifEmpty { "…" } to counter
 }
-
-/** Мягкое затемнение правого края обрезающегося текста (без резкой границы). */
-private fun Modifier.fadeRightEdge(fade: androidx.compose.ui.unit.Dp = 16.dp): Modifier =
-    this
-        .graphicsLayer()
-        .drawWithContent {
-            drawContent()
-            val w = size.width
-            val start = (w - fade.toPx()).coerceAtLeast(0f)
-            drawRect(
-                brush = androidx.compose.ui.graphics.Brush.horizontalGradient(
-                    listOf(androidx.compose.ui.graphics.Color.Black, androidx.compose.ui.graphics.Color.Transparent),
-                    startX = start,
-                    endX = w,
-                ),
-                blendMode = androidx.compose.ui.graphics.BlendMode.DstIn,
-            )
-        }
 

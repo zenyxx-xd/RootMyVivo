@@ -37,8 +37,8 @@ android {
         // номером» апдейтер честно находит. Код ОБЯЗАТЕЛЬНО синхронен с
         // versionName (формула в AppUpdater и build_release.py), иначе
         // апдейтер «находит» собственный релиз.
-        versionCode = 10500005
-        versionName = "1.5.0-beta5"
+        versionCode = 10500006
+        versionName = "1.5.0-beta6"
         buildConfigField(
             "String", "RMV_DISPATCH_TOKEN",
             "\"${reportProps.getProperty("dispatchToken", "")}\"",

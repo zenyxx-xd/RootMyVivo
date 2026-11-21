@@ -118,12 +118,14 @@ fun DevScreen(vm: MainViewModel, state: UiState, onClose: () -> Unit, onRootStar
         ) {
             // ── Процесс ──
             DevSection(title = stringResource(R.string.other_section_process)) {
-                Button(
+                // Перезапуск осмыслен только с активным рутом (перезапустить
+                // эксплойт на чистом ядре = обычный запуск с главной)
+                androidx.compose.material3.OutlinedButton(
                     onClick = {
                         vm.startRoot()
                         onRootStarted()
                     },
-                    enabled = demoEnabled,
+                    enabled = state.rootState == RootState.ROOTED && !state.flowRunning,
                     modifier = Modifier.fillMaxWidth(),
                     shape = MaterialTheme.shapes.large,
                 ) {
