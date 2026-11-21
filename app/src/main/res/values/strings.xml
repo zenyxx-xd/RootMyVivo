@@ -37,10 +37,10 @@
     <string name="settings_boot_restore">Восстанавливать root после перезагрузки</string>
     <string name="settings_boot_restore_desc">Автоматически перезапускает эксплойт и загружает модуль KernelSU</string>
     <string name="dev_catalog_error">Каталог недоступен</string>
-    <string name="ksu_desc_kernelsu">Оригинал. Стабильный.</string>
-    <string name="ksu_desc_ksunext">Форк с susfs.</string>
-    <string name="ksu_desc_sukisu">Активный форк.</string>
-    <string name="ksu_desc_resukisu">GhostLock-совместимый.</string>
+    <string name="ksu_installed_badge">Установлен</string>
+    <string name="ksu_install_fail">Не удалось скачать менеджер</string>
+    <string name="ksu_install_confirm">Подтверди установку менеджера в системном диалоге</string>
+    <string name="ksu_installed_ok">Менеджер установлен</string>
 
     <!-- Процесс рута -->
     <string name="flow_title">Процесс рута</string>
@@ -94,6 +94,7 @@
     <string name="flow_fail_timeout">Таймаут ожидания root</string>
     <string name="flow_fail_stopped">Остановлено пользователем</string>
     <string name="flow_fail_ksu">KernelSU не активировался</string>
+    <string name="flow_fail_manager">Менеджер рута не установлен</string>
     <string name="flow_fail_other">Неизвестная ошибка</string>
             <string name="log_df_root_iface">Установка менеджера…</string>
     <string name="log_df_wait_manager">Ожидание подтверждения установки менеджера…</string>
@@ -168,6 +169,7 @@
     <string name="hint_df_init">Триггер сработал и модуль загрузился, но бутстрап/ksud не завершились за 7 секунд — смотри живой лог и пробуй снова</string>
     <string name="hint_timeout">Перезагрузи телефон и попробуй ещё раз</string>
     <string name="hint_ksu">Перезагрузка userspace может активировать модуль</string>
+    <string name="hint_manager">Менеджер обязателен до запуска: выбери его на главной и подтверди установку в системном диалоге</string>
     <!-- Предупреждение -->
     <!-- Уведомления -->
     <string name="notif_channel">Root-статус</string>

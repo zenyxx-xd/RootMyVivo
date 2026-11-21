@@ -32,10 +32,10 @@
     <string name="settings_boot_restore">重启后恢复 root</string>
     <string name="settings_boot_restore_desc">自动重新运行漏洞利用并加载 KernelSU 模块</string>
     <string name="dev_catalog_error">目录不可用</string>
-    <string name="ksu_desc_kernelsu">原版。稳定。</string>
-    <string name="ksu_desc_ksunext">带 susfs 的分支。</string>
-    <string name="ksu_desc_sukisu">活跃的分支。</string>
-    <string name="ksu_desc_resukisu">兼容 GhostLock。</string>
+    <string name="ksu_installed_badge">已安装</string>
+    <string name="ksu_install_fail">下载管理器失败</string>
+    <string name="ksu_install_confirm">在系统对话框中确认安装管理器</string>
+    <string name="ksu_installed_ok">管理器已安装</string>
 
     <string name="flow_title">越狱</string>
     <string name="flow_running">运行中…</string>
@@ -80,6 +80,7 @@
     <string name="flow_fail_df_patched">dirtyfrag exit=3</string>
     <string name="flow_fail_timeout">等待 root 超时</string>
     <string name="flow_fail_stopped">已被用户停止</string>
+    <string name="flow_fail_manager">未安装 Root 管理器</string>
     <string name="flow_fail_ksu">KernelSU 未激活</string>
     <string name="flow_fail_other">未知错误</string>
             <string name="log_df_root_iface">正在安装管理器…</string>
@@ -154,6 +155,7 @@
     <string name="hint_df">很可能您的内核不受支持</string>
     <string name="hint_df_init">触发已执行、模块已加载，但 bootstrap/ksud 未能在 7 秒内完成 — 请查看实时日志后重试</string>
     <string name="hint_timeout">重启手机后重试</string>
+    <string name="hint_manager">运行前必须安装管理器：在主页选择并在系统对话框中确认安装</string>
     <string name="hint_ksu">用户空间重启可能会激活模块</string>
     <!-- 警告 -->
     <!-- 通知 -->

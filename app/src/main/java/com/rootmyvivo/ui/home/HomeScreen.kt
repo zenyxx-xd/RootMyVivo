@@ -356,20 +356,26 @@ fun HomeScreen(
     }
 
 
-    // Меню выбора рут-менеджера — как в настройках, без закрытия после выбора
+    // Меню выбора рут-менеджера — как в DirtyFrag: скан установленных
+    // (libksud.so) + известные варианты; только имя и пакет, без описаний
     if (ksuDialog) {
+        val choices = state.ksuManagers
         ChoiceDialog(
             title = stringResource(R.string.ksu_title),
             closeLabel = stringResource(R.string.action_close),
             onDismiss = { ksuDialog = false },
-            items = KsuVariant.entries.map { v ->
+            items = choices.map { m ->
+                val selected = m.pkg == state.managerPackage ||
+                    (state.managerPackage.isEmpty() && m.variant == state.selectedKsu)
                 ChoiceDialogItem(
-                    label = v.displayName,
-                    description = "${v.repo} · ${stringResource(ksuDescription(v))}",
-                    selected = state.selectedKsu == v,
+                    label = m.appName,
+                    description = m.pkg,
+                    selected = selected,
+                    enabled = !state.managerInstallBusy,
+                    badge = if (m.installed) stringResource(R.string.ksu_installed_badge) else null,
                 )
             },
-            onSelect = { vm.selectKsu(KsuVariant.entries[it]) },
+            onSelect = { vm.selectKsuManager(choices[it]) },
             closeOnSelect = false,
         )
     }
@@ -835,7 +841,7 @@ private fun InfoGroup(
         // Рут-менеджер
         SettingsRow(
             title = stringResource(R.string.ksu_title),
-            description = state.selectedKsu.displayName,
+            description = state.managerPackage.ifEmpty { state.selectedKsu.displayName },
             icon = Icons.Rounded.Security,
             onClick = onKsuClick,
             trailing = {
@@ -1006,12 +1012,4 @@ private fun NavGroup(
             },
         )
     }
-}
-
-@Composable
-private fun ksuDescription(v: KsuVariant): Int = when (v.id) {
-    KsuVariant.KERNELSU.id -> R.string.ksu_desc_kernelsu
-    KsuVariant.KSU_NEXT.id -> R.string.ksu_desc_ksunext
-    KsuVariant.SUKISU.id -> R.string.ksu_desc_sukisu
-    else -> R.string.ksu_desc_resukisu
 }

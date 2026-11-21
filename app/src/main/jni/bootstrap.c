@@ -2,6 +2,7 @@
  * Читает df.conf (key=value) из device-protected папки приложения,
  * затем ksud late-load. Путь к себе зашит в lkm/dfroot.c — совпадает. */
 #include <dirent.h>
+#include <errno.h>
 #include <fcntl.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -148,12 +149,18 @@ static void touch(const char *path)
 }
 
 /* Пометить все установленные модули disabled до ksud: сломанный модуль
- * иначе загрузится на следующей загрузке и зациклит устройство. */
+ * иначе загрузится на следующей загрузке и зациклит устройство.
+ * DirtyFrag 1.18: менеджер без единого модуля вообще не имеет MODULES_DIR,
+ * а ENOENT уже удовлетворяет «ничего не включено» — раньше это гасило весь
+ * рут до запуска ksud. Всё, кроме ENOENT (права, I/O) — реальный сбой. */
 static int disable_modules(void)
 {
     DIR *dir = opendir(MODULES_DIR);
-    if (!dir)
+    if (!dir) {
+        if (errno == ENOENT)
+            return 0;
         return -1;
+    }
 
     struct dirent *ent;
     while ((ent = readdir(dir))) {
@@ -191,26 +198,6 @@ int main(void)
 
     if (disable_mods && disable_modules() != 0)
         touch("/dev/dfmw2");
-
-    /* Менеджер ставим СРАЗУ из root-контекста: su-бинарник живёт в
-     * менеджере, и без него приложение не может поставить APK ни через
-     * su-деплой, ни (на части прошивок) через системный установщик из
-     * фона. APK приложение докачивает ДО запуска эксплойта.
-     * Копируем в /data/local/tmp (vivo-порой pm не читает /data/user_de)
-     * и пишем вывод в лог для диагностики. */
-    const char *manager_apk = "/data/user_de/0/com.rootmyvivo/manager.apk";
-    if (access(manager_apk, F_OK) == 0) {
-        char *inst[] = {
-            "/system/bin/sh", "-c",
-            "cp /data/user_de/0/com.rootmyvivo/manager.apk /data/local/tmp/rmv_manager.apk"
-            " && (pm install -r /data/local/tmp/rmv_manager.apk"
-            " || pm install -r --no-verify /data/local/tmp/rmv_manager.apk)"
-            " > /data/local/tmp/rmv_manager.log 2>&1;"
-            " rm -f /data/local/tmp/rmv_manager.apk",
-            NULL,
-        };
-        run(inst);
-    }
 
     touch("/dev/dfm4");
     char **late_load;

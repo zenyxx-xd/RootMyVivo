@@ -5,11 +5,9 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
-import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.BlurEffect
-import androidx.compose.ui.graphics.asComposeRenderEffect
 import androidx.compose.ui.graphics.drawscope.withTransform
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.graphicsLayer
@@ -656,6 +654,8 @@ private fun failureHint(f: FlowResult.Failure): String? = when (f.reason) {
     FlowEvent.Reason.TIMEOUT -> stringResource(R.string.hint_timeout)
     FlowEvent.Reason.STOPPED -> null
     FlowEvent.Reason.KSU -> stringResource(R.string.hint_ksu)
+    // Менеджер не установлен (отказ в системном установщике / сбой загрузки)
+    FlowEvent.Reason.MANAGER -> stringResource(R.string.hint_manager)
     FlowEvent.Reason.OTHER -> null
 }
 
@@ -674,6 +674,7 @@ private fun failureText(f: FlowResult.Failure): String = stringResource(
         FlowEvent.Reason.TIMEOUT -> R.string.flow_fail_timeout
         FlowEvent.Reason.STOPPED -> R.string.flow_fail_stopped
         FlowEvent.Reason.KSU -> R.string.flow_fail_ksu
+        FlowEvent.Reason.MANAGER -> R.string.flow_fail_manager
         FlowEvent.Reason.OTHER -> R.string.flow_fail_other
     },
 )
@@ -845,9 +846,10 @@ private fun LogLine(
 }
 
 /**
- * Общая анимация появления строки лога: маленькая размытая строка вырастает
- * и проясняется. Используется и обычными строками, и строкой шага эксплойта —
- * иначе она «выпрыгивала» раньше соседних без анимации.
+ * Анимация появления строки лога: строка вырастает из маленькой
+ * полупрозрачной. Размытие (RenderEffect на каждую строку) убрано —
+ * на несмартфонных GPU оно просаживало лог в разы; scale+alpha
+ * выглядят так же и стоят копейки.
  */
 @Composable
 private fun appearModifier(appeared: Boolean): Modifier {
@@ -864,12 +866,7 @@ private fun appearModifier(appeared: Boolean): Modifier {
         animationSpec = tween(420),
         label = "appearAlpha",
     )
-    val appearBlur by animateDpAsState(
-        targetValue = if (appeared) 0.dp else 9.dp,
-        animationSpec = tween(450),
-        label = "appearBlur",
-    )
-    return Modifier.scale(scale).alpha(appearAlpha).blur(appearBlur)
+    return Modifier.scale(scale).alpha(appearAlpha)
 }
 
 /** Чистая зона снизу: примерно три строки лога, выше начинается туман. */
@@ -954,9 +951,9 @@ private fun logColor(status: LogLevel): Color = when (status) {
 
 /**
  * Поток лога (Dopamine-стиль): новые логи снизу (reverseLayout), первые строки
- * прижаты к низу экрана. Туман — оверлеи на весь бокс: градиент непрозрачности +
- * AGSL-шейдер гауссова размытия (API 33+), размывающий попиксельно по высоте —
- * без привязки к строкам, даже одна строка на границе размывается плавно.
+ * прижаты к низу экрана. Туман — дешёвый градиент непрозрачности поверх
+ * бокса (пиксельное размытие Removed: полноэкранный RenderEffect каждый
+ * кадр просаживал FPS на слабых GPU в разы).
  * Внизу/вверху список оттягивается резиной с плавным возвратом.
  */
 @OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
@@ -1021,12 +1018,9 @@ private fun LogStream(
     // Доля высоты, ниже которой тумана нет (граница чистой зоны)
     val clearFrac = if (viewportH > 0) ((viewportH - clearPx) / viewportH).coerceIn(0.3f, 0.95f) else 0.85f
 
-    // AGSL-шейдер прогрессивного размытия (туман поверх всего бокса)
-    val fogShader = if (fog && android.os.Build.VERSION.SDK_INT >= 33) {
-        remember { android.graphics.RuntimeShader(FOG_BLUR_SHADER) }
-    } else {
-        null
-    }
+    // AGSL runtime-шейдер на весь список (полноэкранное размытие каждый
+    // кадр) убран: на несмартфонных GPU лог лагал в разы. «Туман» снизу
+    // рисуется дешёвой градиентной маской поверх лога (fogStops).
 
     // Резинка за край списка: оттягивание с затуханием и плавным возвратом
     val rubber = remember { androidx.compose.animation.core.Animatable(0f) }
@@ -1094,15 +1088,6 @@ private fun LogStream(
                 .nestedScroll(rubberConnection)
                 .graphicsLayer {
                     translationY = rubber.value
-                    // Размытие — фильтр на весь список: радиус растёт с высотой,
-                    // координаты в пространстве слоя (стабильны при скролле)
-                    if (fogShader != null && size.height > 0f) {
-                        fogShader.setFloatUniform("fogEnd", size.height - clearPx)
-                        fogShader.setFloatUniform("maxBlur", 10.dp.toPx())
-                        renderEffect = android.graphics.RenderEffect
-                            .createRuntimeShaderEffect(fogShader, "content")
-                            .asComposeRenderEffect()
-                    }
                 },
             reverseLayout = true,
             contentPadding = androidx.compose.foundation.layout.PaddingValues(start = 20.dp, end = 20.dp, top = 20.dp, bottom = 20.dp),
@@ -1299,18 +1284,12 @@ private fun LiveLine(line: com.rootmyvivo.vm.LiveLogLine) {
         animationSpec = tween(420),
         label = "liveAppearAlpha",
     )
-    val appearBlur by animateDpAsState(
-        targetValue = if (appeared) 0.dp else 9.dp,
-        animationSpec = tween(450),
-        label = "liveAppearBlur",
-    )
 
     Row(
         Modifier
             .fillMaxWidth()
             .scale(scale)
             .alpha(appearAlpha)
-            .blur(appearBlur)
             .padding(start = 34.dp, top = 1.dp, bottom = 1.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -1369,36 +1348,4 @@ private fun Modifier.fadeRightEdge(fade: androidx.compose.ui.unit.Dp = 16.dp): M
                 blendMode = androidx.compose.ui.graphics.BlendMode.DstIn,
             )
         }
-
-/**
- * AGSL-шейдер тумана: единый фильтр — и непрозрачность, и размытие одной
- * кривой (квадратичной от границы чистой зоны fogEnd к верху), поэтому они
- * не могут разойтись: где размытие — там и туман, до самого верха бокса.
- * Размытие — гауссова спиральная выборка по золотому углу, без зерна.
- */
-private const val FOG_BLUR_SHADER = """
-uniform shader content;
-uniform float fogEnd;
-uniform float maxBlur;
-
-half4 main(float2 coord) {
-    float t = clamp((fogEnd - coord.y) / fogEnd, 0.0, 1.0);
-    float r = maxBlur * t * t;
-    if (r < 0.5) {
-        return content.eval(coord);
-    }
-    float wsum = 0.0;
-    half4 sum = half4(0.0);
-    for (int i = 0; i < 28; i++) {
-        float fi = float(i) + 0.5;
-        float ang = fi * 2.39996323;
-        float rad = r * sqrt(fi / 28.0);
-        float2 off = float2(cos(ang), sin(ang)) * rad;
-        float w = exp(-(rad * rad) / (2.0 * r * r * 0.25));
-        sum += content.eval(coord + off) * w;
-        wsum += w;
-    }
-    return half4(sum.rgb / wsum, sum.a / wsum);
-}
-"""
 

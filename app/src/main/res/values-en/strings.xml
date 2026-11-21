@@ -32,10 +32,10 @@
     <string name="settings_boot_restore">Restore root after reboot</string>
     <string name="settings_boot_restore_desc">Automatically re-runs the exploit and loads the KernelSU module</string>
     <string name="dev_catalog_error">Catalog unavailable</string>
-    <string name="ksu_desc_kernelsu">The original. Stable.</string>
-    <string name="ksu_desc_ksunext">Fork with susfs.</string>
-    <string name="ksu_desc_sukisu">Active fork.</string>
-    <string name="ksu_desc_resukisu">GhostLock-compatible.</string>
+    <string name="ksu_installed_badge">Installed</string>
+    <string name="ksu_install_fail">Failed to download the manager</string>
+    <string name="ksu_install_confirm">Confirm the manager install in the system dialog</string>
+    <string name="ksu_installed_ok">Manager installed</string>
 
     <string name="flow_title">Jailbreak</string>
     <string name="flow_running">Running…</string>
@@ -81,6 +81,7 @@
     <string name="flow_fail_timeout">Timed out waiting for root</string>
     <string name="flow_fail_stopped">Stopped by user</string>
     <string name="flow_fail_ksu">KernelSU did not activate</string>
+    <string name="flow_fail_manager">Root manager is not installed</string>
     <string name="flow_fail_other">Unknown error</string>
             <string name="log_df_root_iface">Installing the manager…</string>
             <string name="log_df_wait_manager">Waiting for the manager install confirmation…</string>
@@ -154,6 +155,7 @@
     <string name="hint_df">Your kernel is most likely not supported</string>
     <string name="hint_df_init">The trigger fired and the module loaded, but bootstrap/ksud did not finish within 7 seconds — check the live log and try again</string>
     <string name="hint_timeout">Reboot the phone and try again</string>
+    <string name="hint_manager">A manager is required before the run: pick one on the home screen and confirm the system install dialog</string>
     <string name="hint_ksu">A userspace reboot may activate the module</string>
     <!-- Warning -->
     <!-- Notifications -->

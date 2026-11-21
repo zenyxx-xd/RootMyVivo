@@ -23,6 +23,7 @@ class KsuInstaller(
     private val workDir: File,
     private val onEvent: suspend (FlowEvent) -> Unit,
 ) {
+    private val prefs = com.rootmyvivo.data.Prefs(ctx)
 
     private suspend fun log(id: Int, level: LogLevel, vararg args: Any?) {
         onEvent(FlowEvent.Log(ctx.getString(id, *args), level))
@@ -366,7 +367,10 @@ class KsuInstaller(
     /** Менеджер этого варианта уже стоит в системе? (канонический пакет
      *  или фактический прошлой установки) — тогда и качать нечего. */
     fun managerInstalled(variant: KsuVariant): Boolean {
-        val prefs = com.rootmyvivo.data.Prefs(ctx)
+        // Кастомный менеджер из скана (сторонний пакет с libksud)
+        if (prefs.customManagerPkg.isNotEmpty() &&
+            KsuManagers.hasKsud(ctx, prefs.customManagerPkg)
+        ) return true
         val pkgs = listOf(
             variant.packageName,
             if (prefs.managerVariant == variant.id) prefs.managerPackage else "",
@@ -397,18 +401,7 @@ class KsuInstaller(
 
             // Свежий APK из релизов репозитория варианта
             val apk = File(workDir, "manager.apk")
-            var actualPkg: String? = null
-            for ((_, url) in managerApkCandidates(variant)) {
-                apk.delete()
-                if (!download(url, apk.absolutePath)) continue
-                actualPkg = try {
-                    ctx.packageManager.getPackageArchiveInfo(apk.absolutePath, 0)?.packageName
-                } catch (_: Exception) {
-                    null
-                }
-                if (actualPkg != null && apk.length() > 1_000_000) break
-                actualPkg = null
-            }
+            val actualPkg = ManagerApks.fetch(ctx, variant, apk)
             if (actualPkg == null) {
                 onEvent(FlowEvent.Complete(false, ctx.getString(R.string.log_manager_download_fail)))
                 return@withContext false
@@ -437,114 +430,34 @@ class KsuInstaller(
             }
         }
 
+    /** Фактический пакет su-менеджера: кастомный (скан) или вариантный. */
+    fun effectiveManagerPkg(variant: KsuVariant): String {
+        val custom = prefs.customManagerPkg
+        if (custom.isNotEmpty() && KsuManagers.hasKsud(ctx, custom)) return custom
+        val saved = if (prefs.managerVariant == variant.id) prefs.managerPackage else ""
+        return saved.ifEmpty { variant.packageName }
+    }
+
     suspend fun installManagerOnly(variant: KsuVariant): KsuResult =
         withContext(Dispatchers.IO) {
-            val prefs = com.rootmyvivo.data.Prefs(ctx)
-            val knownPkgs = listOf(variant.packageName, if (prefs.managerVariant == variant.id) prefs.managerPackage else "")
-                .filter { it.isNotEmpty() }.distinct()
-
-            suspend fun suWorks(): Boolean {
-                val (c, out) = Transport.su(ctx, "id", timeoutSec = 10)
-                return c == 0 && out.contains("uid=0")
-            }
-
-            // 1) Менеджер уже стоит — установку пропускаем. Проверка ДО
-            // ожидания adb-канала: когда ставить нечего, канал не нужен
-            // вовсе, а ждать его рестарта — десятки секунд в никуда
-            var installed = false
-            for (pkg in knownPkgs) {
-                if (isPackageInstalled(pkg)) {
-                    installed = true
-                    break
-                }
-            }
-            // 0) Бутстрап (root-контекст) только что поставил persist-порт,
-            // вписал наш adb-ключ и рестартил adbd: ждём канал и включаем
-            // adb-транспорт — дальше вся установка идёт через ADB shell
-            // (allow-shell root), как в проверенном GL-флоу. Ждём только
-            // если менеджер придётся ставить/докачивать
-            if (!installed) {
-                val adbUp = com.rootmyvivo.shell.Transport.adbWaitAlive(ctx, timeoutMs = 30_000L)
-                if (adbUp) {
-                    Log.i(TAG, "adb transport up after bootstrap persist")
-                    prefs.firstRootDone = true
-                }
-            }
-            if (installed) {
+            // Установка менеджера — ровно один раз, ДО эксплойта
+            // (ensureManagerInstalledDf: системный установщик + ожидание
+            // подтверждения). Здесь только страховка, если менеджер
+            // исчез после рута: докачка и тот же системный установщик.
+            // Никакого pm/adb из root-контекста — лог не двоится.
+            if (managerInstalled(variant)) {
                 log(R.string.log_manager_already, LogLevel.OK, variant.displayName)
             } else {
-                // 2) Основной путь: бутстрам УЖЕ поставил менеджер из
-                // root-контекста (pm install над докачанным APK). Если по
-                // какой-то причине не поставил — остался артефакт в dp-папке:
-                // дожимаем его системным установщиком (su-деплой тут
-                // невозможен — su-бинарник живёт в самом менеджере)
-                val dpCtx = ctx.createDeviceProtectedStorageContext()
-                val dpDir = dpCtx.filesDir.parentFile
-                val staged = dpDir?.let { File(it, "manager.apk") }
-                    ?.takeIf { it.exists() && it.length() > 1_000_000 }
-                var apkFile: File? = null
-                var actualPkg: String? = null
-                if (staged != null) {
-                    apkFile = staged
-                    actualPkg = try {
-                        ctx.packageManager.getPackageArchiveInfo(staged.absolutePath, 0)?.packageName
-                    } catch (_: Exception) { null }
+                progress(R.string.log_manager_download, variant.displayName)
+                val apk = File(workDir, "manager.apk")
+                val actualPkg = ManagerApks.fetch(ctx, variant, apk)
+                if (actualPkg == null) {
+                    complete(false, R.string.log_manager_download_fail)
                 } else {
-                    progress(R.string.log_manager_download, variant.displayName)
-                    for ((_, url) in managerApkCandidates(variant)) {
-                        val apk = File(workDir, "manager.apk")
-                        apk.delete()
-                        if (!download(url, apk.absolutePath)) continue
-                        val pkg = try {
-                            ctx.packageManager.getPackageArchiveInfo(apk.absolutePath, 0)?.packageName
-                        } catch (_: Exception) { null } ?: continue
-                        if (isPackageInstalled(pkg)) {
-                            apk.delete()
-                            installed = true
-                            break
-                        }
-                        apkFile = apk
-                        actualPkg = pkg
-                        break
-                    }
-                }
-                if (apkFile != null && actualPkg != null) {
-                    // Бутстрап мог уже поставить его (root-контекст) —
-                    // тогда диалог не нужен вовсе
-                    if (isPackageInstalled(actualPkg)) {
-                        prefs.managerPackage = actualPkg; prefs.managerVariant = variant.id
-                        complete(true, R.string.log_manager_install_ok)
-                        apkFile.delete()
-                    } else {
                     onEvent(FlowEvent.Complete(true))
                     progress(R.string.log_manager_install)
-                    // PackageInstaller session API: детерминированная
-                    // установка со статусом сессии — ACTION_VIEW-диалог
-                    // из фона на vivo порой не открывался вовсе
-                    val viaSession = installApkViaSession(apkFile, actualPkg)
-                    if (viaSession && isPackageInstalled(actualPkg)) {
-                        prefs.managerPackage = actualPkg; prefs.managerVariant = variant.id
-                        complete(true, R.string.log_manager_install_ok)
-                        apkFile.delete()
-                    } else {
-                        // Фолбэк: системный установщик интентом
-                        withContext(Dispatchers.Main) {
-                            try {
-                                val uri = FileProvider.getUriForFile(
-                                    ctx, "${ctx.packageName}.fileprovider", apkFile,
-                                )
-                                ctx.startActivity(
-                                    Intent(Intent.ACTION_VIEW).apply {
-                                        setDataAndType(uri, "application/vnd.android.package-archive")
-                                        addFlags(
-                                            Intent.FLAG_GRANT_READ_URI_PERMISSION or
-                                                Intent.FLAG_ACTIVITY_NEW_TASK,
-                                        )
-                                    },
-                                )
-                            } catch (_: Exception) {
-                            }
-                        }
+                    val launched = com.rootmyvivo.data.AppUpdater.install(apk, ctx)
+                    if (launched) {
                         progress(R.string.log_df_wait_manager)
                         val deadline = System.currentTimeMillis() + 120_000L
                         while (System.currentTimeMillis() < deadline &&
@@ -552,22 +465,23 @@ class KsuInstaller(
                         ) {
                             kotlinx.coroutines.delay(2000L)
                         }
-                        if (isPackageInstalled(actualPkg)) {
-                            prefs.managerPackage = actualPkg; prefs.managerVariant = variant.id
-                            complete(true, R.string.log_manager_install_ok)
-                            apkFile.delete()
-                        } else {
-                            complete(false, R.string.log_df_manager_manual)
-                        }
                     }
+                    if (isPackageInstalled(actualPkg)) {
+                        prefs.managerPackage = actualPkg
+                        prefs.managerVariant = variant.id
+                        complete(true, R.string.log_manager_install_ok)
+                        apk.delete()
+                    } else {
+                        complete(false, R.string.log_df_manager_manual)
                     }
-                } else if (!installed) {
-                    // APK не скачался — старый root-деплой как последний фолбэк
-                    installManager(variant)
                 }
             }
 
-            // 3) Верификация su с ретраями: менеджеру нужно время подняться
+            // Верификация su с ретраями: менеджеру нужно время подняться
+            suspend fun suWorks(): Boolean {
+                val (c, out) = Transport.su(ctx, "id", timeoutSec = 10)
+                return c == 0 && out.contains("uid=0")
+            }
             progress(R.string.log_ksu_verify)
             var rooted = false
             for (attempt in 1..15) {
@@ -752,39 +666,8 @@ class KsuInstaller(
      * каноническим пакетом com.rifsxd.ksunext, а рандомный пакет spoofed
      * ядро принимает по той же подписи. Остальные варианты: сначала обычные.
      */
-    private fun managerApkCandidates(variant: KsuVariant): List<Pair<String, String>> {
-        val repo = if (variant.id == "resukisu") CI_REPO else variant.repo
-        val all = listApkAssets(repo).filter { (name, _) -> goodManagerApk(name) }
-        val ordered = if (variant.id == "ksunext") {
-            all.sortedBy { (name, _) -> if (name.contains("spoof", true)) 0 else 1 }
-        } else {
-            all.sortedBy { (name, _) -> if (name.contains("spoof", true)) 1 else 0 }
-        }
-        return ordered.take(3)
-    }
-
-    private fun goodManagerApk(name: String) =
-        !name.contains("debug", true) &&
-            (name.contains("arm64", true) || name.contains("universal", true) ||
-                (!name.contains("armeabi", true) && !name.contains("x86", true) && !name.contains("armv7", true)))
-
-    /** Все .apk из последних релизов репозитория: (имя, url).
-     *  Имя берём из самого URL: в JSON API между "name" ассета и
-     *  "browser_download_url" лежит ~1.4КБ объекта uploader — regex с окном
-     *  по имени регулярно промахивается, а последний сегмент URL всегда
-     *  совпадает с именем ассета. */
-    private fun listApkAssets(repo: String): List<Pair<String, String>> = try {
-        val c = URL("https://api.github.com/repos/$repo/releases?per_page=10").openConnection() as HttpURLConnection
-        c.setRequestProperty("Accept", "application/vnd.github+json")
-        c.connectTimeout = 15_000
-        val body = c.inputStream.bufferedReader().readText()
-        Regex("\"browser_download_url\"\\s*:\\s*\"([^\"]+\\.apk)\"")
-            .findAll(body)
-            .map { it.groupValues[1].substringAfterLast('/') to it.groupValues[1] }
-            .toList()
-    } catch (_: Exception) {
-        emptyList()
-    }
+    private fun managerApkCandidates(variant: KsuVariant): List<Pair<String, String>> =
+        ManagerApks.candidates(variant)
 
     /** Поиск asset в последнем релизе: точное имя или предикат. */
     private fun releaseAssetUrl(repo: String, exact: String? = null, predicate: (String) -> Boolean = { false }): String? = try {
@@ -828,6 +711,21 @@ class KsuInstaller(
                             "${kmi}_kernelsu.ko",
                             ko,
                         )
+                }
+                "finasu" -> {
+                    // FinaSU: kernel-bundle.zip, внутри arm64/<kmi>_kernelsu.ko
+                    // (проверено на v1.6.5: 8 KMI, имя = наш kmi-формат)
+                    val tag = latestTag(variant.repo) ?: return false
+                    downloadZipKo(
+                        "https://github.com/${variant.repo}/releases/download/$tag/" +
+                            "FinaSU_${tag.removePrefix("v")}_kernel-bundle.zip",
+                        "arm64/${kmi}_kernelsu.ko",
+                        ko,
+                    ) || downloadZipKo(
+                        "https://github.com/${variant.repo}/releases/download/$tag/kernel-bundle.zip",
+                        "arm64/${kmi}_kernelsu.ko",
+                        ko,
+                    )
                 }
                 else -> {
                     // ReSukiSU CI: архив lkm-all.zip, нужный .ko внутри

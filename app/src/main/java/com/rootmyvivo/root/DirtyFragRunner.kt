@@ -95,10 +95,12 @@ class DirtyFragRunner(private val variant: KsuVariant) {
             }
         } else null
         // Пакет прошлой установки ЭТОГО варианта — фактическое имя spoofed
-        // менеджера, уже стоящего в системе (записано KsuInstaller'ом)
+        // менеджера, уже стоящего в системе (записано KsuInstaller'ом);
+        // кастомный менеджер из скана (libksud) — приоритетнее варианта
         val prefs = com.rootmyvivo.data.Prefs(ctx)
+        val customPkg = prefs.customManagerPkg
         val savedPkg = if (prefs.managerVariant == variant.id) prefs.managerPackage else ""
-        val pkg = actualPkg ?: savedPkg.ifEmpty { variant.packageName }
+        val pkg = actualPkg ?: customPkg.ifEmpty { savedPkg.ifEmpty { variant.packageName } }
         suManager = pkg
 
         // ksud приоритетом: 1) nativeLibraryDir установленного пакета —
@@ -106,7 +108,7 @@ class DirtyFragRunner(private val variant: KsuVariant) {
         // libksud.so из base.apk установленного пакета; 3) из стейдженного
         // manager.apk; 4) assets/ksud — фолбэк для пустой установки
         var ksudStaged = false
-        for (p in listOf(pkg, savedPkg, variant.packageName).filter { it.isNotEmpty() }.distinct()) {
+        for (p in listOf(pkg, customPkg, savedPkg, variant.packageName).filter { it.isNotEmpty() }.distinct()) {
             try {
                 val info = ctx.packageManager.getApplicationInfo(p, 0)
                 val lib = File(info.nativeLibraryDir, "libksud.so")

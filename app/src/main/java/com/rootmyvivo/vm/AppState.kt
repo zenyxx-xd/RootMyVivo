@@ -100,6 +100,12 @@ data class UiState(
     // настройки
     val settings: Settings = Settings(),
     val selectedKsu: KsuVariant = KsuVariant.RESUKISU,
+    /** Фактический пакет su-менеджера (кастомный из скана или variant-ный). */
+    val managerPackage: String = "",
+    /** Менеджеры для диалога выбора: скан libksud + известные варианты. */
+    val ksuManagers: List<com.rootmyvivo.root.KsuManagers.Choice> = emptyList(),
+    /** Автоустановка менеджера идёт (кнопки выбора отключены). */
+    val managerInstallBusy: Boolean = false,
     // процесс рута
     val flowRunning: Boolean = false,
     val flowPhase: Phase? = null,

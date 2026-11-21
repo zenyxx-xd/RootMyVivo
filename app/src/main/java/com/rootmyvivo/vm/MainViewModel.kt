@@ -4,6 +4,7 @@ import android.app.Application
 import android.content.Intent
 import android.net.Uri
 import android.util.Log
+import java.io.File
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.rootmyvivo.R
@@ -48,6 +49,9 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         _state.value = _state.value.copy(
             settings = prefs.settings(),
             selectedKsu = KsuVariant.byId(prefs.selectedKsu),
+            managerPackage = prefs.customManagerPkg.ifEmpty {
+                if (prefs.managerVariant == KsuVariant.byId(prefs.selectedKsu).id) prefs.managerPackage else ""
+            },
             needsSoftReboot = prefs.softRebootPendingActual(),
             logHistory = loadLogHistory(),
             tgBannerVisible = !prefs.tgPromoDismissed,
@@ -55,8 +59,83 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         // ADB-бейдж: порт закреплён и канал жив
         detectDevice()
         refreshTransport()
+        refreshKsuManagers()
         // Автопоиск обновлений при каждом запуске приложения
         if (_state.value.settings.autoUpdateCheck) checkForUpdate()
+    }
+
+    /** Скан менеджеров (пакеты с libksud) для диалога выбора. */
+    fun refreshKsuManagers() {
+        viewModelScope.launch {
+            val choices = withContext(Dispatchers.IO) {
+                com.rootmyvivo.root.KsuManagers.choices(getApplication())
+            }
+            _state.value = _state.value.copy(ksuManagers = choices)
+        }
+    }
+
+    /**
+     * Выбор менеджера из скана/списка: установленного — сразу (в т.ч.
+     * сторонний пакет с libksud, «custom»), известного неустановленного —
+     * автоустановка через системный установщик, как обновление приложения.
+     */
+    fun selectKsuManager(choice: com.rootmyvivo.root.KsuManagers.Choice) {
+        if (choice.installed) {
+            prefs.managerPackage = choice.pkg
+            prefs.managerVariant = choice.variant?.id ?: "custom"
+            choice.variant?.let { prefs.selectedKsu = it.id }
+            _state.value = _state.value.copy(
+                selectedKsu = choice.variant ?: _state.value.selectedKsu,
+            )
+            refreshKsuManagers()
+            return
+        }
+        choice.variant?.let { installKsuManager(it) }
+    }
+
+    /** Автоустановка менеджера: скачать → системный установщик → выбор. */
+    fun installKsuManager(variant: KsuVariant) {
+        if (_state.value.managerInstallBusy) return
+        _state.value = _state.value.copy(managerInstallBusy = true)
+        viewModelScope.launch {
+            val app = getApplication<Application>()
+            val res = withContext(Dispatchers.IO) {
+                val apk = File(app.filesDir, "manager_install")
+                val pkg = com.rootmyvivo.root.ManagerApks.fetch(app, variant, apk)
+                if (pkg == null) {
+                    R.string.ksu_install_fail
+                } else if (!com.rootmyvivo.data.AppUpdater.install(apk, app)) {
+                    R.string.ksu_install_fail
+                } else {
+                    R.string.ksu_install_confirm
+                }
+            }
+            _state.value = _state.value.copy(toastRes = res)
+            if (res == R.string.ksu_install_confirm) {
+                // Ждём подтверждения в системном установщике (до 3 минут)
+                val installed = withContext(Dispatchers.IO) {
+                    val deadline = System.currentTimeMillis() + 180_000L
+                    while (System.currentTimeMillis() < deadline) {
+                        if (com.rootmyvivo.root.KsuManagers.hasKsud(app, variant.packageName)) {
+                            return@withContext true
+                        }
+                        kotlinx.coroutines.delay(2000L)
+                    }
+                    com.rootmyvivo.root.KsuManagers.hasKsud(app, variant.packageName)
+                }
+                if (installed) {
+                    prefs.managerPackage = variant.packageName
+                    prefs.managerVariant = variant.id
+                    prefs.selectedKsu = variant.id
+                    _state.value = _state.value.copy(
+                        selectedKsu = variant,
+                        toastRes = R.string.ksu_installed_ok,
+                    )
+                }
+            }
+            _state.value = _state.value.copy(managerInstallBusy = false)
+            refreshKsuManagers()
+        }
     }
 
     // ─────────── Устройство и каталог ───────────
