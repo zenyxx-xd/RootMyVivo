@@ -125,6 +125,14 @@ object Transport {
         -1 to (e.message ?: "local su error")
     }
 
+    /**
+     * Канал менеджеров: /system/bin/su из приложения. Если наш uid уже
+     * авторизован — выполняется мгновенно, без диалога; если нет —
+     * менеджер показывает root-запрос (менеджер должен быть запущен).
+     */
+    fun suBind(command: String, timeoutSec: Int): Pair<Int, String> =
+        suVia("/system/bin/su", command, timeoutSec)
+
     /** KSU уже перехватил su? После загрузки модуля локальный клиент форвардится
      *  в /system/bin/su, который не авторизован для приложения (и ждёт ответа
      *  менеджера) — в этом режиме только через транспорт (shell-домен, allow_shell). */
@@ -184,7 +192,9 @@ object Transport {
         // биндинг KSU /system/bin/su из приложения — менеджер показывает
         // запрос, пользователь подтверждает, команда выполняется от root.
         // Так делают сами менеджеры; работает и без adb
-        if (interactive && File("/system/bin/su").canExecute()) {
+        if (interactive && File("/system/bin/su").exists()) {
+            // exists(), не canExecute(): виртуальный su-файл KSU может не
+            // отдавать x-бит — проверка canExecute молча убивала канал
             val viaBind = suVia("/system/bin/su", command, timeoutSec = minOf(timeoutSec, 60))
             if (viaBind.first == 0) return viaBind
         }

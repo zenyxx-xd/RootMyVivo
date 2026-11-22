@@ -173,6 +173,7 @@
     <string name="notif_boot_restore_ok_text">KernelSU 已再次激活</string>
     <string name="notif_boot_restore_fail_title">Root 恢复失败</string>
     <string name="notif_boot_restore_fail_text">打开应用手动启动流程</string>
+    <string name="log_softreboot_grant">管理器已打开 — 请确认 root 请求以重启</string>
     <string name="log_softreboot_fail">用户空间重启失败 — 请手动重启系统界面，root 将被激活</string>
 <string name="log_ksud_download">正在下载 ksud…</string>
     <string name="log_ksud_fail">ksud 下载失败 — 已跳过 KernelSU，root 守护进程已激活</string>

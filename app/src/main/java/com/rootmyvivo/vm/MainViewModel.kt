@@ -480,57 +480,58 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         val ctx = getApplication<Application>()
         viewModelScope.launch {
             addLog(ctx.getString(R.string.log_softreboot_perform))
-            // Диалог root-запроса показывает МЕНЕДЖЕР — после софт-ребута
-            // (или полной перезагрузки) он не запущен, запрос повисал
-            // вхолостую и «ничего не происходило». Поднимаем менеджер
-            // до запроса, как это делают сами менеджеры при авторизации
-            runCatching {
-                // фактический менеджер: сохранённый (скан) или выбранный вариант
-                val pkg = prefs.managerPackage.ifEmpty { _state.value.selectedKsu.packageName }
-                val installed = try {
-                    ctx.packageManager.getApplicationInfo(pkg, 0); true
-                } catch (_: Exception) { false }
-                if (installed) {
-                    ctx.packageManager.getLaunchIntentForPackage(pkg)?.let {
-                        it.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
-                        ctx.startActivity(it)
-                    }
-                    delay(1200)
-                }
+
+            // Каналы по убыванию скорости, каждый — с честным исходом в лог:
+            //  1. Биндинг KSU без запуска менеджера: если uid уже авторизован,
+            //     ребут проходит мгновенно и менеджер вообще не открывается
+            //     (это и была жалоба «просто открывается менеджер и всё»)
+            //  2. Тот же биндинг, но менеджер поднят нами: он покажет
+            //     root-запрос — подтверди один раз
+            //  3. adb-цепочка (порт закреплён) с теми же фолбэками
+            //  4. SIGKILL system_server как последний фолбэк
+            suspend fun suCh(cmd: String): Pair<Int, String> = withContext(Dispatchers.IO) {
+                Transport.su(ctx, cmd, timeoutSec = 60, interactive = true)
             }
-            // Как в оригинальном DirtyFrag: `ksud soft-reboot` — родная
-            // команда ksud, работает в ksu-контексте. Канал: adb, а если
-            // мёртв — биндинг KSU (interactive: менеджер покажет root-запрос).
-            // Фолбэк — SIGKILL system_server, как в менеджерах
+
+            val reboot = "/data/adb/ksud soft-reboot 2>/dev/null || " +
+                "/data/user_de/0/com.rootmyvivo/ksud soft-reboot"
+
+            // 1) Уже авторизованы? — мгновенно, без открытия менеджера
             var (code, out) = withContext(Dispatchers.IO) {
-                Transport.su(
-                    ctx,
-                    "/data/adb/ksud soft-reboot 2>/dev/null || " +
-                        "/data/user_de/0/com.rootmyvivo/ksud soft-reboot",
-                    timeoutSec = 60,
-                    interactive = true,
-                )
+                Transport.suBind(reboot, timeoutSec = 25)
             }
             if (code != 0) {
-                Log.w(TAG, "soft reboot via ksud failed: ${out.take(100)}")
+                Log.w(TAG, "soft reboot: bind without manager: ${out.take(120)}")
+                // 2) Поднимаем менеджер — диалог root-запроса показывает ОН
+                addLog(ctx.getString(R.string.log_softreboot_grant))
+                runCatching {
+                    val pkg = prefs.managerPackage.ifEmpty { _state.value.selectedKsu.packageName }
+                    val installed = try {
+                        ctx.packageManager.getApplicationInfo(pkg, 0); true
+                    } catch (_: Exception) { false }
+                    if (installed) {
+                        ctx.packageManager.getLaunchIntentForPackage(pkg)?.let {
+                            it.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+                            ctx.startActivity(it)
+                        }
+                        delay(1500)
+                    }
+                }
                 var (code2, out2) = withContext(Dispatchers.IO) {
-                    Transport.su(
-                        ctx,
-                        "kill -9 \$(pidof system_server)",
-                        timeoutSec = 60,
-                        interactive = true,
-                    )
+                    Transport.suBind(reboot, timeoutSec = 90)
                 }
                 if (code2 != 0) {
-                    Log.w(TAG, "soft reboot via kill failed: ${out2.take(100)}")
-                    code2 = withContext(Dispatchers.IO) {
-                        Transport.su(ctx, "stop", timeoutSec = 60, interactive = true).first
-                    }
-                    if (code2 == 0) {
-                        code2 = withContext(Dispatchers.IO) {
-                            Transport.su(ctx, "start", timeoutSec = 60, interactive = true).first
-                        }
-                    }
+                    Log.w(TAG, "soft reboot: bind with manager: ${out2.take(120)}")
+                    // 3) adb-цепочка с интерактивным фолбэком
+                    code2 = suCh(reboot).first
+                }
+                if (code2 != 0) {
+                    // 4) родной kill system_server — как в менеджерах
+                    code2 = suCh("kill -9 \$(pidof system_server)").first
+                }
+                if (code2 != 0) {
+                    code2 = suCh("stop").first
+                    if (code2 == 0) code2 = suCh("start").first
                 }
                 code = code2
             }
