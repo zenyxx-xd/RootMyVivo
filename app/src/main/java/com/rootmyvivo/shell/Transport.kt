@@ -77,6 +77,12 @@ object Transport {
     fun suLocal(ctx: Context, command: String, timeoutSec: Int = 60): Pair<Int, String> {
         val suBin = File(ctx.filesDir, "rmv/su")
         val bin = if (suBin.isFile && suBin.canExecute()) suBin.absolutePath else SU
+        // Демон мёртв (сокета нет) — не запускаем клиент: его собственный
+        // таймаут на мёртвом сокете оттягивал финал флоу на секунды
+        if (!File("/data/local/tmp/temp_su.sock").exists() &&
+            !File(ctx.filesDir, "rmv/temp_su.sock").exists() &&
+            !File(ctx.filesDir, "rmv/su.sock").exists()
+        ) return -1 to "su daemon not running"
         return suVia(bin, command, timeoutSec)
     }
 
@@ -160,14 +166,16 @@ object Transport {
         }
         var last = -1 to "no transport"
         var attempt = 0
-        while (attempt < 3) {
+        while (attempt < 2) {
             last = exec(ctx, chain, timeoutSec)
             if (last.first == 0) return last
             // Нет транспорта (порт не закреплён) — ретраи бессмысленны:
             // три попытки с паузами держали проверку состояния по 5 секунд
             if (!adbUsable(ctx)) break
-            // код -1 = транспортная авария; adbd мог ещё не подняться
-            delay(1500L)
+            // код -1 = транспортная авария; adbd мог ещё не подняться.
+            // Пауза короткая: длинные ретраи откладывали финал (ошибку
+            // эксплойта) на 4+ секунды
+            delay(600L)
             attempt++
         }
         // Последний канал (только по явному запросу, не в фоновых циклах):
@@ -182,7 +190,7 @@ object Transport {
     }
 
     fun detectBlocking(ctx: Context): TransportState {
-        if (prefs.firstRootDone && adbUsable(ctx)) return TransportState.Adb
+        if (adbUsable(ctx)) return TransportState.Adb
         return TransportState.None
     }
 
@@ -215,7 +223,7 @@ object Transport {
     /** Выполнить команду в shell-домене через ADB (нужен закреплённый порт). */
     suspend fun exec(ctx: Context, command: String, timeoutSec: Int = 300): Pair<Int, String> =
         withContext(Dispatchers.IO) {
-            if (prefs.firstRootDone && adbUsable(ctx)) {
+            if (adbUsable(ctx)) {
                 try {
                     return@withContext AdbWire.shell(ctx, command, timeoutMs = timeoutSec * 1000L, allowDialog = true)
                 } catch (e: Exception) {
@@ -232,7 +240,7 @@ object Transport {
      */
     suspend fun deploy(ctx: Context, localPath: String, remotePath: String): Pair<Boolean, String> =
         withContext(Dispatchers.IO) {
-            if (prefs.firstRootDone && adbUsable(ctx)) {
+            if (adbUsable(ctx)) {
                 val err = AdbWire.deploy(ctx, localPath, remotePath)
                 if (err == null) return@withContext true to ""
                 return@withContext false to err
@@ -284,13 +292,17 @@ object Transport {
                 Log.i(TAG, "adb_keys install: code=$kc ${kout.take(60)}")
             }
             // 3. порт из свойства мог подхватить и живой adbd (service-prop);
-            //    если нет — рестарт через init
+            //    если нет — рестарт через init. ВСЕ рестарты тоже interactive:
+            //    не-interactive su без adb молча фейлится — из-за этого
+            //    adbd никогда не перезапускался и порт «не поднимался»
             if (portOk) {
                 if (adbAlive(ctx)) {
                     Log.i(TAG, "adbd listening on 5555 without restart (service prop)")
                     return@withContext true
                 }
-                su(ctx, "pkill -x adbd", timeoutSec = 10)
+                // ctl.restart — правильный путь через init (pkill мог
+                // оставить adbd мёртвым на части прошивок)
+                su(ctx, "setprop ctl.restart adbd", timeoutSec = 15, interactive = interactive)
                 // init поднимает adbd не мгновенно: ждём и проверяем живой порт
                 repeat(4) { attempt ->
                     delay(1500)
@@ -299,14 +311,13 @@ object Transport {
                         return@withContext true
                     }
                 }
-                // порт не поднялся — рестартим ещё раз
-                su(ctx, "pkill -x adbd", timeoutSec = 10)
+                su(ctx, "setprop ctl.stop adbd; setprop ctl.start adbd", timeoutSec = 15, interactive = interactive)
                 delay(3000)
                 if (adbAlive(ctx)) {
                     Log.i(TAG, "adbd listening on 5555 after second restart")
                     return@withContext true
                 }
-                Log.w(TAG, "adbd did not come up on 5555")
+                Log.w(TAG, "adbd did not come up on 5555 (port prop=${readPort()})")
             }
             portOk
         }

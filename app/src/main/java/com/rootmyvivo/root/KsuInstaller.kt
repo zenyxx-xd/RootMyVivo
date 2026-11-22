@@ -395,17 +395,17 @@ class KsuInstaller(
      */
     suspend fun ensureManagerInstalledDf(variant: KsuVariant): Boolean =
         withContext(Dispatchers.IO) {
-            // DirtyFrag-семантика: если НИЧЕГО не выбрано явно — уже
-            // установленный менеджер с libksud используется как есть,
-            // без скачивания (лишняя «Установка менеджера…» исчезает)
-            if (prefs.managerPackage.isEmpty() && prefs.managerVariant.isEmpty()) {
-                val installed = com.rootmyvivo.root.KsuManagers.choices(ctx)
-                    .firstOrNull { it.installed }
-                if (installed != null) {
-                    prefs.managerPackage = installed.pkg
-                    prefs.managerVariant = installed.variant?.id ?: "custom"
-                    return@withContext true
-                }
+            // DirtyFrag-семантика: ЛЮБОЙ установленный менеджер с libksud
+            // используется как есть — скан всегда первый, независимо от
+            // сохранённых prefs (пакет из prefs мог быть удалён, а другой
+            // менеджер установлен — тогда раньше качался «лишний» и лог
+            // «Установка менеджера…» появлялся на ровном месте)
+            val installed = com.rootmyvivo.root.KsuManagers.choices(ctx)
+                .firstOrNull { it.installed }
+            if (installed != null) {
+                prefs.managerPackage = installed.pkg
+                prefs.managerVariant = installed.variant?.id ?: "custom"
+                return@withContext true
             }
             if (managerInstalled(variant)) return@withContext true
             val prefs = com.rootmyvivo.data.Prefs(ctx)

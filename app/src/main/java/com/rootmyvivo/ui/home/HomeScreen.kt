@@ -453,12 +453,6 @@ private fun HeroCard(
                             style = MaterialTheme.typography.headlineSmall,
                             fontWeight = FontWeight.Bold,
                         )
-                        Text(
-                            stringResource(R.string.status_rooted_desc),
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            textAlign = TextAlign.Center,
-                        )
                         Spacer(Modifier.height(14.dp))
                         // Действия при руте — внутри карточки, обе контурные,
                         // высота как у «Получить рут» (62dp)
@@ -475,14 +469,22 @@ private fun HeroCard(
                                 shape = MaterialTheme.shapes.extraLarge,
                                 contentPadding = PaddingValues(horizontal = 10.dp),
                             ) {
-                                Row(
-                                    horizontalArrangement = Arrangement.Center,
-                                    verticalAlignment = Alignment.CenterVertically,
+                                androidx.compose.foundation.layout.Box(
                                     modifier = Modifier.fillMaxWidth(),
+                                    contentAlignment = Alignment.Center,
                                 ) {
-                                    Icon(Icons.Rounded.Refresh, null, modifier = Modifier.size(18.dp))
-                                    Spacer(Modifier.width(6.dp))
-                                    Text(stringResource(R.string.home_softreboot), maxLines = 2, softWrap = true)
+                                    Column(
+                                        horizontalAlignment = Alignment.CenterHorizontally,
+                                    ) {
+                                        Icon(Icons.Rounded.Refresh, null, modifier = Modifier.size(18.dp))
+                                        Spacer(Modifier.height(2.dp))
+                                        Text(
+                                            stringResource(R.string.home_softreboot),
+                                            maxLines = 2,
+                                            softWrap = true,
+                                            textAlign = TextAlign.Center,
+                                        )
+                                    }
                                 }
                             }
                             val ctx = androidx.compose.ui.platform.LocalContext.current
@@ -509,14 +511,22 @@ private fun HeroCard(
                                 shape = MaterialTheme.shapes.extraLarge,
                                 contentPadding = PaddingValues(horizontal = 10.dp),
                             ) {
-                                Row(
-                                    horizontalArrangement = Arrangement.Center,
-                                    verticalAlignment = Alignment.CenterVertically,
+                                androidx.compose.foundation.layout.Box(
                                     modifier = Modifier.fillMaxWidth(),
+                                    contentAlignment = Alignment.Center,
                                 ) {
-                                    Icon(Icons.Rounded.LockOpen, null, modifier = Modifier.size(18.dp))
-                                    Spacer(Modifier.width(6.dp))
-                                    Text(stringResource(R.string.home_open_manager), maxLines = 2, softWrap = true)
+                                    Column(
+                                        horizontalAlignment = Alignment.CenterHorizontally,
+                                    ) {
+                                        Icon(Icons.Rounded.LockOpen, null, modifier = Modifier.size(18.dp))
+                                        Spacer(Modifier.height(2.dp))
+                                        Text(
+                                            stringResource(R.string.home_open_manager),
+                                            maxLines = 2,
+                                            softWrap = true,
+                                            textAlign = TextAlign.Center,
+                                        )
+                                    }
                                 }
                             }
                         }

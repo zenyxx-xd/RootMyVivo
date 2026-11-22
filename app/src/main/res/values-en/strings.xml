@@ -84,7 +84,7 @@
     <string name="flow_fail_ksu">KernelSU did not activate</string>
     <string name="flow_fail_manager">Root manager is not installed</string>
     <string name="flow_fail_other">Unknown error</string>
-            <string name="log_df_root_iface">Installing the manager…</string>
+            <string name="log_df_root_iface">KernelSU interface loaded into the kernel</string>
             <string name="log_df_wait_manager">Waiting for the manager install confirmation…</string>
                 <string name="log_df_manager_manual">Manager not installed — confirm the install dialog or install manually</string>
     <string name="log_df_manager_stage_fail">Manager not preloaded — install will go through the system installer</string>

@@ -97,7 +97,7 @@
     <string name="flow_fail_ksu">KernelSU не активировался</string>
     <string name="flow_fail_manager">Менеджер рута не установлен</string>
     <string name="flow_fail_other">Неизвестная ошибка</string>
-            <string name="log_df_root_iface">Установка менеджера…</string>
+            <string name="log_df_root_iface">Интерфейс KernelSU загружен в ядро</string>
     <string name="log_df_wait_manager">Ожидание подтверждения установки менеджера…</string>
         <string name="log_df_manager_manual">Менеджер не установлен — подтвердите диалог установки или поставьте вручную</string>
     <string name="log_df_manager_stage_fail">Менеджер не докачан — установка пройдёт через системный установщик</string>

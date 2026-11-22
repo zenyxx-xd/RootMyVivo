@@ -29,8 +29,23 @@ object KsuManagers {
      * форки РАНДОМИЗИРУЮТ имя файла (libksud.so больше нет) — тогда ищем
      * среди крупных .so исполняемый ksud: он отвечает на `--version`
      * строкой с uapi/KernelSU (как find_fresh_ksud в ic-ksu.sh).
+     *
+     * ПРОБА ДОРОГАЯ (запуск процесса + чтение вывода) — результат
+     * кэшируется, пробуем не больше 3 кандидатов в правдоподобном
+     * окне размеров (ksud ~2-8 МБ; игры с 100-МБ .so отсекаются) и с
+     * коротким таймаутом. Раньше полный скан всех приложений с 5-секундным
+     * ожиданием на каждый .so держал подготовку этапа по 4+ секунды.
      */
+    private val ksudCache = java.util.concurrent.ConcurrentHashMap<String, Boolean>()
+
     fun hasKsud(ctx: Context, pkg: String): Boolean {
+        ksudCache[pkg]?.let { return it }
+        val r = hasKsudSlow(ctx, pkg)
+        ksudCache[pkg] = r
+        return r
+    }
+
+    private fun hasKsudSlow(ctx: Context, pkg: String): Boolean {
         val info = try {
             ctx.packageManager.getApplicationInfo(pkg, 0)
         } catch (_: Exception) {
@@ -39,8 +54,9 @@ object KsuManagers {
         val libDir = info.nativeLibraryDir ?: return false
         if (File(libDir, "libksud.so").isFile) return true
         val cands = File(libDir).listFiles { f ->
-            f.isFile && f.name.endsWith(".so") && f.length() > 1_000_000
-        } ?: return false
+            f.isFile && f.name.endsWith(".so") &&
+                f.length() in 2_000_000..25_000_000
+        }?.sortedByDescending { it.length() }?.take(3) ?: return false
         for (f in cands) {
             try {
                 val p = ProcessBuilder(f.absolutePath, "--version")
@@ -49,11 +65,11 @@ object KsuManagers {
                 var out = ""
                 val t = Thread { runCatching { out = p.inputStream.bufferedReader().readText() } }
                     .apply { isDaemon = true; start() }
-                if (!p.waitFor(5, TimeUnit.SECONDS)) {
+                if (!p.waitFor(3, TimeUnit.SECONDS)) {
                     p.destroy(); t.join(300)
                     continue
                 }
-                t.join(500)
+                t.join(300)
                 if (out.contains("uapi", true) || out.contains("KernelSU", true) ||
                     out.contains("late-load")
                 ) return true

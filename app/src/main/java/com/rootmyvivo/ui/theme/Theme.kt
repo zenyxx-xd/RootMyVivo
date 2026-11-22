@@ -23,11 +23,12 @@ import com.rootmyvivo.data.AppThemeName
 import com.rootmyvivo.data.ThemeMode
 
 // ─────────── Брендовые акценты ───────────
+// Приглушённая фиолетовая гамма без зелёного: насыщенные акценты
+// (в т.ч. на переключателях) выглядели кричаще, BrandTeal давал
+// неуместную зелень во вторичных элементах
 
-private val BrandViolet = Color(0xFF7C4DFF)
-private val BrandVioletDim = Color(0xFF9F8CFF)
-private val BrandTeal = Color(0xFF00BFA5)
-private val BrandTealDim = Color(0xFF4DDAC8)
+private val BrandViolet = Color(0xFF6A5AB8)
+private val BrandVioletDim = Color(0xFFB6AAE0)
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
@@ -50,12 +51,12 @@ fun NeoTheme(
         }
         dark -> darkColorScheme(
             primary = BrandVioletDim,
-            onPrimary = Color(0xFF151022),
-            secondary = BrandTealDim,
+            onPrimary = Color(0xFF1D1636),
+            secondary = BrandVioletDim,
         )
         else -> expressiveLightColorScheme().copy(
             primary = BrandViolet,
-            secondary = BrandTeal,
+            secondary = BrandViolet,
         )
     }
 

@@ -84,7 +84,7 @@
     <string name="flow_fail_manager">未安装 Root 管理器</string>
     <string name="flow_fail_ksu">KernelSU 未激活</string>
     <string name="flow_fail_other">未知错误</string>
-            <string name="log_df_root_iface">正在安装管理器…</string>
+            <string name="log_df_root_iface">KernelSU 接口已加载到内核</string>
             <string name="log_df_wait_manager">等待管理器安装确认…</string>
                 <string name="log_df_manager_manual">管理器未安装 — 请确认安装对话框或手动安装</string>
     <string name="log_df_manager_stage_fail">管理器未预下载 — 将通过系统安装器安装</string>
