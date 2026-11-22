@@ -24,6 +24,7 @@ import com.rootmyvivo.shell.Transport
 import com.rootmyvivo.shell.TransportState
 import com.rootmyvivo.ui.flow.FlowUiReducer
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
@@ -479,6 +480,24 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         val ctx = getApplication<Application>()
         viewModelScope.launch {
             addLog(ctx.getString(R.string.log_softreboot_perform))
+            // Диалог root-запроса показывает МЕНЕДЖЕР — после софт-ребута
+            // (или полной перезагрузки) он не запущен, запрос повисал
+            // вхолостую и «ничего не происходило». Поднимаем менеджер
+            // до запроса, как это делают сами менеджеры при авторизации
+            runCatching {
+                // фактический менеджер: сохранённый (скан) или выбранный вариант
+                val pkg = prefs.managerPackage.ifEmpty { _state.value.selectedKsu.packageName }
+                val installed = try {
+                    ctx.packageManager.getApplicationInfo(pkg, 0); true
+                } catch (_: Exception) { false }
+                if (installed) {
+                    ctx.packageManager.getLaunchIntentForPackage(pkg)?.let {
+                        it.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+                        ctx.startActivity(it)
+                    }
+                    delay(1200)
+                }
+            }
             // Как в оригинальном DirtyFrag: `ksud soft-reboot` — родная
             // команда ksud, работает в ksu-контексте. Канал: adb, а если
             // мёртв — биндинг KSU (interactive: менеджер покажет root-запрос).

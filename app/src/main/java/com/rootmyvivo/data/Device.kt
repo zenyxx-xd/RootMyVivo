@@ -20,7 +20,10 @@ data class DeviceInfo(
      * «устройство не поддерживается».
      */
     val temporarilyUnavailable: Boolean
-        get() = model in setOf("V2361A", "PD2361", "I2302", "V2334", "V2361")
+        get() = model in setOf(
+            "V2361A", "PD2361", "I2302", "V2334", "V2361",
+            "V2352A", "PD2352", "V2352",
+        )
 
     /**
      * Модель как на коробке (Build.MODEL: «V2520A»), рядом с маркет-неймом

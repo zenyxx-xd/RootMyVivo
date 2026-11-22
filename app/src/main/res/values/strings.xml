@@ -19,7 +19,7 @@
     <string name="catalog_loading">Загрузка каталога…</string>
     <string name="catalog_retry">Повторить</string>
     <string name="home_btn_unsupported_device">Устройство не поддерживается</string>
-    <string name="home_method_temporarily_unavailable">Метод временно недоступен</string>
+    <string name="home_method_temporarily_unavailable">Метод GhostLock временно недоступен</string>
     <string name="home_btn_unsupported_kernel">Ядро %1$s не поддерживается</string>
     <!-- Транспорт -->    <string name="transport_none">Нет транспорта</string>
     <string name="transport_none_desc">Для запуска ничего не нужно — эксплойт стартует прямо из приложения</string>
