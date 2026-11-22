@@ -50,7 +50,7 @@ data class Settings(
     /** Авто-софт-ребут сразу после рута — как «auto reboot» в DirtyFrag:
      *  бутстрап сам выполняет `ksud soft-reboot` из root-контекста
      *  (без adb, без подтверждения в менеджере) */
-    val softRebootAuto: Boolean = true,
+    val softRebootAuto: Boolean = false,
 )
 
 /** Хранилище настроек и флагов (SharedPreferences — sync-чтение на старте). */
@@ -75,7 +75,7 @@ class Prefs(context: Context) {
         betaChannel = sp.getBoolean(KEY_BETA_CHANNEL, false),
         rootMethod = RootMethod.byId(sp.getString(KEY_ROOT_METHOD, null)),
         allowDfAllKernels = sp.getBoolean(KEY_ALLOW_DF_ALL, false),
-        softRebootAuto = sp.getBoolean(KEY_SOFT_REBOOT_AUTO, true),
+        softRebootAuto = sp.getBoolean(KEY_SOFT_REBOOT_AUTO, false),
     )
 
     fun saveSettings(s: Settings) {

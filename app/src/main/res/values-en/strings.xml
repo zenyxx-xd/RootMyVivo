@@ -251,6 +251,8 @@
     <string name="settings_beta_channel_desc">When on, the updater finds beta app versions</string>
     <string name="settings_soft_reboot_auto">Auto userspace reboot</string>
     <string name="settings_soft_reboot_auto_desc">Soft reboot right after root — done by the bootstrap itself, like DirtyFrag "auto reboot" (no adb, no prompts)</string>
+    <string name="settings_boot_start">Autostart after reboot</string>
+    <string name="settings_boot_start_desc">Like DirtyFrag: kernel is clean after reboot — the app re-runs the exploit and restores root</string>
     <string name="settings_other">Other</string>
     <string name="settings_other_desc">Demo flow and payload catalog</string>
     <string name="theme_screen_title">Theme</string>

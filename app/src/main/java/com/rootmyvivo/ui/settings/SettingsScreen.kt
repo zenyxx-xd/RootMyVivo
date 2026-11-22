@@ -19,6 +19,7 @@ import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.Info
 import androidx.compose.material.icons.rounded.Language
 import androidx.compose.material.icons.rounded.Palette
+import androidx.compose.material.icons.rounded.PlayCircle
 import androidx.compose.material.icons.rounded.RestartAlt
 import androidx.compose.material.icons.rounded.Restore
 import androidx.compose.material3.Button
@@ -106,6 +107,28 @@ fun SettingsScreen(
                     androidx.compose.material3.Switch(
                         checked = state.settings.softRebootAuto,
                         onCheckedChange = { v -> vm.updateSettings { it.copy(softRebootAuto = v) } },
+                    )
+                },
+            )
+            SettingsDivider()
+            // Автозапуск после перезагрузки — как в DirtyFrag: состояние
+            // хранится в самом компоненте BootReceiver (включён/выключен),
+            // не в prefs
+            SettingsRow(
+                title = stringResource(R.string.settings_boot_start),
+                description = stringResource(R.string.settings_boot_start_desc),
+                icon = Icons.Rounded.PlayCircle,
+                trailing = {
+                    val ctx = androidx.compose.ui.platform.LocalContext.current
+                    var bootEnabled by androidx.compose.runtime.remember {
+                        androidx.compose.runtime.mutableStateOf(com.rootmyvivo.BootReceiver.isEnabled(ctx))
+                    }
+                    androidx.compose.material3.Switch(
+                        checked = bootEnabled,
+                        onCheckedChange = { v ->
+                            com.rootmyvivo.BootReceiver.setEnabled(ctx, v)
+                            bootEnabled = v
+                        },
                     )
                 },
             )

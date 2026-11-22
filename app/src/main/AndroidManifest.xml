@@ -73,6 +73,18 @@
                 android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
                 android:value="root_process_runner" />
         </service>
+        <!-- Автозапуск после перезагрузки: по умолчанию ВЫКЛЮЧЕН — включается
+             тумблером в настройках (как BootReceiver в DirtyFrag) -->
+        <receiver
+            android:name=".BootReceiver"
+            android:directBootAware="true"
+            android:enabled="false"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.intent.action.LOCKED_BOOT_COMPLETED" />
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+            </intent-filter>
+        </receiver>
 
     </application>
 </manifest>

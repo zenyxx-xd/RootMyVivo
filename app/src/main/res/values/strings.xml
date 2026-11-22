@@ -264,6 +264,8 @@
     <string name="settings_beta_channel_desc">Включён — апдейтер находит beta-версии приложения</string>
     <string name="settings_soft_reboot_auto">Авто-перезагрузка userspace</string>
     <string name="settings_soft_reboot_auto_desc">Софт-ребут сразу после рута — сам бутстрап, как «auto reboot» в DirtyFrag (без adb и подтверждений)</string>
+    <string name="settings_boot_start">Автозапуск после перезагрузки</string>
+    <string name="settings_boot_start_desc">Как в DirtyFrag: после ребута ядро чистое — приложение само перезапускает эксплойт и поднимает рут</string>
     <string name="settings_other">Другое</string>
     <string name="settings_other_desc">Демо-флоу и каталог пейлоадов</string>
     <string name="theme_screen_title">Тема</string>
