@@ -141,7 +141,7 @@ object AdbWire {
         val (priv, pub) = ensureKeys(ctx)
         val s = Socket()
         s.tcpNoDelay = true
-        s.connect(InetSocketAddress("127.0.0.1", port), 5000)
+        s.connect(InetSocketAddress("127.0.0.1", port), 2000)
         s.soTimeout = 10_000
         socket = s
         rbuf = ByteArray(0)
@@ -154,7 +154,12 @@ object AdbWire {
             if (p.a0 != AUTH_TOKEN) fail("unexpected AUTH type ${p.a0}")
             val sig = signToken(priv, p.data) ?: fail("token signing failed")
             send(AUTH, AUTH_SIGNATURE, 0, sig)
-            p = recv(10_000) ?: fail("adbd did not answer to signature")
+            // Без диалога ждать ответа на подпись долго бессмысленно:
+            // неавторизованный ключ на vivo adbd молчит и закрывает
+            // соединение через несколько секунд — это и был источник
+            // «инфа об устройстве фетчится секунды» и задержки старта.
+            // С диалогом — штатные authTimeoutMs
+            p = recv(if (allowDialog) 10_000 else 1_500) ?: fail("adbd did not answer to signature")
             if (p.cmd == AUTH) {
                 if (!allowDialog) fail("adb key not authorized")
                 val key = publicKeyAndroid(ctx) ?: fail("no public key")
@@ -187,6 +192,16 @@ object AdbWire {
             close()
             -1 to (e2.message ?: "adb error")
         }
+    }
+
+    /** Однократная проверка канала (без автоматического ретрая shell):
+     *  connect (с быстрым таймаутом неавторизованного ключа) + echo. */
+    fun probe(ctx: Context): Boolean = try {
+        val (code, out) = shellOnce(ctx, "echo RMV_OK", 4000, false)
+        code == 0 && out.contains("RMV_OK")
+    } catch (_: Exception) {
+        close()
+        false
     }
 
     @Synchronized

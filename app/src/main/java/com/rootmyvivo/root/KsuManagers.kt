@@ -61,6 +61,8 @@ object KsuManagers {
             try {
                 val p = ProcessBuilder(f.absolutePath, "--version")
                     .redirectErrorStream(true)
+                    // stdin из /dev/null: кандидат мог висеть на чтении ввода
+                    .redirectInput(ProcessBuilder.Redirect.from(File("/dev/null")))
                     .start()
                 var out = ""
                 val t = Thread { runCatching { out = p.inputStream.bufferedReader().readText() } }

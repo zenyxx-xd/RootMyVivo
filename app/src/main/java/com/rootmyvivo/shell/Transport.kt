@@ -54,12 +54,10 @@ object Transport {
             adbAlive(ctx)
         }
 
-    private fun adbAlive(ctx: Context): Boolean = try {
-        val (code, out) = AdbWire.shell(ctx, "echo RMV_OK", timeoutMs = 8000, allowDialog = false)
-        code == 0 && out.contains("RMV_OK")
-    } catch (_: Exception) {
-        false
-    }
+    private fun adbAlive(ctx: Context): Boolean =
+        // probe: один раунд без ретрая — неавторизованный ключ фейлится
+        // за ~1.5с вместо двух полных попыток
+        AdbWire.probe(ctx)
 
     // ─────────── Общий API ───────────
 
@@ -166,13 +164,17 @@ object Transport {
         }
         var last = -1 to "no transport"
         var attempt = 0
+        // adbUsable дорогой (полный раунд adb) — считаем ОДИН раз
+        var usable = adbUsable(ctx)
         while (attempt < 2) {
+            if (!usable) break
             last = exec(ctx, chain, timeoutSec)
             if (last.first == 0) return last
-            // Нет транспорта (порт не закреплён) — ретраи бессмысленны:
-            // три попытки с паузами держали проверку состояния по 5 секунд
-            if (!adbUsable(ctx)) break
-            // код -1 = транспортная авария; adbd мог ещё не подняться.
+            if (attempt == 0) {
+                // канал мог умереть на этой команде (adbd перезапущен) —
+                // перепроверяем ОДИН раз уже после провала
+                usable = adbUsable(ctx)
+            }
             // Пауза короткая: длинные ретраи откладывали финал (ошибку
             // эксплойта) на 4+ секунды
             delay(600L)

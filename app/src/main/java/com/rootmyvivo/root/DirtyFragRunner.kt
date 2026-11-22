@@ -190,12 +190,15 @@ class DirtyFragRunner(private val variant: KsuVariant) {
                         if (!tmp.setExecutable(true, false)) return@runCatching
                         val p = ProcessBuilder(tmp.absolutePath, "--version")
                             .redirectErrorStream(true)
+                            // stdin из /dev/null: часть .so, запущенных как
+                            // программы, висла на чтении ввода — по 3с на кандидата
+                            .redirectInput(ProcessBuilder.Redirect.from(File("/dev/null")))
                             .start()
                         var out = ""
                         val t = Thread {
                             runCatching { out = p.inputStream.bufferedReader().readText() }
                         }.apply { isDaemon = true; start() }
-                        if (!p.waitFor(3, java.util.concurrent.TimeUnit.SECONDS)) {
+                        if (!p.waitFor(1500, java.util.concurrent.TimeUnit.MILLISECONDS)) {
                             p.destroy()
                         } else if (out.contains("KernelSU", true) || out.contains("uapi") ||
                             out.contains("late-load")
