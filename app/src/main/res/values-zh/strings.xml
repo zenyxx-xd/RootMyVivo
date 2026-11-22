@@ -249,6 +249,8 @@
     <string name="about_repo_exploit">漏洞利用</string>
         <string name="settings_beta_channel">Beta 更新通道</string>
     <string name="settings_beta_channel_desc">开启后更新器会查找 Beta 版本</string>
+    <string name="settings_soft_reboot_auto">自动软重启</string>
+    <string name="settings_soft_reboot_auto_desc">Root 后立即软重启 — 由 bootstrap 完成，如同 DirtyFrag 的 auto reboot（无需 adb 与确认）</string>
     <string name="settings_other">其他</string>
     <string name="settings_other_desc">演示流程和载荷目录</string>
     <string name="theme_screen_title">主题</string>

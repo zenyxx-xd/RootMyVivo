@@ -97,10 +97,13 @@ object LocalRunner {
 
     /** Живой процесс с подгруженным пейлоадом (подхват после перезапуска приложения). */
     fun runningWithPreload(preloadName: String = "rmv/preload.so"): Boolean = try {
-        File("/proc").listFiles { f -> f.isDirectory && f.name.all { c -> c.isDigit() } }
-            ?.any { pid ->
-                runCatching { File(pid, "maps").readText().contains(preloadName) }.getOrDefault(false)
-            } == true
+        // grep (C) вместо Kotlin-чтения /proc/<pid>/maps каждого процесса:
+        // сотни файлов по мегабайтам держали старт флоу по несколько секунд
+        val (code, out) = exec(
+            "grep -l \"$preloadName\" /proc/[0-9]*/maps 2>/dev/null; true",
+            timeoutSec = 8,
+        )
+        code == 0 && out.isNotBlank()
     } catch (_: Exception) {
         false
     }

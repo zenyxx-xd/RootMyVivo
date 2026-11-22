@@ -479,29 +479,41 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         val ctx = getApplication<Application>()
         viewModelScope.launch {
             addLog(ctx.getString(R.string.log_softreboot_perform))
-            // SIGKILL, как в менеджерах: мгновенная смерть system_server —
-            // зигота сразу перезапускает интерфейс. interactive=true:
-            // если adb-канал мёртв, канал остаётся через биндинг KSU —
-            // менеджер покажет root-запрос, после подтверждения команда
-            // выполнится (так же, как её выполняют сами менеджеры)
+            // Как в оригинальном DirtyFrag: `ksud soft-reboot` — родная
+            // команда ksud, работает в ksu-контексте. Канал: adb, а если
+            // мёртв — биндинг KSU (interactive: менеджер покажет root-запрос).
+            // Фолбэк — SIGKILL system_server, как в менеджерах
             var (code, out) = withContext(Dispatchers.IO) {
                 Transport.su(
                     ctx,
-                    "kill -9 \$(pidof system_server)",
+                    "/data/adb/ksud soft-reboot 2>/dev/null || " +
+                        "/data/user_de/0/com.rootmyvivo/ksud soft-reboot",
                     timeoutSec = 60,
                     interactive = true,
                 )
             }
             if (code != 0) {
-                Log.w(TAG, "soft reboot via kill failed: ${out.take(100)}")
-                code = withContext(Dispatchers.IO) {
-                    Transport.su(ctx, "stop", timeoutSec = 60, interactive = true).first
+                Log.w(TAG, "soft reboot via ksud failed: ${out.take(100)}")
+                var (code2, out2) = withContext(Dispatchers.IO) {
+                    Transport.su(
+                        ctx,
+                        "kill -9 \$(pidof system_server)",
+                        timeoutSec = 60,
+                        interactive = true,
+                    )
                 }
-                if (code == 0) {
-                    code = withContext(Dispatchers.IO) {
-                        Transport.su(ctx, "start", timeoutSec = 60, interactive = true).first
+                if (code2 != 0) {
+                    Log.w(TAG, "soft reboot via kill failed: ${out2.take(100)}")
+                    code2 = withContext(Dispatchers.IO) {
+                        Transport.su(ctx, "stop", timeoutSec = 60, interactive = true).first
+                    }
+                    if (code2 == 0) {
+                        code2 = withContext(Dispatchers.IO) {
+                            Transport.su(ctx, "start", timeoutSec = 60, interactive = true).first
+                        }
                     }
                 }
+                code = code2
             }
             if (code != 0) {
                 addLog(ctx.getString(R.string.log_softreboot_fail))

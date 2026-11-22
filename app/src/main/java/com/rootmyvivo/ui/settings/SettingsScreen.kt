@@ -96,6 +96,21 @@ fun SettingsScreen(
             // Material You (динамические цвета) — только в экране темы
         }
 
+        // ── Рут ──
+        SettingsGroup {
+            SettingsRow(
+                title = stringResource(R.string.settings_soft_reboot_auto),
+                description = stringResource(R.string.settings_soft_reboot_auto_desc),
+                icon = Icons.Rounded.RestartAlt,
+                trailing = {
+                    androidx.compose.material3.Switch(
+                        checked = state.settings.softRebootAuto,
+                        onCheckedChange = { v -> vm.updateSettings { it.copy(softRebootAuto = v) } },
+                    )
+                },
+            )
+        }
+
         // ── Другое ──
         SettingsGroup {
             SettingsRow(

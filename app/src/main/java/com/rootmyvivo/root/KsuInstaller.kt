@@ -400,6 +400,18 @@ class KsuInstaller(
             // сохранённых prefs (пакет из prefs мог быть удалён, а другой
             // менеджер установлен — тогда раньше качался «лишний» и лог
             // «Установка менеджера…» появлялся на ровном месте)
+            // Быстрый путь: известные пакеты вариантов — мгновенно; полный
+            // скан всех приложений (дорогой, с пробами .so) — только если
+            // ни один известный не установлен
+            val knownInstalled = com.rootmyvivo.root.KsuVariant.entries
+                .firstOrNull { v ->
+                    runCatching { ctx.packageManager.getPackageInfo(v.packageName, 0) } .isSuccess
+                }
+            if (knownInstalled != null) {
+                prefs.managerPackage = knownInstalled.packageName
+                prefs.managerVariant = knownInstalled.id
+                return@withContext true
+            }
             val installed = com.rootmyvivo.root.KsuManagers.choices(ctx)
                 .firstOrNull { it.installed }
             if (installed != null) {

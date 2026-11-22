@@ -145,29 +145,70 @@ class DirtyFragRunner(private val variant: KsuVariant) {
         // захардкоженный me.weishu.kernelsu
         val conf = buildString {
             append("su_manager=").append(pkg).append('\n')
-            append("soft_reboot=0\n")
+            // Авто-софт-ребут как «auto reboot» в DirtyFrag: бутстрап сам
+            // выполнит `ksud soft-reboot` из root-контекста после late-load
+            append("soft_reboot=").append(if (prefs.settings().softRebootAuto) "1" else "0").append('\n')
             append("disable_modules=0\n")
         }
         File(dp, "df.conf").writeText(conf)
     }
 
-    /** libksud.so из base.apk менеджера → dest; true если извлечён. */
+    /** libksud из base.apk менеджера → dest; true если извлечён.
+     *  ZipFile читает центральный каталог (random access) — ZipInputStream
+     *  сканировал весь APK последовательно: на 100-МБ APK менеджера это
+     *  секунды «между ksud и бутстрап подготовлены». Для рандомизированных
+     *  ksud (SukiSU Nova) проверяем кандидатов по размеру и валидируем
+     *  `--version`. */
     private fun stageKsudFromApk(apk: File, dest: File): Boolean {
         if (!apk.isFile || apk.length() < 1_000_000) return false
         return try {
-            var ok = false
-            java.util.zip.ZipInputStream(apk.inputStream()).use { zis ->
-                var e = zis.nextEntry
-                while (e != null) {
-                    if (e.name == "lib/arm64-v8a/libksud.so" || e.name == "lib/arm64/libksud.so") {
-                        dest.outputStream().use { out -> zis.copyTo(out) }
-                        ok = dest.length() > 0 && dest.setExecutable(true, false)
-                        break
+            java.util.zip.ZipFile(apk).use { zf ->
+                // Канонический путь: точное имя записи
+                val direct = listOf("lib/arm64-v8a/libksud.so", "lib/arm64/libksud.so")
+                    .mapNotNull { zf.getEntry(it) }
+                    .firstOrNull()
+                if (direct != null) {
+                    zf.getInputStream(direct).use { ins ->
+                        dest.outputStream().use { ins.copyTo(it) }
                     }
-                    e = zis.nextEntry
+                    return dest.length() > 0 && dest.setExecutable(true, false)
                 }
+                // Рандомизированный ksud: крупные lib-записи в окне размеров,
+                // каждая — на пробу; подходящую оставляем в dest
+                val cands = zf.entries().asSequence()
+                    .filter { e ->
+                        !e.isDirectory && e.name.startsWith("lib/arm64-v8a/") &&
+                            e.name.endsWith(".so") && e.size in 2_000_000..25_000_000
+                    }
+                    .toList()
+                val tmp = File(dest.parentFile, "ksud_probe")
+                for (e in cands) {
+                    runCatching {
+                        zf.getInputStream(e).use { ins ->
+                            tmp.outputStream().use { ins.copyTo(it) }
+                        }
+                        if (!tmp.setExecutable(true, false)) return@runCatching
+                        val p = ProcessBuilder(tmp.absolutePath, "--version")
+                            .redirectErrorStream(true)
+                            .start()
+                        var out = ""
+                        val t = Thread {
+                            runCatching { out = p.inputStream.bufferedReader().readText() }
+                        }.apply { isDaemon = true; start() }
+                        if (!p.waitFor(3, java.util.concurrent.TimeUnit.SECONDS)) {
+                            p.destroy()
+                        } else if (out.contains("KernelSU", true) || out.contains("uapi") ||
+                            out.contains("late-load")
+                        ) {
+                            tmp.renameTo(dest)
+                            dest.setExecutable(true, false)
+                            return true
+                        }
+                    }
+                    tmp.delete()
+                }
+                false
             }
-            ok
         } catch (_: Exception) {
             false
         }

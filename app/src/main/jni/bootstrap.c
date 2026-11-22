@@ -148,6 +148,62 @@ static void touch(const char *path)
         close(fd);
 }
 
+/* Живой ли ещё ksud late-load (как в оригинальном DirtyFrag): ждём его
+ * завершения перед soft-reboot — иначе перезапуск system_server
+ * обгонит поднятие KSU. */
+static int late_load_running(void)
+{
+    DIR *d = opendir("/proc");
+    if (!d)
+        return 0;
+    struct dirent *e;
+    char path[64], buf[256];
+    int found = 0;
+    while ((e = readdir(d)) != NULL) {
+        char *end;
+        strtol(e->d_name, &end, 10);
+        if (*end) continue;
+        snprintf(path, sizeof(path), "/proc/%s/cmdline", e->d_name);
+        int fd = open(path, O_RDONLY | O_CLOEXEC);
+        if (fd < 0) continue;
+        int n = read(fd, buf, sizeof(buf) - 1);
+        close(fd);
+        if (n <= 0) continue;
+        buf[n] = '\0';
+        for (int i = 0; i < n; i++)
+            if (!buf[i]) buf[i] = ' ';
+        if (strstr(buf, "ksud") && strstr(buf, "late-load")) {
+            found = 1;
+            break;
+        }
+    }
+    closedir(d);
+    return found;
+}
+
+/* Запуск команды с переводом в SELinux-контекст (как run_ctx в
+ * оригинальном DirtyFrag): /proc/self/attr/exec до execv. */
+static int run_ctx(const char *ctx, char *const argv[])
+{
+    pid_t pid = fork();
+    if (pid < 0)
+        return -1;
+    if (pid == 0) {
+        if (ctx) {
+            int fd = open("/proc/self/attr/exec", O_WRONLY);
+            if (fd >= 0) {
+                write(fd, ctx, strlen(ctx));
+                close(fd);
+            }
+        }
+        execv(argv[0], argv);
+        _exit(127);
+    }
+    int status;
+    waitpid(pid, &status, 0);
+    return WIFEXITED(status) ? WEXITSTATUS(status) : -1;
+}
+
 /* Пометить все установленные модули disabled до ksud: сломанный модуль
  * иначе загрузится на следующей загрузке и зациклит устройство.
  * DirtyFrag 1.18: менеджер без единого модуля вообще не имеет MODULES_DIR,
@@ -200,11 +256,10 @@ int main(void)
         touch("/dev/dfmw2");
 
     touch("/dev/dfm4");
-    char **late_load;
-    if (soft_reboot)
-        late_load = (char *[]){ KSUD, "late-load", "--package-name", su_manager, "--soft-reboot", NULL };
-    else
-        late_load = (char *[]){ KSUD, "late-load", "--package-name", su_manager, NULL };
+    /* Флаг --soft-reboot НЕ передаём: как в оригинальном DirtyFrag,
+     * ребут делаем сами ПОСЛЕ late-load через `ksud soft-reboot` в
+     * ksu-контексте (см. ниже) — это работает без adb и разрешений */
+    char *late_load[] = { KSUD, "late-load", "--package-name", su_manager, NULL };
     if (run(late_load) == 0) {
         touch("/dev/dfm5");
 
@@ -221,6 +276,19 @@ int main(void)
                      su_manager, su_manager);
             char *mgr[] = { "/system/bin/sh", "-c", mcmd, NULL };
             run(mgr);
+        }
+
+        /* Авто-софт-ребут как «auto reboot» в оригинальном DirtyFrag:
+         * ждём завершения late-load, затем `ksud soft-reboot` в
+         * ksu-контексте — БЕЗ adb и БЕЗ подтверждения в менеджере.
+         * ksud ставит себя в /data/adb/ksud при late-load; если его
+         * там нет — используем стейджнутый. */
+        if (soft_reboot) {
+            while (late_load_running()) sleep(1);
+            if (access("/data/adb/ksud", X_OK) == 0)
+                run_ctx("u:r:ksu:s0", (char *[]){ "/data/adb/ksud", "soft-reboot", NULL });
+            else
+                run_ctx("u:r:ksu:s0", (char *[]){ KSUD, "soft-reboot", NULL });
         }
     } else {
         touch("/dev/dfme1");
