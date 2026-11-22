@@ -121,7 +121,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                 // доступен только shell-домену (allow_shell) — проверяем ещё и
                 // через транспорт, иначе после софт-ребута живой рут выглядел бы пропавшим
                 Transport.rootActiveQuick(ctx) ||
-                    runCatching { Transport.su(ctx, "true", timeoutSec = 15).first == 0 }.getOrDefault(false)
+                    runCatching { Transport.su(ctx, "true", timeoutSec = 15, single = true).first == 0 }.getOrDefault(false)
             }
             if (rooted) prefs.firstRootDone = true
 

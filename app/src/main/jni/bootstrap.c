@@ -256,11 +256,15 @@ int main(void)
         touch("/dev/dfmw2");
 
     touch("/dev/dfm4");
-    /* Флаг --soft-reboot НЕ передаём: как в оригинальном DirtyFrag,
-     * ребут делаем сами ПОСЛЕ late-load через `ksud soft-reboot` в
-     * ksu-контексте (см. ниже) — это работает без adb и разрешений */
+    /* --allow-shell: shell-домен adb получает root БЕЗ диалога менеджера
+     * (наш основной канал: persist-порт + ключ живут через ребуты).
+     * Флаг поддерживают не все ksud — при отказе повторяем без него */
+    char *late_load_flag[] = { KSUD, "late-load", "--package-name", su_manager, "--allow-shell", NULL };
     char *late_load[] = { KSUD, "late-load", "--package-name", su_manager, NULL };
-    if (run(late_load) == 0) {
+    int ll_rc = run(late_load_flag);
+    if (ll_rc != 0)
+        ll_rc = run(late_load);
+    if (ll_rc == 0) {
         touch("/dev/dfm5");
 
         /* Userspace сразу из root-контекста (не ждём приложение): ksud

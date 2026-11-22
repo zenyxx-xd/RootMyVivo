@@ -154,7 +154,15 @@ object Transport {
      *     (adbd после рестарта выглядит «connected»), здесь — 3 попытки
      *     с паузой на случай, пока adbd поднимается.
      */
-    suspend fun su(ctx: Context, command: String, timeoutSec: Int = 300, interactive: Boolean = false): Pair<Int, String> {
+    suspend fun su(
+        ctx: Context,
+        command: String,
+        timeoutSec: Int = 300,
+        interactive: Boolean = false,
+        /** Проверка статуса: одна попытка, без ретраев и пауз —
+         *  статус-чеки не должны держать UI/флоу на секундах */
+        single: Boolean = false,
+    ): Pair<Int, String> {
         // 1) локальный клиент — быстрый путь без транспорта
         if (!ksuSuPresent()) {
             val local = suLocal(ctx, command, timeoutSec = minOf(timeoutSec, 60))
@@ -174,7 +182,8 @@ object Transport {
         var attempt = 0
         // adbUsable дорогой (полный раунд adb) — считаем ОДИН раз
         var usable = adbUsable(ctx)
-        while (attempt < 2) {
+        val maxAttempts = if (single) 1 else 2
+        while (attempt < maxAttempts) {
             if (!usable) break
             last = exec(ctx, chain, timeoutSec)
             if (last.first == 0) return last
