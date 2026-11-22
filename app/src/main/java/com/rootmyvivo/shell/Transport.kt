@@ -3,6 +3,7 @@ package com.rootmyvivo.shell
 import android.content.Context
 import android.util.Log
 import com.rootmyvivo.data.Prefs
+import com.rootmyvivo.root.LocalRunner
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
@@ -248,49 +249,67 @@ object Transport {
      * и его контекст). adbd перечитывает persist-порт только на старте —
      * рестарим и ждём, пока порт 5555 реально начнёт слушаться.
      */
-    suspend fun persistAfterRoot(ctx: Context): Boolean = withContext(Dispatchers.IO) {
-        // 1. persist-порт: shell-домен, затем su-демон
-        exec(ctx, "setprop persist.adb.tcp.port 5555", timeoutSec = 15)
-        var port = exec(ctx, "getprop persist.adb.tcp.port", timeoutSec = 10).second.trim()
-        if (port != "5555") {
-            Log.i(TAG, "setprop via transport failed (port=$port), trying su daemon")
-            su(ctx, "setprop persist.adb.tcp.port 5555", timeoutSec = 15)
-            port = su(ctx, "getprop persist.adb.tcp.port", timeoutSec = 10).second.trim()
-        }
-        val portOk = port == "5555"
-        Log.i(TAG, "persist port: $port ($portOk)")
-        // 2. ключ в adb_keys (su: файловые операции из демона работают)
-        AdbWire.publicKeyAndroid(ctx)?.let { key ->
-            val (kc, kout) = su(ctx, "echo \"$key rootmyvivo\" >> /data/misc/adb/adb_keys")
-            Log.i(TAG, "adb_keys install: code=$kc ${kout.take(60)}")
-        }
-        // 3. adbd перечитывает persist-порт только на старте — рестарт
-        if (portOk) {
-            su(ctx, "pkill -x adbd", timeoutSec = 10)
-            // init поднимает adbd не мгновенно: ждём и проверяем живой порт,
-            // при необходимости дёргаем ещё раз (первый pkill мог прийтись
-            // на момент, когда persist-свойство ещё не долетело до adbd)
-            repeat(4) { attempt ->
-                delay(1500)
+    suspend fun persistAfterRoot(ctx: Context, interactive: Boolean = false): Boolean =
+        withContext(Dispatchers.IO) {
+            // getprop приложение читает локально — без транспорта
+            fun readPort(): String =
+                LocalRunner.exec("getprop persist.adb.tcp.port", timeoutSec = 10).second.trim()
+
+            // 1. порт: service (живой adbd переключается на TCP сразу,
+            //    без рестарта) + persist (выживает перезагрузку).
+            //    Канал: adb-транспорт, а если он мёртв — биндинг KSU
+            //    (interactive: менеджер покажет root-запрос)
+            suspend fun setPort(): Boolean {
+                exec(ctx, "setprop persist.adb.tcp.port 5555; setprop service.adb.tcp.port 5555", timeoutSec = 15)
+                if (readPort() != "5555") {
+                    su(
+                        ctx,
+                        "setprop persist.adb.tcp.port 5555; setprop service.adb.tcp.port 5555",
+                        timeoutSec = 30,
+                        interactive = interactive,
+                    )
+                }
+                return readPort() == "5555"
+            }
+            val portOk = setPort()
+            Log.i(TAG, "persist port: ${readPort()} ($portOk)")
+            // 2. ключ в adb_keys (su: файловые операции из root работают)
+            AdbWire.publicKeyAndroid(ctx)?.let { key ->
+                val (kc, kout) = su(
+                    ctx,
+                    "echo \"$key rootmyvivo\" >> /data/misc/adb/adb_keys",
+                    timeoutSec = 30,
+                    interactive = interactive,
+                )
+                Log.i(TAG, "adb_keys install: code=$kc ${kout.take(60)}")
+            }
+            // 3. порт из свойства мог подхватить и живой adbd (service-prop);
+            //    если нет — рестарт через init
+            if (portOk) {
                 if (adbAlive(ctx)) {
-                    Log.i(TAG, "adbd listening on 5555 after restart (attempt ${attempt + 1})")
+                    Log.i(TAG, "adbd listening on 5555 without restart (service prop)")
                     return@withContext true
                 }
-            }
-            // порт не поднялся — перепроверяем свойство и рестартим ещё раз
-            val recheck = su(ctx, "getprop persist.adb.tcp.port", timeoutSec = 10).second.trim()
-            if (recheck == "5555") {
+                su(ctx, "pkill -x adbd", timeoutSec = 10)
+                // init поднимает adbd не мгновенно: ждём и проверяем живой порт
+                repeat(4) { attempt ->
+                    delay(1500)
+                    if (adbAlive(ctx)) {
+                        Log.i(TAG, "adbd listening on 5555 after restart (attempt ${attempt + 1})")
+                        return@withContext true
+                    }
+                }
+                // порт не поднялся — рестартим ещё раз
                 su(ctx, "pkill -x adbd", timeoutSec = 10)
                 delay(3000)
                 if (adbAlive(ctx)) {
                     Log.i(TAG, "adbd listening on 5555 after second restart")
                     return@withContext true
                 }
+                Log.w(TAG, "adbd did not come up on 5555")
             }
-            Log.w(TAG, "adbd did not come up on 5555 (port prop=$recheck)")
+            portOk
         }
-        portOk
-    }
 
     /** Диагностика adb-канала (не запускает эксплойт). */
     fun adbSelfTest(ctx: Context): List<String> = try {
