@@ -298,29 +298,5 @@ int main(void)
         touch("/dev/dfme1");
     }
 
-    /* ADB-закрепление из root-контекста (DFRoot-модель: единственный
-     * root-исполнитель — этот бутстрап). Оба свойства:
-     *  - service.adb.tcp.port — ЖИВОЙ adbd переключается на TCP сразу,
-     *    без рестарта (как делает «adb tcpip»);
-     *  - persist.adb.tcp.port — выживает перезагрузку.
-     * Ключ пишем с системным владельцем и рестартим adbd через init
-     * (ctl.restart), если service-свойство не сработало. */
-    {
-        char *persist[] = {
-            "/system/bin/sh", "-c",
-            "setprop persist.adb.tcp.port 5555;"
-            " setprop service.adb.tcp.port 5555;"
-            " mkdir -p /data/misc/adb;"
-            " cat /data/user_de/0/com.rootmyvivo/adbkey.pub"
-            " >> /data/misc/adb/adb_keys 2>/dev/null;"
-            " chown system:system /data/misc/adb/adb_keys 2>/dev/null;"
-            " chmod 600 /data/misc/adb/adb_keys 2>/dev/null;"
-            " setprop ctl.restart adbd 2>/dev/null;"
-            " true",
-            NULL,
-        };
-        run(persist);
-    }
-
     return 0;
 }

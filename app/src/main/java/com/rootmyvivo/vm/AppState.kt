@@ -7,7 +7,6 @@ import com.rootmyvivo.data.Settings
 import com.rootmyvivo.root.KsuVariant
 import com.rootmyvivo.root.LogLevel
 import com.rootmyvivo.root.Phase
-import com.rootmyvivo.shell.TransportState
 
 enum class RootState { UNKNOWN, CHECKING, NOT_ROOTED, ROOTED, FAILED }
 enum class CatalogState { LOADING, READY, ERROR }
@@ -95,7 +94,6 @@ data class UiState(
     /** Плашка первого запуска с просьбой подписаться на Telegram-канал */
     val tgBannerVisible: Boolean = false,
     // транспорт и root
-    val transport: TransportState = TransportState.None,
     val rootState: RootState = RootState.UNKNOWN,
     // настройки
     val settings: Settings = Settings(),

@@ -21,7 +21,6 @@ import com.rootmyvivo.root.LogLevel
 import com.rootmyvivo.root.KsuVariant
 import com.rootmyvivo.root.RootTraces
 import com.rootmyvivo.shell.Transport
-import com.rootmyvivo.shell.TransportState
 import com.rootmyvivo.ui.flow.FlowUiReducer
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -59,7 +58,6 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         )
         // ADB-бейдж: порт закреплён и канал жив
         detectDevice()
-        refreshTransport()
         refreshKsuManagers()
         // Пользователь мог удалить/установить менеджеры, пока приложение
         // было в фоне — скан обновляется на каждом возврате (ON_RESUME)
@@ -112,16 +110,13 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
 
     fun detectDevice() {
         viewModelScope.launch {
-            _state.value = _state.value.copy(rootState = RootState.CHECKING)
-
+            // Без «Проверяем состояние»: определение локальное и мгновенное
             val device = withContext(Dispatchers.IO) { DeviceInfo.detect() }
             val rooted = withContext(Dispatchers.IO) {
                 val ctx = getApplication<Application>()
-                // Локально: демон эксплойта (до загрузки KSU). После KSU рут
-                // доступен только shell-домену (allow_shell) — проверяем ещё и
-                // через транспорт, иначе после софт-ребута живой рут выглядел бы пропавшим
-                Transport.rootActiveQuick(ctx) ||
-                    runCatching { Transport.su(ctx, "true", timeoutSec = 15, single = true).first == 0 }.getOrDefault(false)
+                // Только локальные сигналы: маркер бутстрапа / биндинг su /
+                // демон эксплойта / модуль — никаких adb-раундтрисов
+                Transport.rootActiveQuick(ctx)
             }
             if (rooted) prefs.firstRootDone = true
 
@@ -146,15 +141,6 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                 catalogMarketName = catDev?.marketName?.takeIf { it.isNotEmpty() },
                 catalogDeviceCode = catDev?.code?.takeIf { it.isNotEmpty() },
             )
-        }
-    }
-
-    // ─────────── ADB-канал (бейдж закрепления) ───────────
-
-    fun refreshTransport() {
-        viewModelScope.launch {
-            val t = withContext(Dispatchers.IO) { Transport.detectBlocking(getApplication()) }
-            _state.value = _state.value.copy(transport = t)
         }
     }
 
@@ -210,8 +196,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             com.rootmyvivo.ExploitService.stop(ctx)
             if (ok) {
                 prefs.firstRootDone = true
-                refreshTransport()
-            }
+                    }
             // Автопоиск обновлений после каждого запуска — если включён
             if (_state.value.settings.autoUpdateCheck) checkForUpdate()
         }
@@ -522,11 +507,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                 }
                 if (code2 != 0) {
                     Log.w(TAG, "soft reboot: bind with manager: ${out2.take(120)}")
-                    // 3) adb-цепочка с интерактивным фолбэком
-                    code2 = suCh(reboot).first
-                }
-                if (code2 != 0) {
-                    // 4) родной kill system_server — как в менеджерах
+                    // 3) kill system_server — как в менеджерах
                     code2 = suCh("kill -9 \$(pidof system_server)").first
                 }
                 if (code2 != 0) {
@@ -798,14 +779,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
 
     // ─────────── Диагностика ───────────
 
-    fun adbSelfTest() {
-        viewModelScope.launch {
-            addLog(getApplication<Application>().getString(R.string.log_adb_test))
-            withContext(Dispatchers.IO) { Transport.adbSelfTest(getApplication()) }
-                .forEach { addLog(it) }
-            refreshTransport()
-        }
-    }
+
 
     private fun addLog(text: String) {
         _state.value = _state.value.copy(

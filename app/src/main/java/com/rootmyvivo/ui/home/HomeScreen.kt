@@ -91,7 +91,6 @@ import androidx.compose.ui.unit.dp
 import com.rootmyvivo.R
 import com.rootmyvivo.data.DeviceInfo
 import com.rootmyvivo.root.KsuVariant
-import com.rootmyvivo.shell.TransportState
 import com.rootmyvivo.ui.common.ChoiceDialog
 import com.rootmyvivo.ui.common.ChoiceDialogItem
 import com.rootmyvivo.ui.common.SettingsDivider
@@ -140,8 +139,7 @@ fun HomeScreen(
     androidx.compose.runtime.DisposableEffect(lifecycleOwner) {
         val obs = androidx.lifecycle.LifecycleEventObserver { _, event ->
             if (event == androidx.lifecycle.Lifecycle.Event.ON_RESUME) {
-                vm.refreshTransport()
-            }
+                }
         }
         lifecycleOwner.lifecycle.addObserver(obs)
         onDispose { lifecycleOwner.lifecycle.removeObserver(obs) }
@@ -532,9 +530,9 @@ private fun HeroCard(
                         }
                     }
                     RootState.CHECKING -> {
+                        // Мгновенная локальная проверка: фазы «Проверяем
+                        // состояние» больше нет — просто лоадер
                         LoadingIndicator(Modifier.size(56.dp))
-                        Spacer(Modifier.height(10.dp))
-                        Text(stringResource(R.string.status_checking), style = MaterialTheme.typography.titleMedium)
                     }
                     else -> {
                         // Замок из иконки приложения: закрытый без рута
@@ -559,28 +557,6 @@ private fun HeroCard(
                         )
                         Spacer(Modifier.height(16.dp))
                         RootButton(state, onRoot)
-                        // Бейдж ADB-закрепления: порт 5555 persist'нут, канал жив.
-                        // Показывается только при активном канале — для первого
-                        // запуска ничего не нужно, бейджа нет.
-                        if (state.transport == TransportState.Adb) {
-                            Spacer(Modifier.height(10.dp))
-                            Row(
-                                horizontalArrangement = Arrangement.spacedBy(6.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                            ) {
-                                Icon(
-                                    Icons.Rounded.Usb,
-                                    null,
-                                    modifier = Modifier.size(14.dp),
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                )
-                                Text(
-                                    stringResource(R.string.transport_via_adb),
-                                    style = MaterialTheme.typography.labelMedium,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                )
-                            }
-                        }
                     }
                 }
             }

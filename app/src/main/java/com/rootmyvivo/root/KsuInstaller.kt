@@ -523,10 +523,6 @@ class KsuInstaller(
             }
 
             // Верификация su с ретраями: менеджеру нужно время подняться.
-            // Сначала ждём adbd: бутстрап только что поставил persist-порт,
-            // вписал ключ и рестартил его — мгновенный опрос попадал в
-            // мёртвый сокет и «проверка su» проваливалась на ровном месте
-            com.rootmyvivo.shell.Transport.adbWaitAlive(ctx, timeoutMs = 20_000L)
             // Железобетонная семантика (как в DirtyFrag): KSU после
             // late-load сам БАЙНДИТ su в /system/bin/su — его наличие =
             // рут жив. ADB-опрос — второе доказательство, не единственное
@@ -551,20 +547,10 @@ class KsuInstaller(
                 complete(true, R.string.log_ksu_active, variant.displayName)
                 KsuResult.ACTIVE
             } else {
-                // Диагностика в лог: su не ответил — показываем, на каком
-                // звене цепочка порвалась, вместо пустого «не работает»
+                // Диагностика в лог: su не ответил — что видно локально
                 runCatching {
-                    val port = com.rootmyvivo.shell.Transport.exec(
-                        ctx, "getprop persist.adb.tcp.port", timeoutSec = 5,
-                    ).second.trim()
                     val suBound = java.io.File("/system/bin/su").exists()
-                    onEvent(
-                        FlowEvent.Log(
-                            "diag: adb.port=$port su=$suBound " +
-                                "transport=${com.rootmyvivo.shell.Transport.detectBlocking(ctx)}",
-                            LogLevel.WARN,
-                        ),
-                    )
+                    onEvent(FlowEvent.Log("diag: su=$suBound", LogLevel.WARN))
                 }
                 complete(true, R.string.log_ksu_soft_reboot)
                 KsuResult.NEEDS_REBOOT

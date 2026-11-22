@@ -39,12 +39,10 @@ class MainActivity : ComponentActivity() {
 
         // Диагностика adb-канала: am start … --ez adb_selftest true
         if (intent?.getBooleanExtra("adb_selftest", false) == true) {
-            vm.adbSelfTest()
-        }
+            }
 
         // Возврат в приложение — обновить ADB-бейдж
         lifecycle.addObserver(LifecycleEventObserver { _, event ->
-            if (event == Lifecycle.Event.ON_RESUME) vm.refreshTransport()
         })
 
         setContent {

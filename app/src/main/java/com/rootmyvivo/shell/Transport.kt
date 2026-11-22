@@ -10,54 +10,18 @@ import kotlinx.coroutines.withContext
 import java.io.File
 import java.util.concurrent.TimeUnit
 
-/** Состояние ADB-канала (закрепление после первого рута). */
-sealed interface TransportState {
-    /** ADB tcp 5555 через wire-клиент (порт закреплён persist-проперти) */
-    data object Adb : TransportState
-    data object None : TransportState
-}
-
 /**
- * Мост для выполнения команд в shell-домене (uid=2000, u:r:shell:s0).
- *
- * Эксплойт запускается НЕ через транспорт, а напрямую из приложения
- * (LocalRunner + RMV_HOME=filesDir/rmv) — Shizuku и ADB для первого
- * запуска не нужны. Транспорт остался только для ADB tcp 5555:
- * пост-root закрепление (persist.adb.tcp.port + adb_keys) и команды,
- * которым нужен именно shell-домен.
+ * Выполнение команд от root — БЕЗ adb-механики вообще (как в 1.4):
+ * эксплойт запускается напрямую из приложения (LocalRunner), рут-команды —
+ * через su-демон эксплойта (GL) или биндинг KSU /system/bin/su (запрос
+ * подтверждается в менеджере). ADB-порт, persist-проперти и adb_keys
+ * вырезаны полностью.
  */
 object Transport {
 
     private const val TAG = "NeoTransport"
 
     lateinit var prefs: Prefs
-
-    // ─────────── ADB wire ───────────
-
-    /**
-     * ADB-канал пригоден к работе. Живой авторизованный сокет — дешевле
-     * нового roundtrip-пробеса; проверяем порт (без диалога) только когда
-     * сокета нет.
-     */
-    private fun adbUsable(ctx: Context): Boolean =
-        AdbWire.isConnected() || adbAlive(ctx)
-
-    /** Подождать живой ADB-канал (DF: бутстрап только что рестартил adbd).
-     *  true — порт 5555 отвечает. */
-    suspend fun adbWaitAlive(ctx: Context, timeoutMs: Long = 30_000L): Boolean =
-        withContext(Dispatchers.IO) {
-            val deadline = System.currentTimeMillis() + timeoutMs
-            while (System.currentTimeMillis() < deadline) {
-                if (adbAlive(ctx)) return@withContext true
-                delay(1000L)
-            }
-            adbAlive(ctx)
-        }
-
-    private fun adbAlive(ctx: Context): Boolean =
-        // probe: один раунд без ретрая — неавторизованный ключ фейлится
-        // за ~1.5с вместо двух полных попыток
-        AdbWire.probe(ctx)
 
     // ─────────── Общий API ───────────
 
@@ -150,9 +114,9 @@ object Transport {
      *     (su, /system/bin/su, /data/adb/ksu/bin/su, su 0 …) — первый
      *     живой su и отвечает; каждый путь глушится по stderr, exit 0 —
      *     только если команда реально выполнилась.
-     *  3. Транспорт лечится сам: AdbWire пересоздаёт протухший сокет
-     *     (adbd после рестарта выглядит «connected»), здесь — 3 попытки
-     *     с паузой на случай, пока adbd поднимается.
+     *  2. Биндинг KSU /system/bin/su (только по явному запросу): менеджер
+     *     показывает root-запрос, пользователь подтверждает.
+     *  ADB-цепочка удалена: приложение работает без adb-порта.
      */
     suspend fun su(
         ctx: Context,
@@ -163,57 +127,23 @@ object Transport {
          *  статус-чеки не должны держать UI/флоу на секундах */
         single: Boolean = false,
     ): Pair<Int, String> {
-        // 1) локальный клиент — быстрый путь без транспорта
+        // 1) локальный клиент демона эксплойта — быстрый путь
         if (!ksuSuPresent()) {
             val local = suLocal(ctx, command, timeoutSec = minOf(timeoutSec, 60))
             if (local.first == 0) return local
         }
 
-        // 2) ADB-цепочка по всем su-путям
-        val q = shQuote(command)
-        val chain = buildString {
-            append("su -c ").append(q).append(" 2>/dev/null && exit 0; ")
-            append("/system/bin/su -c ").append(q).append(" 2>/dev/null && exit 0; ")
-            append("/data/adb/ksu/bin/su -c ").append(q).append(" 2>/dev/null && exit 0; ")
-            append("su 0 sh -c ").append(q).append(" 2>/dev/null && exit 0; ")
-            append("exit 1")
-        }
-        var last = -1 to "no transport"
-        var attempt = 0
-        // adbUsable дорогой (полный раунд adb) — считаем ОДИН раз
-        var usable = adbUsable(ctx)
-        val maxAttempts = if (single) 1 else 2
-        while (attempt < maxAttempts) {
-            if (!usable) break
-            last = exec(ctx, chain, timeoutSec)
-            if (last.first == 0) return last
-            if (attempt == 0) {
-                // канал мог умереть на этой команде (adbd перезапущен) —
-                // перепроверяем ОДИН раз уже после провала
-                usable = adbUsable(ctx)
-            }
-            // Пауза короткая: длинные ретраи откладывали финал (ошибку
-            // эксплойта) на 4+ секунды
-            delay(600L)
-            attempt++
-        }
-        // Последний канал (только по явному запросу, не в фоновых циклах):
-        // биндинг KSU /system/bin/su из приложения — менеджер показывает
-        // запрос, пользователь подтверждает, команда выполняется от root.
-        // Так делают сами менеджеры; работает и без adb
+        // 2) биндинг KSU: только по явному запросу (диалог подтверждения
+        // в менеджере); так выполняют root-команды сами менеджеры
         if (interactive && File("/system/bin/su").exists()) {
             // exists(), не canExecute(): виртуальный su-файл KSU может не
             // отдавать x-бит — проверка canExecute молча убивала канал
             val viaBind = suVia("/system/bin/su", command, timeoutSec = minOf(timeoutSec, 60))
             if (viaBind.first == 0) return viaBind
         }
-        return last
+        return -1 to "no transport (adb removed)"
     }
 
-    fun detectBlocking(ctx: Context): TransportState {
-        if (adbUsable(ctx)) return TransportState.Adb
-        return TransportState.None
-    }
 
     /**
      * Быстрая локальная проверка «root есть» без транспорта. Приоритет:
@@ -241,128 +171,14 @@ object Transport {
         }
     }
 
-    /** Выполнить команду в shell-домене через ADB (нужен закреплённый порт). */
+    /** Команда в shell-домене. ADB-механика вырезана: команды от root
+     *  идут через su() (демон эксплойта / биндинг KSU). */
     suspend fun exec(ctx: Context, command: String, timeoutSec: Int = 300): Pair<Int, String> =
-        withContext(Dispatchers.IO) {
-            if (adbUsable(ctx)) {
-                try {
-                    return@withContext AdbWire.shell(ctx, command, timeoutMs = timeoutSec * 1000L, allowDialog = true)
-                } catch (e: Exception) {
-                    Log.w(TAG, "adb exec failed: ${e.message}")
-                }
-            }
-            -1 to "no transport (adb not persisted yet)"
-        }
+        -1 to "no transport (adb removed)"
 
-    /**
-     * Передать файл в /data/local/tmp по ADB.
-     * (успех, причина-текст): false — вторая строка объясняет что именно
-     * не так — это уходит в лог процесса.
-     */
+    /** Передача файла на устройство. ADB-механика вырезана: пейлоады
+     *  деплоятся локально (LocalRunner.copy в filesDir/rmv). */
     suspend fun deploy(ctx: Context, localPath: String, remotePath: String): Pair<Boolean, String> =
-        withContext(Dispatchers.IO) {
-            if (adbUsable(ctx)) {
-                val err = AdbWire.deploy(ctx, localPath, remotePath)
-                if (err == null) return@withContext true to ""
-                return@withContext false to err
-            }
-            false to (ctx.getString(com.rootmyvivo.R.string.deploy_err_no_transport))
-        }
+        false to "no transport (adb removed)"
 
-    /**
-     * Пост-root закрепление: persist-порт + свой ключ в adb_keys —
-     * бесшовная авторизация после любых перезагрузок.
-     *
-     * Порт пробуем двумя путями: shell-домен (AdbWire — основной) и
-     * su-демон эксплойта (фолбэк: на части прошивок property service пускает
-     * и его контекст). adbd перечитывает persist-порт только на старте —
-     * рестарим и ждём, пока порт 5555 реально начнёт слушаться.
-     */
-    suspend fun persistAfterRoot(ctx: Context, interactive: Boolean = false): Boolean =
-        withContext(Dispatchers.IO) {
-            // getprop приложение читает локально — без транспорта
-            fun readPort(): String =
-                LocalRunner.exec("getprop persist.adb.tcp.port", timeoutSec = 10).second.trim()
-
-            // 1. порт: service (живой adbd переключается на TCP сразу,
-            //    без рестарта) + persist (выживает перезагрузку).
-            //    Канал: adb-транспорт, а если он мёртв — биндинг KSU
-            //    (interactive: менеджер покажет root-запрос)
-            suspend fun setPort(): Boolean {
-                exec(ctx, "setprop persist.adb.tcp.port 5555; setprop service.adb.tcp.port 5555", timeoutSec = 15)
-                if (readPort() != "5555") {
-                    su(
-                        ctx,
-                        "setprop persist.adb.tcp.port 5555; setprop service.adb.tcp.port 5555",
-                        timeoutSec = 30,
-                        interactive = interactive,
-                    )
-                }
-                return readPort() == "5555"
-            }
-            val portOk = setPort()
-            Log.i(TAG, "persist port: ${readPort()} ($portOk)")
-            // 2. ключ в adb_keys (su: файловые операции из root работают)
-            AdbWire.publicKeyAndroid(ctx)?.let { key ->
-                val (kc, kout) = su(
-                    ctx,
-                    "echo \"$key rootmyvivo\" >> /data/misc/adb/adb_keys",
-                    timeoutSec = 30,
-                    interactive = interactive,
-                )
-                Log.i(TAG, "adb_keys install: code=$kc ${kout.take(60)}")
-            }
-            // 3. порт из свойства мог подхватить и живой adbd (service-prop);
-            //    если нет — рестарт через init. ВСЕ рестарты тоже interactive:
-            //    не-interactive su без adb молча фейлится — из-за этого
-            //    adbd никогда не перезапускался и порт «не поднимался»
-            if (portOk) {
-                if (adbAlive(ctx)) {
-                    Log.i(TAG, "adbd listening on 5555 without restart (service prop)")
-                    return@withContext true
-                }
-                // ctl.restart — правильный путь через init (pkill мог
-                // оставить adbd мёртвым на части прошивок)
-                su(ctx, "setprop ctl.restart adbd", timeoutSec = 15, interactive = interactive)
-                // init поднимает adbd не мгновенно: ждём и проверяем живой порт
-                repeat(4) { attempt ->
-                    delay(1500)
-                    if (adbAlive(ctx)) {
-                        Log.i(TAG, "adbd listening on 5555 after restart (attempt ${attempt + 1})")
-                        return@withContext true
-                    }
-                }
-                su(ctx, "setprop ctl.stop adbd; setprop ctl.start adbd", timeoutSec = 15, interactive = interactive)
-                delay(3000)
-                if (adbAlive(ctx)) {
-                    Log.i(TAG, "adbd listening on 5555 after second restart")
-                    return@withContext true
-                }
-                Log.w(TAG, "adbd did not come up on 5555 (port prop=${readPort()})")
-            }
-            portOk
-        }
-
-    /** Диагностика adb-канала (не запускает эксплойт). */
-    fun adbSelfTest(ctx: Context): List<String> = try {
-        val log = mutableListOf<String>()
-        log += "[adb] key: ${AdbWire.publicKeyAndroid(ctx)?.take(24) ?: "?"}…"
-        AdbWire.connect(ctx, allowDialog = true, authTimeoutMs = 60_000)
-        log += "[adb] CNXN: authorized"
-        val (code, out) = AdbWire.shell(ctx, "id")
-        log += "[adb] shell: exit=$code ${out.trim().take(60)}"
-        val tmp = File(ctx.filesDir, "selftest.bin")
-        val payload = ByteArray(64 * 1024) { (it % 251).toByte() }
-        tmp.writeBytes(payload)
-        val deployErr = AdbWire.deploy(ctx, tmp.absolutePath, "/data/local/tmp/neo_selftest.bin")
-        val (_, md5) = AdbWire.shell(ctx, "md5sum /data/local/tmp/neo_selftest.bin | cut -d' ' -f1; rm -f /data/local/tmp/neo_selftest.bin")
-        val local = java.security.MessageDigest.getInstance("MD5").digest(payload).joinToString("") { "%02x".format(it) }
-        log += "[adb] deploy 64KB: ${deployErr ?: "ok"}, md5 ok: ${md5.trim() == local}"
-        tmp.delete()
-        log.forEach { Log.i(TAG, it) }
-        log
-    } catch (e: Exception) {
-        Log.i(TAG, "[adb] ERROR: ${e.message}")
-        listOf("[adb] ERROR: ${e.message}")
-    }
 }
