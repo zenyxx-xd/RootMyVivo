@@ -86,6 +86,7 @@ import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.rootmyvivo.R
@@ -356,6 +357,26 @@ fun HomeScreen(
 
     // Меню выбора рут-менеджера — как в DirtyFrag: скан установленных
     // (libksud.so) + известные варианты; только имя и пакет, без описаний
+    // Полный текст ошибки перезагрузки userspace: тост ограничен двумя
+    // строками и обрезал ответ su — целиком показываем в диалоге
+    state.softRebootError?.let { err ->
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = { vm.dismissSoftRebootError() },
+            title = { Text(stringResource(R.string.log_softreboot_fail)) },
+            text = {
+                Text(
+                    err.substringAfter("\n\n"),
+                    style = MaterialTheme.typography.bodySmall,
+                    fontFamily = FontFamily.Monospace,
+                )
+            },
+            confirmButton = {
+                androidx.compose.material3.TextButton(
+                    onClick = { vm.dismissSoftRebootError() },
+                ) { Text(stringResource(R.string.action_close)) }
+            },
+        )
+    }
     if (ksuDialog) {
         val choices = state.ksuManagers
         ChoiceDialog(

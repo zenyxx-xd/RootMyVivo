@@ -114,6 +114,8 @@ data class UiState(
     val exploitLive: ExploitLiveState = ExploitLiveState(),
     val flowResult: FlowResult? = null,
     val softRebootPrompt: Boolean = false,
+    /** Текст ошибки перезагрузки userspace (null — нет) — целиком в диалоге */
+    val softRebootError: String? = null,
     /** Root есть, но soft reboot ещё не выполнен — показать кнопку на главной */
     val needsSoftReboot: Boolean = false,
     /** Сохранённый последний лог для просмотра */

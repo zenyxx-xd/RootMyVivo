@@ -550,12 +550,17 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                 addLog(ctx.getString(R.string.log_softreboot_fail))
                 // Кнопка на главной: лог флоу не виден — исход в тосте.
                 // С ответом su (deny/timeout/пусто) — иначе вслепую
-                val why = bindOut.trim().take(140)
+                // Тост ограничен двумя строками — ответ su обрезался.
+                // Полный текст уходит в диалог (softRebootError)
+                val why = bindOut.trim().take(500)
+                _state.value = _state.value.copy(
+                    softRebootError = ctx.getString(R.string.log_softreboot_fail) +
+                        "\n\nsu: " + why.ifEmpty { "(пусто)" },
+                )
                 android.widget.Toast.makeText(
                     ctx,
-                    ctx.getString(R.string.log_softreboot_fail) +
-                        (if (why.isNotEmpty()) "\nsu: $why" else "\nsu: (пусто)"),
-                    android.widget.Toast.LENGTH_LONG,
+                    ctx.getString(R.string.log_softreboot_fail),
+                    android.widget.Toast.LENGTH_SHORT,
                 ).show()
                 // Плашку оставляем: можно попробовать ещё раз
                 _state.value = _state.value.copy(softRebootPrompt = false)
@@ -572,6 +577,10 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
 
     fun dismissSoftReboot() {
         _state.value = _state.value.copy(softRebootPrompt = false)
+    }
+
+    fun dismissSoftRebootError() {
+        _state.value = _state.value.copy(softRebootError = null)
     }
 
     /** Открыть лог конкретного запуска из истории. */
