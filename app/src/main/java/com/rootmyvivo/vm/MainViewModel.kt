@@ -464,13 +464,6 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     fun performSoftReboot() {
         val ctx = getApplication<Application>()
         viewModelScope.launch {
-            // Рута нет (перезагрузка убила ядро-модуль) — кнопка бессмысленна
-            if (!Transport.rootActiveQuick(ctx)) {
-                _state.value = _state.value.copy(
-                    softRebootError = ctx.getString(R.string.log_softreboot_no_root),
-                )
-                return@launch
-            }
             addLog(ctx.getString(R.string.log_softreboot_perform))
             android.widget.Toast.makeText(
                 ctx,
@@ -490,8 +483,9 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                 Transport.su(ctx, cmd, timeoutSec = 60, interactive = true)
             }
 
-            val reboot = "/data/adb/ksud soft-reboot 2>/dev/null || " +
-                "/data/user_de/0/com.rootmyvivo/ksud soft-reboot"
+            val reboot = "/data/adb/ksud soft-reboot 2>&1 || " +
+                "/data/user_de/0/com.rootmyvivo/ksud soft-reboot 2>&1 || " +
+                "kill -9 \$(pidof system_server)"
 
             // 0) fifo-канал бутстрапа: root-команда без диалогов и без
             //    менеджера (форки прячут /system/bin/su — биндинга нет)
@@ -572,18 +566,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                 // Кнопка на главной: лог флоу не виден — исход в тосте.
                 // С ответом su (deny/timeout/пусто) — иначе вслепую
                 // Диагностика каналов: видно, ЧТО именно отсутствует
-                // (рут после перезагрузки / fifo-демон / su-файл)
-                val dp = ctx.createDeviceProtectedStorageContext()
-                    .filesDir.parentFile
-                val diag = listOf(
-                    "root(dfm5)" to java.io.File("/dev/dfm5").exists(),
-                    "fifo(dfm9)" to java.io.File("/dev/dfm9").exists(),
-                    "rdy(dfm10)" to java.io.File("/dev/dfm10").exists(),
-                    "rmv.in" to java.io.File(dp, "rmv.in").exists(),
-                    "rmv.seq" to java.io.File(dp, "rmv.seq").exists(),
-                    "su" to java.io.File("/system/bin/su").exists(),
-                ).joinToString(" ") { (k, v) -> "$k=${if (v) "yes" else "no"}" }
-                // Тост ограничен двумя строками — ответ su обрезался.
+                val diag = softRebootDiag(ctx)
                 // Полный текст уходит в диалог (softRebootError)
                 val why = bindOut.trim().take(500)
                 _state.value = _state.value.copy(
@@ -599,14 +582,33 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                 // Плашку оставляем: можно попробовать ещё раз
                 _state.value = _state.value.copy(softRebootPrompt = false)
             } else {
-                // Интерфейс перезапускается — ядро чистое, статус сбрасываем насовсем
-                prefs.softRebootPending = false
+                // exit=0 — но ребут ли это? Даём 8с: при реальном ребуте
+                // процесс умирает и этот код не выполнится. Дожили —
+                // команда «выполнилась», но интерфейс не перезапустился
+                delay(8000)
+                val diag = softRebootDiag(ctx)
                 _state.value = _state.value.copy(
-                    softRebootPrompt = false,
-                    needsSoftReboot = false,
+                    softRebootError = "Команда выполнена (exit=0), но интерфейс не перезапустился\n\nsu: " +
+                        bindOut.trim().take(500).ifEmpty { "(пусто)" } +
+                        "\n\n$diag",
                 )
+                prefs.softRebootPending = false
+                _state.value = _state.value.copy(softRebootPrompt = false)
             }
         }
+    }
+
+    /** Состояние root-каналов для диагностики провала перезагрузки. */
+    private fun softRebootDiag(ctx: android.content.Context): String {
+        val dp = ctx.createDeviceProtectedStorageContext().filesDir.parentFile
+        return listOf(
+            "root(dfm5)" to java.io.File("/dev/dfm5").exists(),
+            "fifo(dfm9)" to java.io.File("/dev/dfm9").exists(),
+            "rdy(dfm10)" to java.io.File("/dev/dfm10").exists(),
+            "rmv.in" to java.io.File(dp, "rmv.in").exists(),
+            "rmv.seq" to java.io.File(dp, "rmv.seq").exists(),
+            "su" to java.io.File("/system/bin/su").exists(),
+        ).joinToString(" ") { (k, v) -> "$k=${if (v) "yes" else "no"}" }
     }
 
     fun dismissSoftReboot() {
