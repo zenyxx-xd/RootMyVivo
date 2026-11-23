@@ -273,6 +273,18 @@ int main(void)
         char *inst[] = { KSUD, "install", NULL };
         run(inst);
 
+        /* SukiSU/FinaSU ksud сам запускает менеджер после late-load —
+         * пользователю это не нужно. Фоновый ватчер прибивает его через
+         * 5с (позже кнопка перезагрузки поднимет его сама при запросе) */
+        if (su_manager[0]) {
+            char wcmd[512];
+            snprintf(wcmd, sizeof(wcmd),
+                     "(sleep 5; am force-stop %s) >/dev/null 2>&1 &",
+                     su_manager);
+            char *watch[] = { "/system/bin/sh", "-c", wcmd, NULL };
+            run(watch);
+        }
+
         /* Авто-софт-ребут как «auto reboot» в оригинальном DirtyFrag:
          * ждём завершения late-load, затем `ksud soft-reboot` в
          * ksu-контексте — БЕЗ adb и БЕЗ подтверждения в менеджере.

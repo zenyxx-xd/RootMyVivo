@@ -465,6 +465,11 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         val ctx = getApplication<Application>()
         viewModelScope.launch {
             addLog(ctx.getString(R.string.log_softreboot_perform))
+            android.widget.Toast.makeText(
+                ctx,
+                ctx.getString(R.string.log_softreboot_perform),
+                android.widget.Toast.LENGTH_SHORT,
+            ).show()
 
             // Каналы по убыванию скорости, каждый — с честным исходом в лог:
             //  1. Биндинг KSU без запуска менеджера: если uid уже авторизован,
@@ -529,6 +534,12 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             }
             if (code != 0) {
                 addLog(ctx.getString(R.string.log_softreboot_fail))
+                // Кнопка на главной: лог флоу не виден — исход в тосте
+                android.widget.Toast.makeText(
+                    ctx,
+                    ctx.getString(R.string.log_softreboot_fail),
+                    android.widget.Toast.LENGTH_LONG,
+                ).show()
                 // Плашку оставляем: можно попробовать ещё раз
                 _state.value = _state.value.copy(softRebootPrompt = false)
             } else {
