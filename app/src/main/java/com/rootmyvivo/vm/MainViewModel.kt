@@ -490,7 +490,15 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                 // 2) Поднимаем менеджер — диалог root-запроса показывает ОН
                 addLog(ctx.getString(R.string.log_softreboot_grant))
                 runCatching {
-                    val pkg = prefs.managerPackage.ifEmpty { _state.value.selectedKsu.packageName }
+                    // Сначала ВЫБРАННЫЙ пользователем менеджер (если стоит),
+                    // потом сохранённый сканом — иначе открывалось «не то»
+                    val candidates = listOf(
+                        _state.value.selectedKsu.packageName,
+                        prefs.managerPackage,
+                    ).distinct()
+                    val pkg = candidates.firstOrNull { p ->
+                        runCatching { ctx.packageManager.getApplicationInfo(p, 0) }.isSuccess
+                    } ?: candidates.last()
                     val installed = try {
                         ctx.packageManager.getApplicationInfo(pkg, 0); true
                     } catch (_: Exception) { false }
@@ -506,7 +514,10 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                     Transport.suBind(reboot, timeoutSec = 90)
                 }
                 if (code2 != 0) {
-                    Log.w(TAG, "soft reboot: bind with manager: ${out2.take(120)}")
+                    Log.w(TAG, "soft reboot: bind with manager: ${out2.take(200)}")
+                    // Ответ su в лог приложения: видно, что именно ответил
+                    // менеджер (deny/timeout) вместо молчаливого «неудачи»
+                    if (out2.isNotBlank()) addLog("su: ${out2.take(120)}")
                     // 3) kill system_server — как в менеджерах
                     code2 = suCh("kill -9 \$(pidof system_server)").first
                 }

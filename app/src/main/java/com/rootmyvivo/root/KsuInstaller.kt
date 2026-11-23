@@ -395,28 +395,41 @@ class KsuInstaller(
      */
     suspend fun ensureManagerInstalledDf(variant: KsuVariant): Boolean =
         withContext(Dispatchers.IO) {
-            // DirtyFrag-семантика: ЛЮБОЙ установленный менеджер с libksud
-            // используется как есть — скан всегда первый, независимо от
-            // сохранённых prefs (пакет из prefs мог быть удалён, а другой
-            // менеджер установлен — тогда раньше качался «лишний» и лог
-            // «Установка менеджера…» появлялся на ровном месте)
-            // Быстрый путь: известные пакеты вариантов — мгновенно; полный
-            // скан всех приложений (дорогой, с пробами .so) — только если
-            // ни один известный не установлен
-            val knownInstalled = com.rootmyvivo.root.KsuVariant.entries
-                .firstOrNull { v ->
-                    runCatching { ctx.packageManager.getPackageInfo(v.packageName, 0) } .isSuccess
-                }
-            if (knownInstalled != null) {
-                prefs.managerPackage = knownInstalled.packageName
-                prefs.managerVariant = knownInstalled.id
+            // Порядок уважает ВЫБОР пользователя (раньше авто-адопт брал
+            // первый установленный вариант — KernelSU перекрывал выбранный
+            // пользователем FinaSU, и открывалось «не то» приложение):
+            //  1. выбранный вариант / сохранённый пакет — если установлен
+            //  2. любой установленный менеджер с ksud (без перезаписи выбора)
+            //  3. полный скан (дорогой) — только если известного нет
+            fun installed(pkg: String): Boolean =
+                pkg.isNotEmpty() && runCatching {
+                    ctx.packageManager.getPackageInfo(pkg, 0)
+                }.isSuccess
+            val savedPkg = if (prefs.managerVariant == variant.id) prefs.managerPackage else ""
+            if (installed(variant.packageName) || installed(savedPkg) ||
+                installed(prefs.customManagerPkg)
+            ) {
                 return@withContext true
             }
-            val installed = com.rootmyvivo.root.KsuManagers.choices(ctx)
+            val knownInstalled = com.rootmyvivo.root.KsuVariant.entries
+                .firstOrNull { v -> installed(v.packageName) }
+            if (knownInstalled != null) {
+                // пользовательский выбор не трогаем: просто используем
+                // установленный менеджер для этого запуска, prefs не меняем,
+                // если стоит другой явный выбор
+                if (prefs.managerPackage.isEmpty() || prefs.managerVariant.isEmpty()) {
+                    prefs.managerPackage = knownInstalled.packageName
+                    prefs.managerVariant = knownInstalled.id
+                }
+                return@withContext true
+            }
+            val installedChoice = com.rootmyvivo.root.KsuManagers.choices(ctx)
                 .firstOrNull { it.installed }
-            if (installed != null) {
-                prefs.managerPackage = installed.pkg
-                prefs.managerVariant = installed.variant?.id ?: "custom"
+            if (installedChoice != null) {
+                if (prefs.managerPackage.isEmpty() || prefs.managerVariant.isEmpty()) {
+                    prefs.managerPackage = installedChoice.pkg
+                    prefs.managerVariant = installedChoice.variant?.id ?: "custom"
+                }
                 return@withContext true
             }
             if (managerInstalled(variant)) return@withContext true
@@ -475,10 +488,7 @@ class KsuInstaller(
         val ksud = "/data/user_de/0/com.rootmyvivo/ksud"
         Transport.su(
             ctx,
-            "$ksud install 2>/dev/null; " +
-                "am force-stop $pkg 2>/dev/null; " +
-                "monkey -p $pkg -c android.intent.category.LAUNCHER 1 >/dev/null 2>&1; " +
-                "true",
+            "$ksud install 2>/dev/null; true",
             timeoutSec = 90,
         )
     }

@@ -267,20 +267,11 @@ int main(void)
     if (ll_rc == 0) {
         touch("/dev/dfm5");
 
-        /* Userspace сразу из root-контекста (не ждём приложение): ksud
-         * install создаёт su-клиент и правила менеджера, запуск менеджера
-         * дорезает авторизацию. Иначе «рут получен», а su недоступен. */
+        /* Userspace из root-контекста: ksud install создаёт su-клиент и
+         * правила. Менеджер НЕ запускаем: авторизацию он получил через
+         * --package-name, а авто-открытие приложения после рута — лишнее */
         char *inst[] = { KSUD, "install", NULL };
         run(inst);
-        if (su_manager[0]) {
-            char mcmd[512];
-            snprintf(mcmd, sizeof(mcmd),
-                     "am force-stop %s 2>/dev/null; "
-                     "monkey -p %s -c android.intent.category.LAUNCHER 1 >/dev/null 2>&1",
-                     su_manager, su_manager);
-            char *mgr[] = { "/system/bin/sh", "-c", mcmd, NULL };
-            run(mgr);
-        }
 
         /* Авто-софт-ребут как «auto reboot» в оригинальном DirtyFrag:
          * ждём завершения late-load, затем `ksud soft-reboot` в
