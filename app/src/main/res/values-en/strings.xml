@@ -173,6 +173,7 @@
     <string name="notif_boot_restore_ok_text">KernelSU is active again</string>
     <string name="notif_boot_restore_fail_title">Root restore failed</string>
     <string name="notif_boot_restore_fail_text">Open the app and start the process manually</string>
+    <string name="log_softreboot_no_root">Root is not active (after reboot) — run the exploit again</string>
     <string name="log_softreboot_grant">Manager opened — accept the root request to reboot</string>
     <string name="log_softreboot_fail">Userspace reboot failed — restart the interface manually and root will activate</string>
 <string name="log_ksud_download">Downloading ksud…</string>

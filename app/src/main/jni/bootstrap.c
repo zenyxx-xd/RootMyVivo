@@ -283,9 +283,9 @@ int main(void)
                 "/system/bin/sh", "-c",
                 "D=/data/user_de/0/com.rootmyvivo; "
                 "rm -f $D/rmv.in $D/rmv.busy; "
-                "mkfifo $D/rmv.in 2>/dev/null; "
+                "mkfifo $D/rmv.in 2>/dev/null && touch /dev/dfm9; "
                 "touch $D/rmv.seq; "
-                "exec 3<> $D/rmv.in; "
+                "exec 3<> $D/rmv.in && touch /dev/dfm10; "
                 "while IFS= read -r line; do "
                 "  echo busy > $D/rmv.busy; "
                 "  sh -c \"$line\" > $D/rmv.out 2>&1; echo $? > $D/rmv.rc; "

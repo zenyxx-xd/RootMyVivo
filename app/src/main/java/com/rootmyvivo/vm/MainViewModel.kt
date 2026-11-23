@@ -464,6 +464,13 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     fun performSoftReboot() {
         val ctx = getApplication<Application>()
         viewModelScope.launch {
+            // Рута нет (перезагрузка убила ядро-модуль) — кнопка бессмысленна
+            if (!Transport.rootActiveQuick(ctx)) {
+                _state.value = _state.value.copy(
+                    softRebootError = ctx.getString(R.string.log_softreboot_no_root),
+                )
+                return@launch
+            }
             addLog(ctx.getString(R.string.log_softreboot_perform))
             android.widget.Toast.makeText(
                 ctx,
@@ -564,12 +571,25 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                 addLog(ctx.getString(R.string.log_softreboot_fail))
                 // Кнопка на главной: лог флоу не виден — исход в тосте.
                 // С ответом su (deny/timeout/пусто) — иначе вслепую
+                // Диагностика каналов: видно, ЧТО именно отсутствует
+                // (рут после перезагрузки / fifo-демон / su-файл)
+                val dp = ctx.createDeviceProtectedStorageContext()
+                    .filesDir.parentFile
+                val diag = listOf(
+                    "root(dfm5)" to java.io.File("/dev/dfm5").exists(),
+                    "fifo(dfm9)" to java.io.File("/dev/dfm9").exists(),
+                    "rdy(dfm10)" to java.io.File("/dev/dfm10").exists(),
+                    "rmv.in" to java.io.File(dp, "rmv.in").exists(),
+                    "rmv.seq" to java.io.File(dp, "rmv.seq").exists(),
+                    "su" to java.io.File("/system/bin/su").exists(),
+                ).joinToString(" ") { (k, v) -> "$k=${if (v) "yes" else "no"}" }
                 // Тост ограничен двумя строками — ответ su обрезался.
                 // Полный текст уходит в диалог (softRebootError)
                 val why = bindOut.trim().take(500)
                 _state.value = _state.value.copy(
                     softRebootError = ctx.getString(R.string.log_softreboot_fail) +
-                        "\n\nsu: " + why.ifEmpty { "(пусто)" },
+                        "\n\nsu: " + why.ifEmpty { "(пусто)" } +
+                        "\n\n$diag",
                 )
                 android.widget.Toast.makeText(
                     ctx,

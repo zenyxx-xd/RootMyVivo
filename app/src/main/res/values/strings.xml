@@ -186,6 +186,7 @@
     <string name="notif_boot_restore_ok_text">KernelSU снова активен</string>
     <string name="notif_boot_restore_fail_title">Root не восстановился</string>
     <string name="notif_boot_restore_fail_text">Открой приложение и запусти процесс вручную</string>
+    <string name="log_softreboot_no_root">Рут не активен (после перезагрузки) — запусти эксплойт заново</string>
     <string name="log_softreboot_grant">Открыл менеджер — подтверди root-запрос для перезагрузки</string>
     <string name="log_softreboot_fail">Перезагрузка userspace не удалась — перезапусти интерфейс вручную и рут активируется</string>
 <string name="log_ksud_download">Скачивание ksud…</string>
