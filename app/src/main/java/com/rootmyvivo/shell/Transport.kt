@@ -54,8 +54,15 @@ object Transport {
      * дальше ядро пускает наш uid. Канал работает без adb вообще; ждёт
      * подтверждения (таймаут), чтение в отдельных потоках — не вешается.
      */
-    fun suVia(bin: String, command: String, timeoutSec: Int): Pair<Int, String> = try {
-        val proc = Runtime.getRuntime().exec(arrayOf(bin, "-c", command))
+    fun suVia(bin: String, command: String, timeoutSec: Int): Pair<Int, String> =
+        suArgv(arrayOf(bin, "-c", command), timeoutSec)
+
+    /** Форма `su 0 sh -c cmd` — часть клиентов su у форков требует её. */
+    fun suBind0(command: String, timeoutSec: Int): Pair<Int, String> =
+        suArgv(arrayOf("/system/bin/su", "0", "sh", "-c", command), timeoutSec)
+
+    private fun suArgv(argv: Array<String>, timeoutSec: Int): Pair<Int, String> = try {
+        val proc = Runtime.getRuntime().exec(argv)
         // Чтение stdout/stderr в отдельных потоках: blocking-read до EOF в
         // useLines зависал навсегда, если KSU-су ждёт авторизации менеджера
         // (что и есть «лог застревает на проверке su») — до waitFor с таймаутом

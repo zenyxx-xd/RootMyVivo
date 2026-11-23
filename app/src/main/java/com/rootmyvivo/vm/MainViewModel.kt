@@ -486,10 +486,18 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             val reboot = "/data/adb/ksud soft-reboot 2>/dev/null || " +
                 "/data/user_de/0/com.rootmyvivo/ksud soft-reboot"
 
-            // 1) Уже авторизованы? — мгновенно, без открытия менеджера
+            // 1) Уже авторизованы? — мгновенно, без открытия менеджера.
+            //    Две формы вызова: `-c cmd` и `0 sh -c cmd` (клиенты su
+            //    у форков различаются)
             var (code, out) = withContext(Dispatchers.IO) {
-                Transport.suBind(reboot, timeoutSec = 25)
+                var a = Transport.suBind(reboot, timeoutSec = 25)
+                if (a.first != 0) {
+                    val b = Transport.suBind0(reboot, timeoutSec = 25)
+                    if (b.first == 0) a = b
+                }
+                a
             }
+            var bindOut = out
             if (code != 0) {
                 Log.w(TAG, "soft reboot: bind without manager: ${out.take(120)}")
                 // 2) Поднимаем менеджер — диалог root-запроса показывает ОН
@@ -516,7 +524,12 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                     }
                 }
                 var (code2, out2) = withContext(Dispatchers.IO) {
-                    Transport.suBind(reboot, timeoutSec = 90)
+                    var a = Transport.suBind(reboot, timeoutSec = 90)
+                    if (a.first != 0) {
+                        val b = Transport.suBind0(reboot, timeoutSec = 30)
+                        if (b.first == 0) a = b
+                    }
+                    a
                 }
                 if (code2 != 0) {
                     Log.w(TAG, "soft reboot: bind with manager: ${out2.take(200)}")
@@ -525,6 +538,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                     if (out2.isNotBlank()) addLog("su: ${out2.take(120)}")
                     // 3) kill system_server — как в менеджерах
                     code2 = suCh("kill -9 \$(pidof system_server)").first
+                    if (code2 != 0) code2 = Transport.suBind0("kill -9 \$(pidof system_server)", 30).first
                 }
                 if (code2 != 0) {
                     code2 = suCh("stop").first
@@ -534,10 +548,13 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             }
             if (code != 0) {
                 addLog(ctx.getString(R.string.log_softreboot_fail))
-                // Кнопка на главной: лог флоу не виден — исход в тосте
+                // Кнопка на главной: лог флоу не виден — исход в тосте.
+                // С ответом su (deny/timeout/пусто) — иначе вслепую
+                val why = bindOut.trim().take(140)
                 android.widget.Toast.makeText(
                     ctx,
-                    ctx.getString(R.string.log_softreboot_fail),
+                    ctx.getString(R.string.log_softreboot_fail) +
+                        (if (why.isNotEmpty()) "\nsu: $why" else "\nsu: (пусто)"),
                     android.widget.Toast.LENGTH_LONG,
                 ).show()
                 // Плашку оставляем: можно попробовать ещё раз
