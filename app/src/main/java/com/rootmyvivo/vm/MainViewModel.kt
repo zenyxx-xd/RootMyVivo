@@ -486,10 +486,22 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             val reboot = "/data/adb/ksud soft-reboot 2>/dev/null || " +
                 "/data/user_de/0/com.rootmyvivo/ksud soft-reboot"
 
+            // 0) fifo-канал бутстрапа: root-команда без диалогов и без
+            //    менеджера (форки прячут /system/bin/su — биндинга нет)
+            var bindOut = ""
+            var code = -1
+            withContext(Dispatchers.IO) {
+                runCatching {
+                    val f = Transport.suFifo(ctx, reboot, timeoutSec = 30)
+                    if (f.first == 0) code = 0
+                    else if (f.second != "no root daemon") bindOut = f.second
+                }
+            }
+            if (code != 0) {
             // 1) Уже авторизованы? — мгновенно, без открытия менеджера.
             //    Две формы вызова: `-c cmd` и `0 sh -c cmd` (клиенты su
             //    у форков различаются)
-            var (code, out) = withContext(Dispatchers.IO) {
+            val (c1, o1) = withContext(Dispatchers.IO) {
                 var a = Transport.suBind(reboot, timeoutSec = 25)
                 if (a.first != 0) {
                     val b = Transport.suBind0(reboot, timeoutSec = 25)
@@ -497,9 +509,11 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                 }
                 a
             }
-            var bindOut = out
+            code = c1
+            bindOut = bindOut.ifEmpty { o1 }
+            }
             if (code != 0) {
-                Log.w(TAG, "soft reboot: bind without manager: ${out.take(120)}")
+                Log.w(TAG, "soft reboot: bind without manager: ${bindOut.take(120)}")
                 // 2) Поднимаем менеджер — диалог root-запроса показывает ОН
                 addLog(ctx.getString(R.string.log_softreboot_grant))
                 runCatching {

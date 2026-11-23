@@ -273,6 +273,30 @@ int main(void)
         char *inst[] = { KSUD, "install", NULL };
         run(inst);
 
+        /* Root-канал для приложения: форки прячут /system/bin/su (susfs),
+         * и приложению нечем выполнить root-команду. Оставляем fifo-демон
+         * в приватной папке приложения (только оно может писать): шлёт
+         * строку в rmv.in — демон выполняет её от root, ответ в rmv.out,
+         * код в rmv.rc, счётчик в rmv.seq. Живёт до перезагрузки */
+        {
+            char *daemon[] = {
+                "/system/bin/sh", "-c",
+                "D=/data/user_de/0/com.rootmyvivo; "
+                "rm -f $D/rmv.in $D/rmv.busy; "
+                "mkfifo $D/rmv.in 2>/dev/null; "
+                "touch $D/rmv.seq; "
+                "exec 3<> $D/rmv.in; "
+                "while IFS= read -r line; do "
+                "  echo busy > $D/rmv.busy; "
+                "  sh -c \"$line\" > $D/rmv.out 2>&1; echo $? > $D/rmv.rc; "
+                "  rm -f $D/rmv.busy; "
+                "  echo $(( $(cat $D/rmv.seq 2>/dev/null || echo 0) + 1 )) > $D/rmv.seq; "
+                "done <&3 &",
+                NULL,
+            };
+            run(daemon);
+        }
+
         /* SukiSU/FinaSU ksud сам запускает менеджер после late-load —
          * пользователю это не нужно. Фоновый ватчер прибивает его через
          * 5с (позже кнопка перезагрузки поднимет его сама при запросе) */
