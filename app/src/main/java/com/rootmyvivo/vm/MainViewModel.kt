@@ -196,7 +196,13 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             com.rootmyvivo.ExploitService.stop(ctx)
             if (ok) {
                 prefs.firstRootDone = true
-                    }
+                // Рут получен — статус на главной сразу ROOTED (раньше после
+                // успешного флоу главная показывала «рута нет» до перезахода)
+                if (_state.value.rootState != RootState.ROOTED) {
+                    _state.value = _state.value.copy(rootState = RootState.ROOTED)
+                    refreshKsuManagers()
+                }
+            }
             // Автопоиск обновлений после каждого запуска — если включён
             if (_state.value.settings.autoUpdateCheck) checkForUpdate()
         }
