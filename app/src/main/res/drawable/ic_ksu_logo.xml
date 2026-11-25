@@ -1,0 +1,23 @@
+<!-- Логотип KernelSU: квадрат 2x2, два чёрных и два белых (в духе
+     оригинального лого). Обводка — для читаемости на светлых фонах. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <path
+        android:fillColor="#FF000000"
+        android:pathData="M2,2h20v20h-20z" />
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M3,3h9v9h-9z" />
+    <path
+        android:fillColor="#FF000000"
+        android:pathData="M12,3h9v9h-9z" />
+    <path
+        android:fillColor="#FF000000"
+        android:pathData="M3,12h9v9h-9z" />
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M12,12h9v9h-9z" />
+</vector>

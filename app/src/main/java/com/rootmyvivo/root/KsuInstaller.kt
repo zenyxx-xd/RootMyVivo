@@ -411,6 +411,12 @@ class KsuInstaller(
             ) {
                 return@withContext true
             }
+            // Пользователь ЯВНО выбрал этот вариант (не дефолт) — ставим
+            // ИМЕННО его, даже если другой менеджер уже установлен
+            // (раньше установленный «сосед» перебивал выбор и выбранный
+            // неустановленный менеджер не скачивался вовсе)
+            val explicitChoice = prefs.selectedKsu != "resukisu"
+            if (!explicitChoice) {
             val knownInstalled = com.rootmyvivo.root.KsuVariant.entries
                 .firstOrNull { v -> installed(v.packageName) }
             if (knownInstalled != null) {
@@ -433,6 +439,7 @@ class KsuInstaller(
                 return@withContext true
             }
             if (managerInstalled(variant)) return@withContext true
+            }
             val prefs = com.rootmyvivo.data.Prefs(ctx)
             progress(R.string.log_manager_install)
 

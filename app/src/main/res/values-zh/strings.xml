@@ -92,7 +92,7 @@
     <string name="status_payload">漏洞利用</string>
     <string name="confirm_softreboot_text">用户空间重启将重启系统界面：应用将关闭，数据不会丢失。</string>
     <string name="confirm_softreboot_title">重启系统界面？</string>
-    <string name="home_softreboot">用户空间重启</string>
+    <string name="home_softreboot">软重启</string>
     <string name="home_lastlog">运行历史</string>
     <string name="logs_title">运行历史</string>
     <string name="logs_empty">还没有运行记录</string>

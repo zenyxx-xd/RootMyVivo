@@ -476,154 +476,44 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                 ctx.getString(R.string.log_softreboot_perform),
                 android.widget.Toast.LENGTH_SHORT,
             ).show()
-
-            // Каналы по убыванию скорости, каждый — с честным исходом в лог:
-            //  1. Биндинг KSU без запуска менеджера: если uid уже авторизован,
-            //     ребут проходит мгновенно и менеджер вообще не открывается
-            //     (это и была жалоба «просто открывается менеджер и всё»)
-            //  2. Тот же биндинг, но менеджер поднят нами: он покажет
-            //     root-запрос — подтверди один раз
-            //  3. adb-цепочка (порт закреплён) с теми же фолбэками
-            //  4. SIGKILL system_server как последний фолбэк
-            suspend fun suCh(cmd: String): Pair<Int, String> = withContext(Dispatchers.IO) {
-                Transport.su(ctx, cmd, timeoutSec = 60, interactive = true)
-            }
-
-            val reboot = "/data/adb/ksud soft-reboot 2>&1 || " +
-                "/data/user_de/0/com.rootmyvivo/ksud soft-reboot 2>&1 || " +
-                "kill -9 \$(pidof system_server)"
-
-            // 0) fifo-канал бутстрапа: root-команда без диалогов и без
-            //    менеджера (форки прячут /system/bin/su — биндинга нет)
-            var bindOut = ""
-            var code = -1
-            withContext(Dispatchers.IO) {
-                runCatching {
-                    val f = Transport.suFifo(ctx, reboot, timeoutSec = 30)
-                    if (f.first == 0) code = 0
-                    else if (f.second != "no root daemon") bindOut = f.second
-                }
-            }
-            if (code != 0) {
-            // 1) Уже авторизованы? — мгновенно, без открытия менеджера.
-            //    Две формы вызова: `-c cmd` и `0 sh -c cmd` (клиенты su
-            //    у форков различаются)
-            val (c1, o1) = withContext(Dispatchers.IO) {
-                var a = Transport.suBind(reboot, timeoutSec = 25)
-                if (a.first != 0) {
-                    val b = Transport.suBind0(reboot, timeoutSec = 25)
-                    if (b.first == 0) a = b
-                }
-                a
-            }
-            code = c1
-            bindOut = bindOut.ifEmpty { o1 }
-            }
-            if (code != 0) {
-                Log.w(TAG, "soft reboot: bind without manager: ${bindOut.take(120)}")
-                // 2) Поднимаем менеджер — диалог root-запроса показывает ОН
-                addLog(ctx.getString(R.string.log_softreboot_grant))
-                runCatching {
-                    // Сначала ВЫБРАННЫЙ пользователем менеджер (если стоит),
-                    // потом сохранённый сканом — иначе открывалось «не то»
-                    val candidates = listOf(
-                        _state.value.selectedKsu.packageName,
-                        prefs.managerPackage,
-                    ).distinct()
-                    val pkg = candidates.firstOrNull { p ->
-                        runCatching { ctx.packageManager.getApplicationInfo(p, 0) }.isSuccess
-                    } ?: candidates.last()
-                    val installed = try {
-                        ctx.packageManager.getApplicationInfo(pkg, 0); true
-                    } catch (_: Exception) { false }
-                    if (installed) {
-                        ctx.packageManager.getLaunchIntentForPackage(pkg)?.let {
-                            it.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
-                            ctx.startActivity(it)
-                        }
-                        delay(1500)
-                    }
-                }
-                var (code2, out2) = withContext(Dispatchers.IO) {
-                    var a = Transport.suBind(reboot, timeoutSec = 90)
-                    if (a.first != 0) {
-                        val b = Transport.suBind0(reboot, timeoutSec = 30)
-                        if (b.first == 0) a = b
-                    }
-                    a
-                }
-                if (code2 != 0) {
-                    Log.w(TAG, "soft reboot: bind with manager: ${out2.take(200)}")
-                    // Ответ su в лог приложения: видно, что именно ответил
-                    // менеджер (deny/timeout) вместо молчаливого «неудачи»
-                    if (out2.isNotBlank()) addLog("su: ${out2.take(120)}")
-                    // 3) kill system_server — как в менеджерах
-                    code2 = suCh("kill -9 \$(pidof system_server)").first
-                    if (code2 != 0) code2 = Transport.suBind0("kill -9 \$(pidof system_server)", 30).first
-                }
-                if (code2 != 0) {
-                    code2 = suCh("stop").first
-                    if (code2 == 0) code2 = suCh("start").first
-                }
-                code = code2
+            // Модель менеджеров: биндинг /system/bin/su — подтверди
+            // root-запрос для RootMyVivo в менеджере ОДИН раз, дальше
+            // ядро авторизует приложение навсегда. Команда — родной
+            // ksud soft-reboot, фолбэк kill system_server
+            val (code, out) = withContext(Dispatchers.IO) {
+                Transport.su(
+                    ctx,
+                    "/data/adb/ksud soft-reboot 2>/dev/null || " +
+                        "/data/user_de/0/com.rootmyvivo/ksud soft-reboot 2>/dev/null || " +
+                        "kill -9 \$(pidof system_server)",
+                    timeoutSec = 90,
+                    interactive = true,
+                )
             }
             if (code != 0) {
                 addLog(ctx.getString(R.string.log_softreboot_fail))
-                // Кнопка на главной: лог флоу не виден — исход в тосте.
-                // С ответом su (deny/timeout/пусто) — иначе вслепую
-                // Диагностика каналов: видно, ЧТО именно отсутствует
-                val diag = softRebootDiag(ctx)
-                // Полный текст уходит в диалог (softRebootError)
-                val why = bindOut.trim().take(500)
-                _state.value = _state.value.copy(
-                    softRebootError = ctx.getString(R.string.log_softreboot_fail) +
-                        "\n\nsu: " + why.ifEmpty { "(пусто)" } +
-                        "\n\n$diag",
-                )
+                Log.w(TAG, "soft reboot failed: ${out.take(200)}")
                 android.widget.Toast.makeText(
                     ctx,
                     ctx.getString(R.string.log_softreboot_fail),
-                    android.widget.Toast.LENGTH_SHORT,
+                    android.widget.Toast.LENGTH_LONG,
                 ).show()
-                // Плашку оставляем: можно попробовать ещё раз
                 _state.value = _state.value.copy(softRebootPrompt = false)
             } else {
-                // exit=0 — но ребут ли это? Даём 8с: при реальном ребуте
-                // процесс умирает и этот код не выполнится. Дожили —
-                // команда «выполнилась», но интерфейс не перезапустился
-                delay(8000)
-                val diag = softRebootDiag(ctx)
-                _state.value = _state.value.copy(
-                    softRebootError = "Команда выполнена (exit=0), но интерфейс не перезапустился\n\nsu: " +
-                        bindOut.trim().take(500).ifEmpty { "(пусто)" } +
-                        "\n\n$diag",
-                )
                 prefs.softRebootPending = false
-                _state.value = _state.value.copy(softRebootPrompt = false)
+                _state.value = _state.value.copy(
+                    softRebootPrompt = false,
+                    needsSoftReboot = false,
+                )
             }
         }
-    }
-
-    /** Состояние root-каналов для диагностики провала перезагрузки. */
-    private fun softRebootDiag(ctx: android.content.Context): String {
-        val dp = ctx.createDeviceProtectedStorageContext().filesDir.parentFile
-        return listOf(
-            "root(dfm5)" to java.io.File("/dev/dfm5").exists(),
-            "fifo(dfm9)" to java.io.File("/dev/dfm9").exists(),
-            "rdy(dfm10)" to java.io.File("/dev/dfm10").exists(),
-            "rmv.in" to java.io.File(dp, "rmv.in").exists(),
-            "rmv.seq" to java.io.File(dp, "rmv.seq").exists(),
-            "su" to java.io.File("/system/bin/su").exists(),
-        ).joinToString(" ") { (k, v) -> "$k=${if (v) "yes" else "no"}" }
     }
 
     fun dismissSoftReboot() {
         _state.value = _state.value.copy(softRebootPrompt = false)
     }
 
-    fun dismissSoftRebootError() {
-        _state.value = _state.value.copy(softRebootError = null)
-    }
+
 
     /** Открыть лог конкретного запуска из истории. */
     fun openLogRun(info: LogRunInfo) {

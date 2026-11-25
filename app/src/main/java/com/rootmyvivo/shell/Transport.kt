@@ -57,9 +57,6 @@ object Transport {
     fun suVia(bin: String, command: String, timeoutSec: Int): Pair<Int, String> =
         suArgv(arrayOf(bin, "-c", command), timeoutSec)
 
-    /** Форма `su 0 sh -c cmd` — часть клиентов su у форков требует её. */
-    fun suBind0(command: String, timeoutSec: Int): Pair<Int, String> =
-        suArgv(arrayOf("/system/bin/su", "0", "sh", "-c", command), timeoutSec)
 
     private fun suArgv(argv: Array<String>, timeoutSec: Int): Pair<Int, String> = try {
         val proc = Runtime.getRuntime().exec(argv)
@@ -104,44 +101,6 @@ object Transport {
     fun suBind(command: String, timeoutSec: Int): Pair<Int, String> =
         suVia("/system/bin/su", command, timeoutSec)
 
-    /**
-     * Root-канал бутстрапа (DF): fifo-демон в device-protected папке.
-     * Форки прячут /system/bin/su (susfs) — биндинг недоступен, поэтому
-     * бутстрак оставляет нам канал: пишем команду в rmv.in, демон
-     * исполняет её от root, ответ в rmv.out, код в rmv.rc. Живёт до
-     * перезагрузки. (exitCode, output)
-     */
-    fun suFifo(ctx: Context, command: String, timeoutSec: Int): Pair<Int, String> {
-        val dp = ctx.createDeviceProtectedStorageContext().filesDir.parentFile
-            ?: return -1 to "no dp dir"
-        val fifo = File(dp, "rmv.in")
-        val seq = File(dp, "rmv.seq")
-        if (!fifo.exists() || !seq.exists()) return -1 to "no root daemon"
-        val before = seq.readText().trim()
-        // Пишем в отдельном потоке: открытие fifo блокируется, если демон мёртв
-        val w = Thread {
-            runCatching {
-                java.io.FileWriter(fifo).use { it.write(command + "\n") }
-            }
-        }.apply { isDaemon = true; start() }
-        w.join(4000)
-        if (w.isAlive) {
-            w.interrupt()
-            return -1 to "root daemon not responding"
-        }
-        // Ждём счётчик: команда выполнена
-        val deadline = System.currentTimeMillis() + timeoutSec * 1000L
-        while (System.currentTimeMillis() < deadline) {
-            val cur = runCatching { seq.readText().trim() }.getOrDefault(before)
-            if (cur != before) {
-                val out = runCatching { File(dp, "rmv.out").readText() }.getOrDefault("")
-                val rc = runCatching { File(dp, "rmv.rc").readText().trim() }.getOrDefault("-1")
-                return (rc.toIntOrNull() ?: -1) to out
-            }
-            Thread.sleep(150)
-        }
-        return -1 to "timeout"
-    }
 
     /** KSU уже перехватил su? После загрузки модуля локальный клиент форвардится
      *  в /system/bin/su, который не авторизован для приложения (и ждёт ответа
@@ -173,11 +132,6 @@ object Transport {
          *  статус-чеки не должны держать UI/флоу на секундах */
         single: Boolean = false,
     ): Pair<Int, String> {
-        // 0) fifo-канал бутстрапа (DF): root без диалогов, мгновенно
-        runCatching {
-            val viaFifo = suFifo(ctx, command, timeoutSec = minOf(timeoutSec, 60))
-            if (viaFifo.first != -1) return viaFifo
-        }
         // 1) локальный клиент демона эксплойта — быстрый путь
         if (!ksuSuPresent()) {
             val local = suLocal(ctx, command, timeoutSec = minOf(timeoutSec, 60))

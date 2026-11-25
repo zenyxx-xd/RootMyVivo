@@ -92,7 +92,7 @@
     <string name="status_payload">Exploit</string>
     <string name="confirm_softreboot_text">A userspace reboot will restart the system interface: apps will close, no data will be lost.</string>
     <string name="confirm_softreboot_title">Restart the interface?</string>
-    <string name="home_softreboot">Userspace reboot</string>
+    <string name="home_softreboot">Soft reboot</string>
     <string name="home_lastlog">Run history</string>
     <string name="logs_title">Run history</string>
     <string name="logs_empty">No runs yet</string>

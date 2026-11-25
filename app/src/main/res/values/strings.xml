@@ -105,7 +105,7 @@
     <string name="status_payload">Эксплоит</string>
     <string name="confirm_softreboot_text">Перезагрузка userspace перезапустит системный интерфейс: приложения закроются, данные не потеряются.</string>
     <string name="confirm_softreboot_title">Перезапустить интерфейс?</string>
-    <string name="home_softreboot">Перезагрузка userspace</string>
+    <string name="home_softreboot">Софт-ребут</string>
     <string name="home_lastlog">История запусков</string>
     <string name="logs_title">История запусков</string>
     <string name="logs_empty">Запусков ещё не было</string>

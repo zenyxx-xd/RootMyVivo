@@ -357,26 +357,6 @@ fun HomeScreen(
 
     // Меню выбора рут-менеджера — как в DirtyFrag: скан установленных
     // (libksud.so) + известные варианты; только имя и пакет, без описаний
-    // Полный текст ошибки перезагрузки userspace: тост ограничен двумя
-    // строками и обрезал ответ su — целиком показываем в диалоге
-    state.softRebootError?.let { err ->
-        androidx.compose.material3.AlertDialog(
-            onDismissRequest = { vm.dismissSoftRebootError() },
-            title = { Text(stringResource(R.string.log_softreboot_fail)) },
-            text = {
-                Text(
-                    err.substringAfter("\n\n"),
-                    style = MaterialTheme.typography.bodySmall,
-                    fontFamily = FontFamily.Monospace,
-                )
-            },
-            confirmButton = {
-                androidx.compose.material3.TextButton(
-                    onClick = { vm.dismissSoftRebootError() },
-                ) { Text(stringResource(R.string.action_close)) }
-            },
-        )
-    }
     if (ksuDialog) {
         val choices = state.ksuManagers
         ChoiceDialog(
@@ -487,6 +467,10 @@ private fun HeroCard(
                                     .heightIn(min = 62.dp),
                                 shape = MaterialTheme.shapes.extraLarge,
                                 contentPadding = PaddingValues(horizontal = 10.dp),
+                                border = androidx.compose.foundation.BorderStroke(
+                                    1.dp,
+                                    MaterialTheme.colorScheme.primary,
+                                ),
                             ) {
                                 androidx.compose.foundation.layout.Box(
                                     modifier = Modifier.fillMaxWidth(),
@@ -529,6 +513,10 @@ private fun HeroCard(
                                     .heightIn(min = 62.dp),
                                 shape = MaterialTheme.shapes.extraLarge,
                                 contentPadding = PaddingValues(horizontal = 10.dp),
+                                border = androidx.compose.foundation.BorderStroke(
+                                    1.dp,
+                                    MaterialTheme.colorScheme.primary,
+                                ),
                             ) {
                                 androidx.compose.foundation.layout.Box(
                                     modifier = Modifier.fillMaxWidth(),
@@ -537,7 +525,12 @@ private fun HeroCard(
                                     Column(
                                         horizontalAlignment = Alignment.CenterHorizontally,
                                     ) {
-                                        Icon(Icons.Rounded.LockOpen, null, modifier = Modifier.size(18.dp))
+                                        Icon(
+                                            androidx.compose.ui.res.painterResource(R.drawable.ic_ksu_logo),
+                                            null,
+                                            modifier = Modifier.size(18.dp),
+                                            tint = androidx.compose.ui.graphics.Color.Unspecified,
+                                        )
                                         Spacer(Modifier.height(2.dp))
                                         Text(
                                             stringResource(R.string.home_open_manager),
@@ -867,7 +860,15 @@ private fun InfoGroup(
             } else {
                 state.selectedKsu.displayName
             },
-            icon = Icons.Rounded.Security,
+            icon = null,
+            leadingIcon = {
+                Icon(
+                    androidx.compose.ui.res.painterResource(R.drawable.ic_ksu_logo),
+                    null,
+                    modifier = Modifier.size(22.dp),
+                    tint = androidx.compose.ui.graphics.Color.Unspecified,
+                )
+            },
             onClick = onKsuClick,
             trailing = {
                 Icon(
