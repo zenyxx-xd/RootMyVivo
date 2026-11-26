@@ -470,27 +470,6 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     fun performSoftReboot() {
         val ctx = getApplication<Application>()
         viewModelScope.launch {
-            // Рут есть, но доступа нет: su-файл существует (биндинг живёт),
-            // а команда через него не проходит — значит запрос ещё не
-            // подтверждён. Говорим юзеру, что сделать, вместо пустых
-            // «выполняю…/не удалось»
-            val rootThere = Transport.rootActiveQuick(ctx)
-            val suFile = java.io.File("/system/bin/su").exists()
-            if (rootThere && suFile) {
-                val (probe, _) = withContext(Dispatchers.IO) {
-                    Transport.su(ctx, "true", timeoutSec = 8, single = true)
-                }
-                if (probe != 0) {
-                    android.widget.Toast.makeText(
-                        ctx,
-                        R.string.log_softreboot_grant_root,
-                        android.widget.Toast.LENGTH_LONG,
-                    ).show()
-                    addLog(ctx.getString(R.string.log_softreboot_grant_root))
-                    _state.value = _state.value.copy(softRebootPrompt = false)
-                    return@launch
-                }
-            }
             // Модель менеджеров: биндинг /system/bin/su — подтверди
             // root-запрос для RootMyVivo в менеджере ОДИН раз, дальше
             // ядро авторизует приложение навсегда. Команда — родной
@@ -508,12 +487,25 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             if (code != 0) {
                 addLog(ctx.getString(R.string.log_softreboot_fail))
                 Log.w(TAG, "soft reboot failed: ${out.take(200)}")
-                // единственный тост провала: неизвестная причина
+                // Провал: единственный осмысленный случай — рут есть, но
+                // биндинг /system/bin/su не пропускает НАШ uid (root-запрос
+                // в менеджере не подтверждён). Проверяем сам канал, а не
+                // предзапуском: проба «true» через реальный биндинг.
+                var toastRes = R.string.log_softreboot_fail_unknown
+                if (File("/system/bin/su").exists()) {
+                    val (probe, _) = withContext(Dispatchers.IO) {
+                        Transport.suBind("true", timeoutSec = 10)
+                    }
+                    if (probe != 0) toastRes = R.string.log_softreboot_grant_root
+                }
                 android.widget.Toast.makeText(
                     ctx,
-                    R.string.log_softreboot_fail_unknown,
+                    toastRes,
                     android.widget.Toast.LENGTH_LONG,
                 ).show()
+                if (toastRes == R.string.log_softreboot_grant_root) {
+                    addLog(ctx.getString(R.string.log_softreboot_grant_root))
+                }
                 _state.value = _state.value.copy(softRebootPrompt = false)
             } else {
                 prefs.softRebootPending = false
