@@ -166,6 +166,8 @@
     <string name="notif_root_lost_title">Root was reset by reboot</string>
     <string name="notif_root_lost_text">Open the app — root will be back in a couple of taps</string>
 
+    <string name="log_softreboot_grant_root">Grant RootMyVivo root access in the manager — confirm the request</string>
+    <string name="log_softreboot_fail_unknown">Soft reboot not performed (unknown reason)</string>
     <string name="log_softreboot_perform">Performing userspace reboot…</string>
     <string name="notif_root_running">Getting root access…</string>
     <string name="notif_boot_restore_running">Restoring root after reboot…</string>

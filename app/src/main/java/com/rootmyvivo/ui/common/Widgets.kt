@@ -111,8 +111,6 @@ fun SettingsRow(
     title: String,
     modifier: Modifier = Modifier,
     icon: ImageVector? = null,
-    /** Кастомная иконка (painter) вместо векторной из набора */
-    leadingIcon: (@Composable () -> Unit)? = null,
     description: String? = null,
     selected: Boolean = false,
     isError: Boolean = false,
@@ -164,7 +162,7 @@ fun SettingsRow(
                 .padding(horizontal = 14.dp, vertical = 12.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            if (icon != null || leadingIcon != null) {
+            if (icon != null) {
                 Box(
                     Modifier
                         .size(40.dp)
@@ -172,15 +170,11 @@ fun SettingsRow(
                         .background(MaterialTheme.colorScheme.primaryContainer),
                     contentAlignment = Alignment.Center,
                 ) {
-                    if (icon != null) {
-                        Icon(
-                            icon, null,
-                            tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                            modifier = Modifier.size(20.dp),
-                        )
-                    } else {
-                        leadingIcon?.invoke()
-                    }
+                    Icon(
+                        icon, null,
+                        tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                        modifier = Modifier.size(20.dp),
+                    )
                 }
                 Spacer(Modifier.width(16.dp))
             }

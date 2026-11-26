@@ -467,10 +467,14 @@ private fun HeroCard(
                                     .heightIn(min = 62.dp),
                                 shape = MaterialTheme.shapes.extraLarge,
                                 contentPadding = PaddingValues(horizontal = 10.dp),
-                                border = androidx.compose.foundation.BorderStroke(
-                                    1.dp,
-                                    MaterialTheme.colorScheme.primary,
-                                ),
+                                border = if (isDark) {
+                                    androidx.compose.foundation.BorderStroke(
+                                        1.dp,
+                                        MaterialTheme.colorScheme.primary,
+                                    )
+                                } else {
+                                    androidx.compose.material3.ButtonDefaults.outlinedButtonBorder(true)
+                                },
                             ) {
                                 androidx.compose.foundation.layout.Box(
                                     modifier = Modifier.fillMaxWidth(),
@@ -513,10 +517,14 @@ private fun HeroCard(
                                     .heightIn(min = 62.dp),
                                 shape = MaterialTheme.shapes.extraLarge,
                                 contentPadding = PaddingValues(horizontal = 10.dp),
-                                border = androidx.compose.foundation.BorderStroke(
-                                    1.dp,
-                                    MaterialTheme.colorScheme.primary,
-                                ),
+                                border = if (isDark) {
+                                    androidx.compose.foundation.BorderStroke(
+                                        1.dp,
+                                        MaterialTheme.colorScheme.primary,
+                                    )
+                                } else {
+                                    androidx.compose.material3.ButtonDefaults.outlinedButtonBorder(true)
+                                },
                             ) {
                                 androidx.compose.foundation.layout.Box(
                                     modifier = Modifier.fillMaxWidth(),
@@ -525,12 +533,7 @@ private fun HeroCard(
                                     Column(
                                         horizontalAlignment = Alignment.CenterHorizontally,
                                     ) {
-                                        Icon(
-                                            androidx.compose.ui.res.painterResource(R.drawable.ic_ksu_logo),
-                                            null,
-                                            modifier = Modifier.size(18.dp),
-                                            tint = androidx.compose.ui.graphics.Color.Unspecified,
-                                        )
+                                        Icon(Icons.Rounded.Security, null, modifier = Modifier.size(18.dp))
                                         Spacer(Modifier.height(2.dp))
                                         Text(
                                             stringResource(R.string.home_open_manager),
@@ -860,15 +863,7 @@ private fun InfoGroup(
             } else {
                 state.selectedKsu.displayName
             },
-            icon = null,
-            leadingIcon = {
-                Icon(
-                    androidx.compose.ui.res.painterResource(R.drawable.ic_ksu_logo),
-                    null,
-                    modifier = Modifier.size(22.dp),
-                    tint = androidx.compose.ui.graphics.Color.Unspecified,
-                )
-            },
+            icon = Icons.Rounded.Security,
             onClick = onKsuClick,
             trailing = {
                 Icon(

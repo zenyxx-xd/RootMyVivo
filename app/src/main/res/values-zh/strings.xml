@@ -166,6 +166,8 @@
     <string name="notif_root_lost_title">Root 已被重启重置</string>
     <string name="notif_root_lost_text">打开应用 — 轻点几下即可恢复 root</string>
 
+    <string name="log_softreboot_grant_root">请在管理器中授予 RootMyVivo root 权限 — 确认请求</string>
+    <string name="log_softreboot_fail_unknown">软重启未执行（原因未知）</string>
     <string name="log_softreboot_perform">正在执行用户空间重启…</string>
     <string name="notif_root_running">正在获取 root 权限…</string>
     <string name="notif_boot_restore_running">重启后正在恢复 root…</string>

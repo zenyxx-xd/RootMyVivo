@@ -179,6 +179,8 @@
     <string name="notif_root_lost_title">Root сброшен перезагрузкой</string>
     <string name="notif_root_lost_text">Открой приложение — root вернётся за пару касаний</string>
 
+    <string name="log_softreboot_grant_root">Выдайте RootMyVivo root-доступ в менеджере — подтвердите запрос</string>
+    <string name="log_softreboot_fail_unknown">Софт-ребут не выполнен (неизвестная причина)</string>
     <string name="log_softreboot_perform">Выполняю перезагрузку userspace…</string>
     <string name="notif_root_running">Получение root-доступа…</string>
     <string name="notif_boot_restore_running">Восстановление root после перезагрузки…</string>
