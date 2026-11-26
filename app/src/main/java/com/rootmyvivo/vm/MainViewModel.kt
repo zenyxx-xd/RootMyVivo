@@ -489,14 +489,16 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                 Log.w(TAG, "soft reboot failed: ${out.take(200)}")
                 // Провал: единственный осмысленный случай — рут есть, но
                 // биндинг /system/bin/su не пропускает НАШ uid (root-запрос
-                // в менеджере не подтверждён). Проверяем сам канал, а не
-                // предзапуском: проба «true» через реальный биндинг.
+                // в менеджере не подтверждён). Exit-код KSU-су ненадёжен
+                // (бывает 0 без авторизации) — проверяем ВЫВОД «id» на uid=0.
                 var toastRes = R.string.log_softreboot_fail_unknown
                 if (File("/system/bin/su").exists()) {
-                    val (probe, _) = withContext(Dispatchers.IO) {
-                        Transport.suBind("true", timeoutSec = 10)
+                    val (_, probeOut) = withContext(Dispatchers.IO) {
+                        Transport.suBind("id", timeoutSec = 10)
                     }
-                    if (probe != 0) toastRes = R.string.log_softreboot_grant_root
+                    if (!probeOut.contains("uid=0")) {
+                        toastRes = R.string.log_softreboot_grant_root
+                    }
                 }
                 android.widget.Toast.makeText(
                     ctx,
