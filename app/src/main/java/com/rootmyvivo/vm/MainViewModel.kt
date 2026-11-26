@@ -487,19 +487,21 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             if (code != 0) {
                 addLog(ctx.getString(R.string.log_softreboot_fail))
                 Log.w(TAG, "soft reboot failed: ${out.take(200)}")
-                // Провал: единственный осмысленный случай — рут есть, но
-                // биндинг /system/bin/su не пропускает НАШ uid (root-запрос
-                // в менеджере не подтверждён). Exit-код KSU-су ненадёжен
-                // (бывает 0 без авторизации) — проверяем ВЫВОД «id» на uid=0.
-                var toastRes = R.string.log_softreboot_fail_unknown
-                if (File("/system/bin/su").exists()) {
-                    val (_, probeOut) = withContext(Dispatchers.IO) {
-                        Transport.suBind("id", timeoutSec = 10)
-                    }
-                    if (!probeOut.contains("uid=0")) {
-                        toastRes = R.string.log_softreboot_grant_root
-                    }
+                // Провал при живом руте: единственная реальная причина —
+                // root-запрос RootMyVivo ещё не подтверждён в менеджере
+                // (FinaSU/susfs может прятать /system/bin/su от приложения,
+                // так что проба биндинга неприменима). «Неизвестная
+                // причина» — только когда рута вообще нет.
+                var toastRes = if (Transport.rootActiveQuick(ctx)) {
+                    R.string.log_softreboot_grant_root
+                } else {
+                    R.string.log_softreboot_fail_unknown
                 }
+                Log.w(
+                    TAG,
+                    "soft reboot probe: root=${Transport.rootActiveQuick(ctx)} " +
+                        "suFile=${File("/system/bin/su").exists()} out=${out.take(120)}",
+                )
                 android.widget.Toast.makeText(
                     ctx,
                     toastRes,
